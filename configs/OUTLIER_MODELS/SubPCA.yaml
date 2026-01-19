@@ -1,0 +1,5 @@
+SubPCA:
+  # TSB-AD: Towards A Reliable Time-Series Anomaly Detection Benchmark
+  # https://github.com/TheDatumOrg/TSB-AD
+  MODEL:
+    train_on: 'pupil_orig_imputed'

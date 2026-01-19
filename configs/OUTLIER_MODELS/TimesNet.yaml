@@ -1,0 +1,53 @@
+TimesNet:
+  # https://github.com/thuml/Time-Series-Library (bash ./scripts/anomaly_detection/PSM/TimesNet.sh
+  # https://openreview.net/pdf?id=ju_Uqw384Oq
+  # PyPOTS easier: https://github.com/WenjieDu/PyPOTS
+  check_dataloader: False
+  MODEL:
+    # Same logic as for MOMENT
+    # Use fine-tune if you plan to train something, and zero-shot if you plan to just run an inference
+    # (independent of whether you are actually per se finetuning, or training from scratch)
+    detection_type: 'fine-tune' # 'zero-shot' -> affects data selection in "dataset_data_array_selector()"
+    train_on: 'pupil_orig_imputed' # or 'pupil_orig_imputed' -> which col name from the DuckDB dataframe gets picked
+  TORCH:
+    DATASET:
+      dataset_type: 'numpy'
+      trim_to_size: 100 # matches the TimesNet tutorial for PSM
+      pad_ts: True # will add nans to the end -> multiple of trim_to_size, e.g. 1981 -> 2000
+      downsample_factor: null # if trim_to_size is 512 and downsample_factor is 4, original trim size is 3x512=2048
+      resample_method: 'linear'
+      split_subjects_to_windows: True
+      fill_na: 'median'
+    DATALOADER:
+      num_workers: 0
+      batch_size: 16
+      shuffle: False # harder to reshape back to original length if you set this to True
+      pin_memory: True
+  PARAMS:
+    optimizer: 'Adam'
+    lr: 0.0001
+    criterion: 'MSE'
+    train_epochs: 25
+    lradj: 'type1'
+    # https://github.com/thuml/Time-Series-Library/blob/main/scripts/anomaly_detection/PSM/TimesNet.sh
+    # 'forecasting task, options:[M, S, MS]; M:multivariate predict multivariate,
+    #                    S:univariate predict univariate, MS:multivariate predict univariate')
+    features: 'S'
+    seq_len: 100 # input sequence length
+    label_len: 48 # start token length
+    pred_len: 0 # prediction sequence length
+    num_kernels: 6 # for Inception
+    anomaly_ratio: 10. # prior anomaly ratio (%)
+    batch_size: 8
+    # model define
+    task_name: 'anomaly_detection'
+    d_model: 64
+    d_ff: 64
+    e_layers: 2
+    enc_in: 1
+    c_out: 1
+    top_k: 3
+    embed: "timeF" # time features encoding, options:[timeF, fixed, learned]
+    freq: 's' # (30fps actually), freq for time features encoding, options:[s:secondly, t:minutely, h:hourly,
+              # d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
+    dropout: 0.1

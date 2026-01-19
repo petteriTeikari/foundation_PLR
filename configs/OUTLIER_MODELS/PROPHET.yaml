@@ -1,0 +1,23 @@
+PROPHET:
+  # https://facebook.github.io/prophet/docs/installation.html#python
+  # https://anomify.ai/blogs/a-comparison-of-unsupervised-anomaly-detection-algorithms-for-time-series
+  MODEL:
+    train_method: 'per_subject'
+    # What counts as an outlier, how many yhat_lower/higher from the mean
+    uncertainty_factor: 1.5
+    # This is probably the most impactful parameter. It determines the flexibility of the trend,
+    # and in particular how much the trend changes at the trend changepoints. As described in this documentation,
+    # if it is too small, the trend will be underfit and variance that should have been modeled with trend changes
+    # will instead end up being handled with the noise term. If it is too large, the trend will overfit and
+    # in the most extreme case you can end up with the trend capturing yearly seasonality.
+    # The default of 0.05 works for many time series, but this could be tuned; a range of [0.001, 0.5]
+    # would likely be about right. Parameters like this (regularization penalties; this is effectively a lasso penalty)
+    # are often tuned on a log scale. - https://facebook.github.io/prophet/docs/diagnostics.html
+    changepoint_prior_scale: 0.1
+    # Train on the data with the blink artifacts and all, NaNs are not an issue for Prophet
+    train_on: 'pupil_orig'
+    # changepoints: This is for manually specifying the locations of changepoints.
+    # None by default, which automatically places them. (You could use the light onsets for these to help?
+    # Vhttps://facebook.github.io/prophet/docs/trend_changepoints.html
+    # In practice does not seem to add anything useful
+    manual_changepoints: null # 'light'

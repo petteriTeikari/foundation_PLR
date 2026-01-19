@@ -1,0 +1,11 @@
+LOF:
+  # https://scikit-learn.org/dev/modules/generated/sklearn.neighbors.LocalOutlierFactor.html
+  MODEL:
+    n_neighbors: 20
+    train_on: 'pupil_orig_imputed'
+  HYPERPARAMS:
+    method: 'GRID'
+    loss: 'f1'
+  SEARCH_SPACE:
+    GRID:
+      n_neighbors: [30, 200, 5] # start, end, step

@@ -1,0 +1,11 @@
+SigLLM:
+  # https://github.com/sintel-dev/sigllm
+  # Sarah Alnegheimish et al. (2024): https://arxiv.org/pdf/2405.14755
+  MODEL:
+    train_on: 'pupil_orig_imputed'
+    pipeline_type: 'Detector'
+  HYPERPARAMS:
+    method: 'GRID'
+  SEARCH_SPACE:
+    GRID:
+      pipeline_type: ['Detector', 'Prompter'] # start, end, step
