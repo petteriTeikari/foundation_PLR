@@ -1,0 +1,330 @@
+VERSION: 0.1
+NAME: 'impPLR'
+
+defaults:
+  - _self_ # https://hydra.cc/docs/tutorials/basic/your_first_app/defaults/#non-config-group-defaults
+  # Import from other YAML files:
+  - PLR_FEATURIZATION: featuresSimple
+  - OUTLIER_MODELS: MOMENT
+  - MODELS: SAITS # Imputation model(s)
+  - CLS_MODELS: XGBOOST
+  # TODO! Nicer if XGBOOST.yaml would now how to read this directly from the XGBOOST_hyperparam_space.yaml
+  - CLS_HYPERPARAMS: XGBOOST_hyperparam_space
+  - PLR_EMBEDDING: MOMENT
+  - CLS_TS_MODELS: MOMENT
+  - SERVICES: services
+
+EXPERIMENT:
+  # train_on
+  train_on: 'pupil_gt' # make this global?
+  # with True, you get tiny amount of data and train for one epoch to get the devel debugging done faster
+  debug: False
+  # If you know the "best" hyperparameters, you can skip the hyperparameter search (set to False
+  hyperparam_search: False
+  # Use the same alpha for all the CI and stats tests
+  alpha_CI: 0.95
+  # This is synthetic dataset that you can use to test the code, as the original data
+  # cannot be shared at the moment along the paper :(
+  use_demo_data: False
+
+DEBUG:
+  # Setting this to None gives you full dataset that could be useful for an end-to-end CI test
+  # Number of epochs or iterations are set to minimum still
+  debug_n_subjects: 8 # this is per label (2) and per split (2) (thus with 4, you get 4x2x2=16 subjects)
+
+DEVICE:
+  device: 'cuda' # 'cpu'
+  # https://pytorch.org/docs/stable/amp.html
+  use_amp: True
+
+DATA:
+    data_path: 'data'
+    # import from DuckDB database and skip all the data wrangling part, and you have a hardcoded database
+    # that should be correct for the modelling part
+    import_from_DuckDB: True # True
+    filename_DuckDB: 'SERI_PLR_GLAUCOMA.db'
+    PLR_length: 1981 # hard-coded now for this experiment, is used in assert statements mostly
+    # If you have access to the original individual data, you can import it from those .csvs
+    individual_subjects_path: '../2017_SERI/Data_2017/FinalOUT'
+    # Some outlier detection algorithms might need non-NaN vectors
+    # Featurization (e.g. AUC) from raw data with missing value might benefit from imputed gt
+    impute_missing_data_for_orig_and_raw: True
+    granular_outliers_stdev_factor: 1.96
+    granular_outlier_window_size: 120
+    imputation_method: 'gt'
+    COLUMNS_TO_KEEP:
+      # the individual CSV files have 94 columns so to keep things simpler and more memory-efficient,
+      # keeping just this subset of the columns
+      - "time" # in seconds, recording at 30 fps
+      - "pupil_raw" # as coming from the pupillometer containing both missing values and clear outliers
+      - "outlier_labels" # boolean to indicate missing values
+      - "pupil_toBeImputed" # the pupil_raw with the outliers removed, missing data only there
+      - "denoised" # denoised with CEEMD after manually supervised outlier rejection, "pupil_" prefix added
+      - "R" # when Red light was on -> Renamed to Red
+      - "B" # when Blue light was on -> Renamed to Blue
+    VISUALIZE:
+      visualize_input_subjects: False
+
+STRATIFICATION:
+  test_size: 0.3
+  random_state: 42
+  stratify_columns:
+    - 'class_label'
+    - 'no_outliers_bins'
+
+ARTIFACTS:
+  results_format: 'pickle'
+
+METADATA:
+  placeholder: 1
+
+OUTLIER_DETECTION:
+  # Atm as this is a placeholder, if you set this True, you will get a new MLflow run, with FaLse, we
+  # only create one run, that is used then by the imputation pipeline
+  re_compute: False
+  what_is_best: 'best_metric' # or 'best_metric'
+  best_loss:
+    string: 'metrics.outlier_test/loss' # MLflow column name
+    direction: 'ASC' # smaller is better
+  best_metric:
+    string: 'f1'
+    direction: 'DESC' # smaller is better
+    split: 'outlier_test' # which split is the test split
+    # obviuously very specific to our dataset and the ground truth difficulty
+    # Use null here if you don't want to use a threshold, but include all the models
+    ensemble_quality_threshold: 0.2 # 0.4
+
+PREPROCESS:
+    # You don't necessarily need to standardize for tree-based methods (such as MissForest and MiceForest),
+    # and you could want to make this preprocessing imputation-model specific, but the standardization should not
+    # hurt the tree-models either?
+    standardize: True
+    col_name: 'pupil_gt'
+
+IMPUTATION_TRAINING:
+    # If you find from the disk the exactly the same hyperparameters
+    # with False, tries to get the results from the disk so you can evaluate them togehther
+    # with the new imputation, or you simply want to develop some code for fancier visualization or statistics
+    # without having to pay for the retraining time
+    retrain_models: False
+    # These will count as "source" for the imputation, so if you have 10 imputation models, adding the
+    # raw to gt will give you twice the models to be trained
+    col_name:
+      - 'pupil_gt'
+      # - 'pupil_raw_imputed'
+    # As in coming from "data_dict" instead of the reconstruction coming from the outlier detection,
+    # using just the mask from outlier detection algorithm
+    gt_col_name: 'pupil_gt'
+    # Set to false when you wanna see how the garbage might propagate through the steps, if your outlier detection
+    # is not really doing a good job?
+    use_orig_data: False
+
+IMPUTATION_EVAL:
+    # If you had standardized the data for training, it would nice to destandardize the data
+    # for visualization and further analysis
+    destandardize_output: True
+
+IMPUTATION_METRICS:
+    recompute: True
+    # What metric you look for to determine which is the best imputation model?
+    best_metric:
+      string: 'mae'
+      direction: 'ASC' # smaller is better
+      split: 'test' # which split is the test split
+      # Use None here if you don't want to use a threshold, but include all the models
+      ensemble_quality_threshold: 10 # 1
+      gt_exclude_multiplier: 10 # use more conservative cutoff, multiplying the threshold above
+
+    # best_metric on what split ("val" or "train"), by default use "val" so you have a better estimate
+    # of the generalization performance
+    #split: 'test'
+    OUTPUT_DF:
+      drop_cols:
+        - 'pupil_raw'
+        - 'pupil_gt'
+
+
+PLR_FEATURIZATION:
+    # If you have the features already computed, you can skip this step and read the features from the disk
+    re_featurize: False
+    feature_file_suffix: '_features'
+    FEATURIZATION:
+        # What to output to the flattened dataframe for classification model
+        stat_keys:
+          - 'value' # just the "stat value" as in the mean/median/min/max
+          - 'std' # as features are computed from a bin of data, the "value" as uncertainty
+          # TODO! CI pos/neg
+    VISUALIZATION:
+        # If you want to visualize the features, you can do that here
+        visualize_features: False
+    DROP_COLS:
+        # We are combining the metadata from the "raw PLR CSV files" and we only want the static colums, such
+        # as age, class_label, and no_outliers_bins, and we don't want a single time value which is useless
+        - 'time'
+        - 'time_orig'
+        - 'pupil_raw'
+        - 'pupil_orig'
+        - 'gt'
+        - 'Red'
+        - 'Blue'
+        - 'light_stimuli'
+        # Not present in the raw data, coming from the imputation:
+        - 'mean'
+    DROP_COLS_EXTRA:
+        # You could harmonize the naming
+        SET1:
+          - 'ci_pos'
+          - 'ci_neg'
+        SET2:
+          - 'imputation_ci_neg'
+          - 'imputation_ci_pos'
+        SET3:
+          - 'std'
+          - 'n'
+          - 'CI'
+
+EMBEDDING:
+  PREPROCESSING:
+    PCA:
+      # explained variance to keep, clean data gets down to 21 features with this cutoff
+      explained_variance: 0.95
+      # cap to this if 0.95 is achieved only with a ton of features kept
+      max_dim: 96
+
+
+CLASSIFICATION_SETTINGS:
+  retrain_classifiers: True
+  loss: 'Logloss'
+  # Embeddings from Moment e.g. have 1024 features leading to long training times (with suboptimal performance)
+  # so until you have nice (finetuned) embedders, you probably want to skip these to save some time
+  train_from_embeddings: False
+  DATA_TO_TRAIN:
+    # Could be just features (or you could add some "metadata" to the features like age, sex, etc.)
+    scheme: 'features'
+  PREPROCESS:
+    # https://datascience.stackexchange.com/questions/60950/is-it-necessary-to-normalize-data-for-xgboost
+    # decision trees do not require normalization of their inputs, see also:
+    # Hubert Ruczyński and Anna Kozak (2024) Do Tree-based Models Need Data Preprocessing?
+    # https://openreview.net/forum?id=08Y5sFtRhN
+    # Atm, no preprocessing happening, but this "preNone" or some new scheme will be added to the
+    # MLflow run name
+    preNone: # Placeholder scheme
+       placeholder: 'dummy'
+  BEST_METRIC:
+    # Using PPV with glaucoma prevalence correction (see below for the value)
+    # You could use also AUROC, F1, tpAUC, etc.
+    string: 'AUROC' # see "get_classifier_metrics()" for all the options
+    split: 'test' # val got renamed to test to match XGBoost tutorials, you could rename?
+    direction: 'ASC' # larger is better, "DESC" when lower metric is better
+  DIM_REDUCTION:
+    # With classification from the embeddings, you could want to reduce the dimensionality
+    # and see how the classification works from such low-dimensional embeddings
+    # This dim_reduction before classification does not lead to anything good, chance-level performance
+    # Just use all 1024 features and wait long to have an idea of the embeddings
+    enable: False
+    method: 'UMAP' # 'PCA' 'UMAP' 'tSNE', etc. (UMAP now just supported for demo)
+    # You are now using twice the labels, when doing superivsed dimensionality reduction and then
+    # when doing your tree-based classification. We could save the mapper object used for the train split
+    # for further (reproducible) use, but at the moment the UMAP approach is more like a quick demo, rather
+    # than meant for production
+    supervised: True
+    # Pick the same number of components as you have from featuresSimple.yaml? e.g. 8
+    n_components: 8
+    n_neighbors: 10
+    random_state: 42
+    transform_seed: 42
+
+CLS_EVALUATION:
+  method: "BOOTSTRAP"
+  glaucoma_params:
+    # Used 0.0354 in http://dx.doi.org/10.1136/bjophthalmol-2021-319938 (Table 2)
+    prevalence: 0.0354
+    # You don't have really guidelines for glaucoma screening for desired sensitivity/specificity (?), so using
+    # these now from virtual glaucoma clinic paper to give an idea how the classifiers would perform with rather
+    # high sensitivity and specificity (https://doi.org/10.1038/s41433-024-03056-7)
+    tpAUC_sensitivity: 0.862
+    tpAUC_specificity: 0.821
+  BOOTSTRAP:
+    # see e.g. https://machinelearningmastery.com/calculate-bootstrap-confidence-intervals-machine-learning-results-python/
+    # if you are debugging with less iterations, use still something decent like 50 so that downstream
+    # checks don't get too edge cases
+    n_iterations: 1000 # default 1000 (when debugging, this is 50 then)
+    data_ratio: 0.5 # ratio of resampled train samples of the X
+    # Evaluate train+test together as train, val,
+    # with False, train is split into train and val, and test is left untouched
+    join_test_and_train: False
+    # Hard to average ROC, PR curves otherwise as they are not the same length, so let's interpolate
+    # them to the same length
+    curve_x_length: 200
+    # Significance level for the confidence intervals (p = 1-alpha)
+    alpha_CI: 0.95
+
+CLASSIFICATION_TS_SETTINGS:
+  retrain_classifiers: True
+
+
+SUMMARIZATION:
+  # You can skip previous blocks altogether and directly import previously imported
+  # Keep at False if you keep on training new models as with True you never update your summarization plot data
+  # True good for debugging when you have static data
+  import_from_duckdb: False
+
+VISUALIZATION:
+    dpi: 100
+    col_unit: 3.84 # *dpi -> x pixels (e.g 3.84 * 100 = 384 pixels), 10 cols will give you 3840px wide PNG
+    row_unit: 3 # 2.16
+    SNS:
+      style: 'white'
+      palette: 'colorblind'
+    TYPESET:
+      # Try these in order (you need to have one installed on your system)
+      - 'serif'
+    FEATURES:
+      type: 'violin'
+    TIMSERIES:
+      shading_alpha: 0.2
+
+MLFLOW:
+    # CPU, GPU, memory utilization
+    log_system_metrics: True
+    # if your path is incorrectly defined, you cannot save any artifacts
+    test_artifact_store: True
+    DIRS:
+      # we have multiple experiments per PLR pipeline, so we could want to harmonize the names
+      # so it is easier to get the results, like all generated figures from your manuscript draft
+      figures: 'figures' # PNGs
+      results: 'results' # Pickle, JSON data output
+
+PREFECT:
+    # If there is an easy way to turn off the decorators, it would be nice, e.g.
+    # https://stackoverflow.com/questions/37393287/how-to-make-decorators-optionally-turn-on-or-off
+    # So that you could reproduce the code with or without Prefect easily
+    SERVER:
+        # If the local server is not running, the script will start it for you
+        # Default is True, as in most cases you don't really need the Prefect per se for
+        # all the imputation imputation
+        autostart: False
+    WORKPOOL:
+        # Even less likely you would be needing cloud work pool to reproduce the paper
+        # Autostart a local work pool by default, so that this could be updated easily to
+        # "fancier infrastructure" if needed
+        autostart: False
+    FLOW_NAMES:
+      # Prefect flow (or MLflow experiment) names.
+      # The indidividual flows need to know where to find the previous steps' outputs (i.e. experiment names)
+      DATA_IMPORT: 'PLR_DataImport'
+      OUTLIER_DETECTION: 'PLR_OutlierDetection'
+      IMPUTATION: 'PLR_Imputation'
+      FEATURIZATION: 'PLR_Featurization'
+      CLASSIFICATION: 'PLR_Classification'
+      SUMMARY: 'PLR_Summary'
+      DEPLOYMENT: 'PLR_ModelDeploy'
+    PROCESS_FLOWS:
+      # Set to False, if you want to skip the flow,
+      # e.g. classification works if previous tasks have been saved to MLflow
+      OUTLIER_DETECTION: False
+      IMPUTATION: False
+      FEATURIZATION: False
+      CLASSIFICATION: False
+      SUMMARIZATION: True
+      DEPLOYMENT: False

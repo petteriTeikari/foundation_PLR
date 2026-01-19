@@ -1,0 +1,26 @@
+defaults:
+  - defaults
+  - override OUTLIER_MODELS: [MOMENT, TimesNet, LOF, OneClassSVM, PROPHET, SubPCA]
+  - override MODELS: [CSDI, MOMENT, SAITS, TimesNet]
+  - override CLS_MODELS: [TabPFN, CATBOOST, LogisticRegression, XGBOOST, TabM ]
+  - override CLS_HYPERPARAMS: [TabPFN_hyperparam_space, CATBOOST_hyperparam_space, LogisticRegression_hyperparam_space, XGBOOST_hyperparam_space,
+                               TabM_hyperparam_space ]
+
+EXPERIMENT:
+  debug: False
+  hyperparam_search: True
+
+OUTLIER_DETECTION:
+  re_compute: False
+
+IMPUTATION_TRAINING:
+  retrain_models: False
+
+PLR_FEATURIZATION:
+  re_featurize: False
+
+CLASSIFICATION_SETTINGS:
+  retrain_classifiers: False
+
+
+

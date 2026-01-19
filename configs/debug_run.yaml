@@ -1,0 +1,23 @@
+defaults:
+  #- _self_ # https://hydra.cc/docs/tutorials/basic/your_first_app/defaults/#non-config-group-defaults
+  - defaults
+  - override CLS_MODELS: [TabPFN] # [XGBOOST] # [LogisticRegression] # [CATBOOST]
+  - override CLS_HYPERPARAMS: [TabPFN_hyperparam_space] # [LogisticRegression_hyperparam_space] # [CATBOOST_hyperparam_space]
+  - override OUTLIER_MODELS: [EIF] # [PROPHET, LOF, OneClassSVM, TimesNet] # [TimesNet
+  - override MODELS: [MISSFOREST]
+
+EXPERIMENT:
+  debug: False
+  hyperparam_search: True
+
+OUTLIER_DETECTION:
+  re_compute: True
+
+IMPUTATION_TRAINING:
+  retrain_models: False
+
+PLR_FEATURIZATION:
+  re_featurize: False
+
+CLASSIFICATION_SETTINGS:
+  retrain_classifiers: True
