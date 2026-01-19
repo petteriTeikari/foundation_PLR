@@ -1,0 +1,20 @@
+MICE:
+    # Is there a Python library, or do I need create a microservice for the R code?
+    # https://github.com/amices/mice / https://doi.org/10.1002%2Fmpr.329
+    # Python, in sklearn
+    # https://scikit-learn.org/1.5/modules/generated/sklearn.impute.IterativeImputer.html
+    # https://medium.com/@Sanjjushri/effortless-data-imputation-with-miceforest-in-python-53d1692db529
+    # "Fast, memory efficient Multiple Imputation by Chained Equations (MICE) with lightgbm"
+    # https://pypi.org/project/miceforest/
+    MODEL:
+        dummy: 1
+    HYPERPARAMS:
+        method: 'LIST'
+    SEARCH_SPACE:
+        LIST:
+            # List as in you have now just 3 hyperparameters, not 3^5=243 combinations as you would have with a grid search
+            # i.e. the last values are the defaults, and we see if can make the network slightly narrower and still get
+            # decent results? These are not obviously the only combos you could try, but the main focus of the paper was
+            # recent foundational models, and maybe these hyperparams give you an idea what the off-the-shelf models
+            # can do without too much tweaking
+            dummy: [2]

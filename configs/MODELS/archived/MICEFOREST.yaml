@@ -1,0 +1,21 @@
+MICEFOREST:
+  # https://github.com/AnotherSamWilson/miceforest
+  no_iters: 2
+  MODEL:
+    num_datasets: 5
+    random_state: 1
+    mean_match_candidates: 3
+    mean_match_strategy: "fast"
+  HYPERPARAMS:
+    method: 'LIST'
+  SEARCH_SPACE:
+    LIST:
+      # List as in you have now just 3 hyperparameters, not 3^5=243 combinations as you would have with a grid search
+      # i.e. the last values are the defaults, and we see if can make the network slightly narrower and still get
+      # decent results? These are not obviously the only combos you could try, but the main focus of the paper was
+      # recent foundational models, and maybe these hyperparams give you an idea what the off-the-shelf models
+      # can do without too much tweaking
+      num_datasets: [5]
+      random_state: [1]
+      mean_match_candidates: [3]
+      mean_match_strategy: ["fast"]

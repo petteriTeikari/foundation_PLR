@@ -1,0 +1,32 @@
+CSDI:
+  # See Table 1 of https://arxiv.org/pdf/2406.12747
+  # Tashiro et al. (2021) CSDI: Conditional score-based diffusion imputation for probabilistic time series imputation
+  # https://arxiv.org/abs/2107.03502 / https://github.com/ermongroup/CSDI
+  # https://docs.pypots.com/en/latest/pypots.imputation.html#module-pypots.imputation.csdi
+  MODEL:
+    # See default params: https://github.com/ermongroup/CSDI/blob/main/config/base.yaml
+    n_layers: 2 # default 4
+    n_heads: 2 # default 8
+    n_channels: 8 # default 64
+    d_time_embedding: 16 # default 128
+    d_feature_embedding: 4 # default 16
+    d_diffusion_embedding: 16 # default 128
+    is_unconditional: False # default False
+    epochs: 200 # default 200
+    batch_size: 8 # default 16
+    target_strategy: "random" # default "random"
+  HYPERPARAMS:
+    method: 'LIST'
+  SEARCH_SPACE:
+    LIST:
+      # List as in you have now just 3 hyperparameters, not 3^5=243 combinations as you would have with a grid search
+      # i.e. the last values are the defaults, and we see if can make the network slightly narrower and still get
+      # decent results? These are not obviously the only combos you could try, but the main focus of the paper was
+      # recent foundational models, and maybe these hyperparams give you an idea what the off-the-shelf models
+      # can do without too much tweaking
+      n_layers: [4] # [4, 4]
+      n_heads: [8] # [4, 8]
+      n_channels: [64] # [32, 64]
+      d_time_embedding: [128] # [64, 128]
+      d_feature_embedding: [16] # [8, 16]
+      d_diffusion_embedding: [128] # [64, 128]

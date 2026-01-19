@@ -1,0 +1,19 @@
+MISSFOREST:
+  # See e.g. El Badisy et al. (2024) https://doi.org/10.1186/s12874-024-02305-3
+  # Albu et al. (2024) https://arxiv.org/abs/2407.03379 for "missForestPredict"
+  # Original paper by Stekhoven and Bühlmann (2012) https://doi.org/10.1093/bioinformatics/btr597
+  # Python https://github.com/yuenshingyan/MissForest / https://pypi.org/project/MissForest/
+  MODEL:
+    initial_guess: "median" # "median" default
+    max_iter: 5 # 5 default
+  HYPERPARAMS:
+    method: 'LIST'
+  SEARCH_SPACE:
+    LIST:
+      # List as in you have now just 3 hyperparameters, not 3^5=243 combinations as you would have with a grid search
+      # i.e. the last values are the defaults, and we see if can make the network slightly narrower and still get
+      # decent results? These are not obviously the only combos you could try, but the main focus of the paper was
+      # recent foundational models, and maybe these hyperparams give you an idea what the off-the-shelf models
+      # can do without too much tweaking
+      initial_guess: ["median"]
+      max_iter: [5]

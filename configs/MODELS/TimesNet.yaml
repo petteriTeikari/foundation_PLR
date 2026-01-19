@@ -1,0 +1,20 @@
+TimesNet:
+  # https://github.com/thuml/Time-Series-Library (bash ./scripts/anomaly_detection/PSM/TimesNet.sh
+  # https://openreview.net/pdf?id=ju_Uqw384Oq
+  # PyPOTS easier: https://github.com/WenjieDu/PyPOTS
+  MODEL:
+    # https://github.com/thuml/Time-Series-Library/blob/main/scripts/imputation/ECL_script/TimesNet.sh
+    n_layers: 2 # e_layers 2 ?
+    top_k: 3
+    d_model: 64
+    d_ffn: 64
+    n_kernels: 6
+    epochs: 50
+    batch_size: 16
+  HYPERPARAMS:
+    method: 'LIST'
+  SEARCH_SPACE:
+    LIST:
+      # List as in you have now just 3 hyperparameters, not 3^5=243 combinations as you would have with a grid search
+      d_model: [ 64 ]
+      d_ffn: [ 64 ]

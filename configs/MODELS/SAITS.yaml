@@ -1,0 +1,27 @@
+SAITS:
+  # Du et al. (2023) SAITS: Self-Attention-based Imputation for Time Series
+  # https://doi.org/10.1016/j.eswa.2023.119619
+  # https://arxiv.org/abs/2202.08516 / https://github.com/WenjieDu/SAITS
+  # https://scholar.google.co.uk/scholar?cites=4620826177477608847&as_sdt=2005&sciodt=0,5&hl=en
+  MODEL:
+    # https://github.com/WenjieDu/PyPOTS?tab=readme-ov-file#-usage
+    # PyPOTS defaults: n_layers=2, d_model=256, n_heads=4, d_k=64, d_v=64, d_ffn=128, dropout=0.1, epochs=10
+    n_layers: 2
+    d_model: 32
+    n_heads: 2
+    d_k: 16
+    d_v: 16
+    d_ffn: 32
+    dropout: 0.1
+    batch_size: 8
+    epochs: 200 # 100 in https://arxiv.org/pdf/2202.08516 (with early stopping applied)
+  HYPERPARAMS:
+    method: 'LIST'
+  SEARCH_SPACE:
+    LIST:
+      # List as in you have now just 3 hyperparameters, not 3^5=243 combinations as you would have with a grid search
+      d_model: [256] # [128, 256]
+      n_heads: [4] # [4, 4]
+      d_k: [64] # [32, 64]
+      d_v: [64] # [32, 64]
+      d_ffn: [128] # [64, 128]
