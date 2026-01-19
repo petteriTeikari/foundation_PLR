@@ -1,0 +1,109 @@
+#defaults:
+#  # https://stackoverflow.com/a/75008591/6412152
+#  # How to import to MOMENT/LINEAR_PROBING?
+#  - MOMENT_linear_probing@MOMENT
+
+MOMENT:
+  # https://github.com/moment-timeseries-foundation-model/moment
+  # https://moment-timeseries-foundation-model.github.io/
+  check_dataloader: True
+  TORCH:
+    DATASET:
+      dataset_type: 'numpy' # or 'class' # custom Class or vanilla dataset from the numpy arrays
+      trim_to_size: null # if MomentFM only works with this then
+      pad_ts: True # will add nans to the end -> multiple of trim_to_size, e.g. 1981 -> 2048
+      downsample_factor: null # if trim_to_size is 512 and downsample_factor is 4, original trim size is 3x512=2048
+      resample_method: 'linear'
+      split_subjects_to_windows: True # Make 4 subsubjects from the original subject
+      fill_na: null
+    DATALOADER:
+      num_workers: 0
+      batch_size: 4
+      shuffle: False # hard to reshape back to original length if you set this to True
+      pin_memory: True
+  MODEL:
+    pretrained_model_name_or_path: 'AutonLab/MOMENT-1-large'
+    # For anomaly detection, we will load MOMENT in `reconstruction` mode
+    # see https://github.com/moment-timeseries-foundation-model/moment/blob/main/tutorials/anomaly_detection.ipynb
+    model_kwargs:
+      task_name: "reconstruction"
+    detection_type: 'fine-tune' # 'zero-shot'
+    # Which Pupil column you want to train the reconstruction on
+    # You find these column names from the DuckDB database (dataframe, e.g. data_df)
+    train_on: 'pupil_gt' # or 'pupil_raw_imputed'
+  EVALUATION:
+    best_metric: 'f1'
+    direction: 'maximize'
+    # scale the input and reconstruction to original pupil values
+    # MSE easier to interpret?
+  HYPERPARAMS:
+    method: 'GRID'
+  SEARCH_SPACE:
+    GRID:
+      # See https://huggingface.co/AutonLab
+      pretrained_model_name_or_path: ['AutonLab/MOMENT-1-large',# 1.4G filesize
+                                      "AutonLab/MOMENT-1-base", # 454M filesize
+                                      "AutonLab/MOMENT-1-small"] # 152M filesize
+      detection_type: ['fine-tune', 'zero-shot']
+      # is it useful that there is some more noise on the signal, rather than being all denoised?
+      train_on: ['pupil_gt'] #, 'pupil_raw_imputed']
+  LINEAR_PROBING:
+    # TODO! Prune the params as not all are used and are just copied now from MOMENT
+    # moment-research/configs/default.yaml
+    optimizer_name: "AdamW"
+    enable_gradient_checkpointing: True
+    max_norm: 5
+    enable_val_grad: False
+    # Data loader parameters
+    # originally from:
+    # moment-research/configs/anomaly_detection/linear_probing.yaml
+    task_name: "anomaly-detection"
+    train_batch_size: 64 # 1024 2048 3072 4096
+    val_batch_size: 256 # 1024 2048 3072 4096
+    scale: True
+    train_ratio: 0.5
+    val_ratio: 0.2
+    test_ratio: 0.3
+    random_seed: 13
+    upsampling_pad_direction: "backward"
+    upsampling_type: "pad" # pad by default
+    downsampling_type: "interpolate"
+    pad_mode: "edge" # constant by default
+    pad_constant_values: null
+
+    # Data parameters
+    n_splits: 100 # Number of splits to compute adjusted best F1 score
+    n_jobs: 5 # Number of parallel jobs to run
+    # Downsample time-series with length > min_length*downsampling_factor
+    # by a factor of downsampling_factor
+    data_stride_len: 1
+    downsampling_factor: 1
+    min_length: 2560
+
+    # Experiment parameters
+    pretraining_opt_steps: null
+    pct_start: 0.3
+    max_epoch: 300 # 300, large-model with PLR seemed to converge around 280 epochs
+    anomaly_criterion: 'mse'
+    lr_scheduler_type: 'onecyclelr' # 'linearwarmupcosinelr' 'onecyclelr'
+    finetuning_mode: "linear-probing" # "linear-probing" "end-to-end"
+    init_lr: 0.00005 # 5e-5
+    min_lr: 0.00001 # 1e-5
+    decay_rate: 0.9
+    warmup_lr: 0.00001 # 1e-5
+    warmup_steps: 1000
+    loss_type: "mse" # MSE by default
+    log_interval: 1000
+    checkpoint_interval: 8000
+    torch_dtype: "bfloat16"
+
+    # Model parameters
+    model_name: "MOMENT"
+    seq_len: 512
+    patch_len: 8
+    patch_stride_len: 8
+    transformer_backbone: 'google/flan-t5-large' # 'google/flan-t5-base' 'google/flan-t5-large'
+    add_positional_embedding: True
+    set_input_mask: True # True by default
+    head_dropout: 0.1
+    weight_decay: 0

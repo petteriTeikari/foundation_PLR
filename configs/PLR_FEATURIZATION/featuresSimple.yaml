@@ -1,0 +1,33 @@
+FEATURES_METADATA:
+  # These will affect the naming of the MLflow run, so if you create new .yaml files, remember to update these
+  # to easily distinguish between the runs in the name then
+  name: 'simple'
+  version: 1.0
+  feature_method: 'handcrafted_features'
+FEATURES:
+    # Times in seconds
+    # see e.g. https://github.com/petteriTeikari/R-PLR/blob/master/config/bins.csv
+    MAX_CONSTRICTION:
+      time_from: 'onset'
+      time_start: 0
+      time_end: 15
+      measure: 'amplitude'
+      stat: 'min' # min/max/mean/median of the bin basically
+    PHASIC:
+      time_from: 'onset'
+      time_start: 0
+      time_end: 5
+      measure: 'amplitude'
+      stat: 'min'
+    SUSTAINED:
+      time_from: 'offset'
+      time_start: -5
+      time_end: 0
+      measure: 'amplitude'
+      stat: 'min'
+    PIPR_AUC:
+      time_from: 'offset'
+      time_start: 0
+      time_end: 12
+      measure: 'amplitude'
+      stat: 'AUC'
