@@ -1,0 +1,36 @@
+CATBOOST:
+  # The False option is not implemented yet, easier to use the SKLearn API, but there are some DMatrix seeds
+  # if it turns out that you would like to rather use that option
+  esize: 100
+  iterations: 1000 # 5000
+  seed: 100
+  n_objects: 10000
+  random_strength: 100
+  used_ram_limit: "36gb" # can climb up to 27.1GiB
+
+  MODEL:
+    use_GPU: False # you can run out of memory with normal GPU, or just with embeddings?
+    CI:
+      method_CI: 'BOOTSTRAP' # or 'ENSEMBLE'
+      BOOTSTRAP:
+        # these are defined as "global" for all the classifiers cfg['CLS_EVALUATION']['BOOTSTRAP'] see defaults.yaml
+        # number of submodels per each bootstrap iteration, in theory you could the 100-submodel ensemble
+        # with 1,000 bootstrap iters as well
+        esize: 2
+      ENSEMBLE:
+        placeholder: 1
+
+    WEIGHING:
+      weigh_the_features: False # feature_weights
+      # TODO! how to use this in production?) we are now logging the sum of weights for each subject
+      #  in the training set, and we could compute the weights for incoming samples, and compare how they
+      #  compare to the training set, is the subject with more uncertain features or not?
+      weigh_the_samples: True # sample_weight
+      # https://stats.stackexchange.com/a/618758/294507
+      weigh_the_classes: False # scale_pos_weight
+      # How to create weights for the features
+      weights_creation_method: 'inverse_of_variance'
+      weights_sample_creation_method: 'normalize_mean'
+      weights_nan_weight_fixing: 'unity'
+
+

@@ -1,0 +1,73 @@
+# https://medium.com/@attud_bidirt/automatic-tuning-of-hyper-parameters-of-a-xgboost-classifier-c5588bceda4
+XGBOOST:
+  HYPERPARAMS:
+    method: 'HYPEROPT'
+    # This is also passed on to XGBoost now, not just to the hyperopt
+    # F1 for XGBoost: https://stackoverflow.com/a/51588485/6412152
+    metric_val: 'auc' # "auc", "aucpr" (no F1), https://xgboost.readthedocs.io/en/latest/parameter.html
+    hyperopt_verbose: 0
+    hyperopt_show_progressbar: False
+  SEARCH_SPACE:
+    GRID:
+      # On top of the hyperopt XGBoost optimization, you could do brute force grid search
+      # of all the 3 weighing schemes giving you 2`3 combinations for each of the Bayesian hyperopt
+      # searches. Luckily we do not have a ton of data so this is quite computationally cheap still
+      # TODO! causes the "'evals_result_'" to be missing with some combos, examine why? and fix this!
+      run_grid_hyperparam_search: False
+      # Now these need to be parsed and are sort of macros
+      grid_contains:
+        # Means that will try all different weighing combos (samples, features, classes) = 2`3 = 8 combos
+        # With the weights on, the hyperopt will run considerably longer, so a lot faster if the
+        # weights don't make a difference
+        - 'weights'
+    # https://medium.com/@attud_bidirt/automatic-tuning-of-hyper-parameters-of-a-xgboost-classifier-c5588bceda4
+    HYPEROPT:
+      max_depth:
+        hp_func: 'choice'
+        min: 1
+        max: 2
+        step: 1
+        type: 'int'
+#        hp_func: null
+#        value: 1 # boosted stumps [Lengerich2020]
+      eta:
+        hp_func: 'uniform'
+        min: 0
+        max: 1
+      gamma:
+        hp_func: 'uniform'
+        min: 0
+        max: 1
+      reg_lambda:
+        hp_func: 'uniform'
+        min: 0
+        max: 1
+      n_estimators:
+        hp_func: 'choice'
+        min: 10
+        max: 1000
+        step: 10
+        type: 'int'
+#      objective:
+#        hp_func: null
+#        value: 'binary:logistic'
+#      eval_metric:
+#        hp_func: null
+#        value: 'auc'
+      seed:
+        hp_func: null
+        value: 44
+      # https://stats.stackexchange.com/a/443266/294507
+      colsample_bytree:
+        hp_func: 'uniform'
+        min: 0.5
+        max: 1
+      subsample:
+        hp_func: 'uniform'
+        min: 0.5
+        max: 1
+      min_child_weight:
+        hp_func: 'choice'
+        min: 1
+        max: 10
+        step: 1

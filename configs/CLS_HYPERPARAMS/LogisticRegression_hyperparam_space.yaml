@@ -1,0 +1,19 @@
+# https://medium.com/@attud_bidirt/automatic-tuning-of-hyper-parameters-of-a-xgboost-classifier-c5588bceda4
+LogisticRegression:
+  HYPERPARAMS:
+    method: null # 'GRID'
+    cv_params:
+      n_splits: 10
+      n_repeats: 3
+      random_state: 1
+    fit_params:
+      n_jobs: -1
+      scoring: 'roc_auc'
+      error_score: 0
+  SEARCH_SPACE:
+    GRID:
+      # Even with such few params, not all combos work (as in giving you errors)
+      penalty: ['l1', 'l2']
+      C: [0.001, 0.01, 0.05, 0.1, 0.5, 1, 10, 100] # Like in SVM, smaller values specify stronger regularization.
+      solver: ['liblinear'] # For small datasets, ‘liblinear’ is a good choice
+      class_weight: [null] # [null, 'balanced']

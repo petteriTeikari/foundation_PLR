@@ -1,0 +1,27 @@
+# https://medium.com/@attud_bidirt/automatic-tuning-of-hyper-parameters-of-a-xgboost-classifier-c5588bceda4
+TabM:
+  HYPERPARAMS:
+    metric_val: 'auc' # 'auc' # or "auc" "f1 "logloss"
+    run_grid_hyperparam_search: False
+    # only run when both outliers and imputation comes from manually annotated ground truth
+    run_only_on_ground_truth: True
+    grid_contains:
+      - 'hyperparams'
+  SEARCH_SPACE:
+    GRID:
+      # (32, 8, 8, 0.1, 0.02, 0.003)
+      # 16 too small, 32 and 64 pretty much the same, 32 gave slightly better so picking the smaller
+      d_block: [32, 64]
+      # 8 still decent, 16 gave better result, no idea of 32
+      d_embedding: [8,16]
+      # does not seem to affect much on the results, got best result with 8 initially, but
+      # 16 and 32 were not far off
+      k: [8,16]
+      # 0.5 clearly too large, even with 0.2 clear drop in performance, 0.05 does not make much difference
+      dropout: [0.1]
+      # 0.0002, 0.002 did not work at all. 0.02 gave decent ~0.73 f1 score, 0.2 too large
+      lr: [0.02] # 2e-3 default in repo
+      # 0.0003, 0.00003 worse then 0.003, and 0.03 pretty much the same as 0.003 (slightly worse
+      weight_decay: [0.003] #3e-4 default in repo
+
+

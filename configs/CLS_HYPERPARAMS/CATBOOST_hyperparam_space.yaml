@@ -1,0 +1,51 @@
+# https://medium.com/@attud_bidirt/automatic-tuning-of-hyper-parameters-of-a-xgboost-classifier-c5588bceda4
+CATBOOST:
+  HYPERPARAMS:
+    method: 'OPTUNA'
+    metric_val: 'auc' # or "auc" "f1""
+    hyperopt_verbose: 0
+    # Skip hyperparameter optimization and just use these default values
+    # (mostly for debugging purposes)
+    skip_HPO: False
+    defaults:
+      # placeholder values now, not exactly the optimal
+      depth: 1
+      lr: 0.1
+      colsample_bylevel: 1.0
+      min_data_in_leaf: 1
+      l2_leaf_reg: 1
+  SEARCH_SPACE:
+    GRID:
+      # On top of the hyperopt XGBoost optimization, you could do brute force grid search
+      # of all the 3 weighing schemes giving you 2`3 combinations for each of the Bayesian hyperopt
+      # searches. Luckily we do not have a ton of data so this is quite computationally cheap still
+      run_grid_hyperparam_search: False
+      # Now these need to be parsed and are sort of macros
+      grid_contains:
+        # Means that will try all different weighing combos (samples, features, classes) = 2`3 = 8 combos
+        # With the weights on, the hyperopt will run considerably longer, so a lot faster if the
+        # weights don't make a difference
+        - 'weights'
+    # https://medium.com/@attud_bidirt/automatic-tuning-of-hyper-parameters-of-a-xgboost-classifier-c5588bceda4
+    OPTUNA:
+      # Harmonize these maybe a bit with the XGBoost hyperparams? As in how these are then parsed
+      # to hyperopt/optuna
+#      loss_function:
+#        - 'Logloss'
+#        - 'CrossEntropy'
+      depth:
+        - 1
+        - 3
+      lr:
+        - 0.001
+        - 0.01
+        - 0.1
+      colsample_bylevel:
+        - 0.05
+        - 1.0
+      min_data_in_leaf:
+        - 1
+        - 100
+      l2_leaf_reg:
+        - 1
+        - 30

@@ -1,0 +1,45 @@
+#defaults:
+#  # https://stackoverflow.com/a/75008591/6412152
+#  # https://hydra.cc/docs/advanced/overriding_packages/
+#  # How to import to XGBOOST/SEARCH_SPACE?
+#  - XGBOOST_hyperparam_space@XGBOOST/SEARCH_SPACE
+XGBOOST:
+  # The False option is not implemented yet, easier to use the SKLearn API, but there are some DMatrix seeds
+  # if it turns out that you would like to rather use that option
+  FEATURE_SELECTION:
+    # You could try to drop out the features that are not important iteratively
+    RFE:
+      # https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.RFE.html#sklearn.feature_selection.RFE
+      # https://xgboosting.com/xgboost-feature-selection-with-rfe/
+      # Gets a bit tricky if your "features_xxx.yaml" varies wildly in regard to the number of used features
+      # Based on http://dx.doi.org/10.1136/bjophthalmol-2021-319938, you pretty much have only a handful
+      # of useful PLR features
+      use: False
+      n_features_to_select: 5
+      # After feature selection, you can optimize the hyperparameters again
+      iterate_hyperopt: True
+  DATA:
+    # Allows CUDA-based GPU acceleration of XGBoost -> SHAP
+    # Otherwise, just use Numpy arrays inside of DMatrix
+    use_cupy_arrays: False
+  CALIBRATION:
+    # It is not recommended to use the isotonic regression if you have a small dataset, because it can easily overfit.
+    # https://neptune.ai/blog/brier-score-and-model-calibration
+    # when the calibration set is quite small, Platt scaling may not produce reliable probability estimates.
+    # https://blog.dailydoseofds.com/p/platt-scaling-for-model-calibration
+    method: null # 'isotonic'
+  MODEL:
+    WEIGHING:
+      weigh_the_features: False # feature_weights
+      # TODO! how to use this in production?) we are now logging the sum of weights for each subject
+      #  in the training set, and we could compute the weights for incoming samples, and compare how they
+      #  compare to the training set, is the subject with more uncertain features or not?
+      weigh_the_samples: True # sample_weight
+      # https://stats.stackexchange.com/a/618758/294507
+      weigh_the_classes: False # scale_pos_weight
+      # How to create weights for the features
+      weights_creation_method: 'inverse_of_variance'
+      weights_sample_creation_method: 'normalize_mean'
+      weights_nan_weight_fixing: 'unity'
+
+

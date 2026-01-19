@@ -1,0 +1,16 @@
+LogisticRegression:
+  MODEL:
+    HYPERPARAMS_DEFAULT:
+      penalty: 'l1'
+      C: 0.1 # Like in SVM, smaller values specify stronger regularization.
+      solver: 'liblinear' # For small datasets, ‘liblinear’ is a good choice
+      class_weight: null
+    WEIGHING:
+      weigh_the_features: False # feature_weights
+      weigh_the_samples: False # sample_weight
+      # https://stats.stackexchange.com/a/618758/294507
+      weigh_the_classes: True # scale_pos_weight
+      # How to create weights for the features
+      weights_creation_method: 'inverse_of_variance'
+      weights_sample_creation_method: 'normalize_mean'
+      weights_nan_weight_fixing: 'unity'
