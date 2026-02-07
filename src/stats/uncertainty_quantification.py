@@ -1,3 +1,18 @@
+"""
+Uncertainty quantification metrics for classification models.
+
+Provides AURC (Area Under Risk-Coverage curve), entropy, mutual information,
+and related uncertainty estimation metrics for bootstrap-based classifiers.
+
+Cross-references:
+- planning/statistics-implementation.md (Section 3.3)
+- appendix-literature-review/section-13-calibration.tex
+
+References:
+- Ding et al. (2020) "Revisiting Uncertainty Estimation"
+- Nado et al. (2022) "Uncertainty Baselines" (arXiv:2106.04015)
+"""
+
 import sys
 
 import numpy as np
@@ -63,6 +78,23 @@ def risk_coverage(p_mean, p_std, y_pred, y_true):
 
 
 def get_sample_mean_and_std(preds: np.ndarray):
+    """
+    Compute mean and standard deviation across bootstrap iterations.
+
+    Parameters
+    ----------
+    preds : np.ndarray
+        Predictions array of shape (n_subjects, n_bootstrap_iters).
+
+    Returns
+    -------
+    np.ndarray
+        Mean predictions per subject.
+    np.ndarray
+        Standard deviation per subject.
+    np.ndarray
+        Binary predictions based on 0.5 threshold.
+    """
     p_mean = preds.mean(axis=1)  # shape (n_subjects,)
     p_std = preds.std(axis=1)  # shape (n_subjects,)
     y_pred = (p_mean > 0.5).astype(int)  # shape (n_subjects,)
@@ -71,6 +103,27 @@ def get_sample_mean_and_std(preds: np.ndarray):
 
 
 def risk_coverage_wrapper(preds: np.ndarray, y_true: np.ndarray):
+    """
+    Compute risk-coverage metrics from raw bootstrap predictions.
+
+    Parameters
+    ----------
+    preds : np.ndarray
+        Bootstrap predictions, shape (n_subjects, n_bootstrap_iters).
+    y_true : np.ndarray
+        True labels, shape (n_subjects,).
+
+    Returns
+    -------
+    np.ndarray
+        Coverage levels (0 to 1).
+    np.ndarray
+        Risk at each coverage level.
+    float
+        AURC value.
+    float
+        Excess AURC (vs optimal).
+    """
     p_mean, p_std, y_pred = get_sample_mean_and_std(preds)
     coverage, risk_cov, aurc, eaurc = risk_coverage(p_mean, p_std, y_pred, y_true)
 
@@ -80,6 +133,27 @@ def risk_coverage_wrapper(preds: np.ndarray, y_true: np.ndarray):
 def uncertainty_wrapper_from_subject_codes(
     p_mean: np.ndarray, p_std: np.ndarray, y_true: np.ndarray, split: str
 ):
+    """
+    Compute uncertainty metrics from pre-computed mean and std.
+
+    Used when bootstrap arrays are not equal-sized (train/val splits).
+
+    Parameters
+    ----------
+    p_mean : np.ndarray
+        Mean predictions per subject.
+    p_std : np.ndarray
+        Standard deviation per subject.
+    y_true : np.ndarray
+        True labels.
+    split : str
+        Split name (for logging).
+
+    Returns
+    -------
+    dict
+        Dictionary with 'scalars' (AURC, AURC_E) and 'arrays' (coverage, risk).
+    """
     # we don't have nice equal-sized np.ndarrays from train/val bootstrap so we compute these from the mean/std
     # we could also compute these from the subject codes, but we don't have them in the current setup
     metrics = {"scalars": {}, "arrays": {}}
@@ -143,6 +217,21 @@ def get_uncertainties(preds):
 
 
 def uncertainty_metrics(preds, y_true):
+    """
+    Compute all uncertainty metrics for bootstrap predictions.
+
+    Parameters
+    ----------
+    preds : np.ndarray
+        Bootstrap predictions, shape (n_subjects, n_bootstrap_iters).
+    y_true : np.ndarray
+        True labels, shape (n_subjects,).
+
+    Returns
+    -------
+    dict
+        Dictionary with 'scalars' (AURC, MI, entropy) and 'arrays'.
+    """
     # Entropy, Mutual Information, epistemic and aleatoric uncertainty
     metrics = get_uncertainties(preds)
 

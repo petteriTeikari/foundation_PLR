@@ -1,8 +1,9 @@
-from loguru import logger
-import mlflow
-from omegaconf import DictConfig
+from typing import Dict, Tuple
 
+import mlflow
 import numpy as np
+from loguru import logger
+from omegaconf import DictConfig
 
 from src.log_helpers.mlflow_utils import (
     log_metrics_as_mlflow_artifact,
@@ -10,8 +11,8 @@ from src.log_helpers.mlflow_utils import (
     mlflow_imputation_metrics_logger,
 )
 from src.metrics.metrics_utils import (
-    get_subjectwise_arrays,
     get_array_triplet_for_pypots_metrics_from_imputer,
+    get_subjectwise_arrays,
 )
 from src.preprocess.preprocess_data import (
     destandardize_for_imputation_metrics,
@@ -20,9 +21,26 @@ from src.preprocess.preprocess_data import (
 
 def get_imputation_metric_dict(
     model_name: str,
-    imputation_artifacts: dict,
+    imputation_artifacts: Dict,
     cfg: DictConfig,
-):
+) -> Dict[str, Dict]:
+    """
+    Compute imputation metrics for all data splits.
+
+    Parameters
+    ----------
+    model_name : str
+        Name of the imputation model being evaluated.
+    imputation_artifacts : dict
+        Dictionary containing model artifacts and source data with imputation results.
+    cfg : DictConfig
+        Hydra configuration object.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping split names to their computed metrics.
+    """
     metrics = {}
     for split in imputation_artifacts["model_artifacts"]["imputation"]:
         logger.debug(f"Computing the metrics for the '{split}' split")
@@ -41,8 +59,32 @@ def get_imputation_metric_dict(
 
 
 def log_metrics_per_split_as_mlflow_artifact(
-    metrics_global, model_name, split, model_artifacts, cfg
-):
+    metrics_global: Dict,
+    model_name: str,
+    split: str,
+    model_artifacts: Dict,
+    cfg: DictConfig,
+) -> None:
+    """
+    Log global imputation metrics to MLflow as an artifact.
+
+    Parameters
+    ----------
+    metrics_global : dict
+        Dictionary of global metrics (e.g., MAE, MSE, MRE).
+    model_name : str
+        Name of the imputation model.
+    split : str
+        Data split name (e.g., 'train', 'val', 'test').
+    model_artifacts : dict
+        Dictionary containing model artifacts.
+    cfg : DictConfig
+        Hydra configuration object.
+
+    Returns
+    -------
+    None
+    """
     # Log the metrics to MLflow (and subjectwise metrics as a pickled artifact)
     log_mlflow_imputation_metrics(
         metrics_global=metrics_global,
@@ -54,16 +96,42 @@ def log_metrics_per_split_as_mlflow_artifact(
 
 
 def recompute_submodel_imputation_metrics(
-    run_id,
-    submodel_mlflow_run,
-    model_name,
-    gt_dict,
-    gt_preprocess,
-    reconstructions_submodel,
+    run_id: str,
+    submodel_mlflow_run: "mlflow.entities.Run",
+    model_name: str,
+    gt_dict: Dict,
+    gt_preprocess: Dict,
+    reconstructions_submodel: Dict[str, np.ndarray],
     cfg: DictConfig,
-):
+) -> Dict[str, Dict]:
     """
-    See also function "compute_granular_metrics()" for anomaly recomputation
+    Recompute and re-log imputation metrics for a submodel to MLflow.
+
+    Parameters
+    ----------
+    run_id : str
+        MLflow run ID to log metrics to.
+    submodel_mlflow_run : mlflow.entities.Run
+        MLflow run object for the submodel.
+    model_name : str
+        Name of the imputation model.
+    gt_dict : dict
+        Ground truth data dictionary with labels and data per split.
+    gt_preprocess : dict
+        Preprocessing parameters used for destandardization.
+    reconstructions_submodel : dict
+        Dictionary mapping splits to imputation arrays.
+    cfg : DictConfig
+        Hydra configuration object.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping splits to their computed metrics.
+
+    See Also
+    --------
+    compute_granular_metrics : For anomaly detection recomputation.
     """
     metrics = {}
     for split, imputation_array in reconstructions_submodel.items():
@@ -100,11 +168,32 @@ def recompute_submodel_imputation_metrics(
 # )
 def compute_metrics_by_model(
     model_name: str,
-    imputation_artifacts: dict,
+    imputation_artifacts: Dict,
     cfg: DictConfig,
-    log_if_improved: bool = True,
+    _log_if_improved: bool = True,
     log_mlflow: bool = True,
-):
+) -> Dict[str, Dict]:
+    """
+    Compute and log imputation metrics for a given model across all splits.
+
+    Parameters
+    ----------
+    model_name : str
+        Name of the imputation model being evaluated.
+    imputation_artifacts : dict
+        Dictionary containing model artifacts, source data, and optionally pre-computed metrics.
+    cfg : DictConfig
+        Hydra configuration object.
+    _log_if_improved : bool, optional
+        Unused parameter for future model registry logging (default True).
+    log_mlflow : bool, optional
+        Whether to log subjectwise metrics as MLflow artifact (default True).
+
+    Returns
+    -------
+    dict
+        Dictionary mapping splits to their computed metrics (global, subjectwise).
+    """
     # MLflow log the metrics
     if "metrics" in imputation_artifacts["model_artifacts"]:
         logger.info("Using metrics already computed during training (e.g. MOMENT)")
@@ -154,13 +243,36 @@ def compute_metrics_by_model(
 
 
 def compute_metrics_by_split(
-    split_imputation: dict,
-    preprocess_dict: dict,
-    split_data: dict,
+    split_imputation: Dict,
+    preprocess_dict: Dict,
+    split_data: Dict,
     model_name: str,
     split: str,
     cfg: DictConfig,
-):
+) -> Dict:
+    """
+    Compute imputation metrics for a single data split.
+
+    Parameters
+    ----------
+    split_imputation : dict
+        Imputation results for the split.
+    preprocess_dict : dict
+        Preprocessing parameters for destandardization.
+    split_data : dict
+        Original data for the split including metadata.
+    model_name : str
+        Name of the imputation model.
+    split : str
+        Data split name (e.g., 'train', 'val', 'test').
+    cfg : DictConfig
+        Hydra configuration object.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'global', 'subjectwise', and 'subjectwise_arrays' metrics.
+    """
     # Get the arrays for the metrics computation
     X, targets, predictions, indicating_mask = (
         get_array_triplet_for_pypots_metrics_from_imputer(
@@ -194,13 +306,34 @@ def compute_imputation_metrics(
     predictions: np.ndarray,
     indicating_mask: np.ndarray,
     cfg: DictConfig,
-    metadata_dict: dict,
+    metadata_dict: Dict,
     checks_on: bool = False,
-):
+) -> Dict:
     """
-    https://arxiv.org/pdf/2406.12747
-    https://github.com/WenjieDu/BenchPOTS
-    "To fairly evaluate the performance of PyPOTS algorithms, the benchmarking suite BenchPOTS is created"
+    Compute global and subjectwise imputation metrics using BenchPOTS methodology.
+
+    Uses the BenchPOTS suite for fair evaluation of imputation algorithms.
+    See https://arxiv.org/pdf/2406.12747 and https://github.com/WenjieDu/BenchPOTS.
+
+    Parameters
+    ----------
+    targets : np.ndarray
+        Ground truth values, shape (n_subjects, n_timepoints, n_features).
+    predictions : np.ndarray
+        Imputed predictions, shape (n_subjects, n_timepoints, n_features).
+    indicating_mask : np.ndarray
+        Binary mask indicating missing values, shape (n_subjects, n_timepoints, n_features).
+    cfg : DictConfig
+        Hydra configuration object.
+    metadata_dict : dict
+        Metadata including subject codes for subjectwise metrics.
+    checks_on : bool, optional
+        Whether to run prechecks for NaN removal and validation (default False).
+
+    Returns
+    -------
+    dict
+        Dictionary with 'global', 'subjectwise', and 'subjectwise_arrays' keys.
     """
 
     # Get the metrics for each subject, useful for hunting down the outliers
@@ -233,7 +366,27 @@ def compute_imputation_metrics(
     }
 
 
-def compute_CI_imputation_metrics(metrics_subjectwise, metrics_global, p: float = 0.05):
+def compute_CI_imputation_metrics(
+    metrics_subjectwise: Dict, metrics_global: Dict, p: float = 0.05
+) -> Tuple[Dict[str, np.ndarray], Dict]:
+    """
+    Compute confidence intervals for imputation metrics from subjectwise values.
+
+    Parameters
+    ----------
+    metrics_subjectwise : dict
+        Dictionary mapping subject codes to their metric dictionaries.
+    metrics_global : dict
+        Global metrics dictionary to augment with CI values.
+    p : float, optional
+        Percentile for CI bounds (default 0.05 for 5th and 95th percentiles).
+
+    Returns
+    -------
+    tuple
+        (metrics_subjectwise_arrays, metrics_global) where arrays contain per-metric
+        numpy arrays and global dict includes CI bounds.
+    """
     metrics_subjectwise_arrays = get_arrays_from_subject_dicts(metrics_subjectwise)
     for metric_key, value_array in metrics_subjectwise_arrays.items():
         ci = np.nanpercentile(value_array, [p, 100 - p])
@@ -242,7 +395,20 @@ def compute_CI_imputation_metrics(metrics_subjectwise, metrics_global, p: float 
     return metrics_subjectwise_arrays, metrics_global
 
 
-def get_arrays_from_subject_dicts(metrics_subjectwise):
+def get_arrays_from_subject_dicts(metrics_subjectwise: Dict) -> Dict[str, np.ndarray]:
+    """
+    Convert subjectwise metric dictionaries to arrays per metric.
+
+    Parameters
+    ----------
+    metrics_subjectwise : dict
+        Dictionary mapping subject codes to their metric dictionaries.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping metric names to numpy arrays of values across subjects.
+    """
     metrics = {}
     for i, (code, metric_dict) in enumerate(metrics_subjectwise.items()):
         if i == 0:
@@ -263,9 +429,32 @@ def subjectwise_metrics_wrapper(
     targets: np.ndarray,
     masks: np.ndarray,
     cfg: DictConfig,
-    metadata_dict: dict,
+    metadata_dict: Dict,
     checks_on: bool = False,
-):
+) -> Dict[str, Dict]:
+    """
+    Compute imputation metrics for each subject individually.
+
+    Parameters
+    ----------
+    predictions : np.ndarray
+        Imputed predictions, shape (n_subjects, n_timepoints, n_features).
+    targets : np.ndarray
+        Ground truth values, shape (n_subjects, n_timepoints, n_features).
+    masks : np.ndarray
+        Binary mask indicating missing values, shape (n_subjects, n_timepoints, n_features).
+    cfg : DictConfig
+        Hydra configuration object.
+    metadata_dict : dict
+        Metadata containing subject codes.
+    checks_on : bool, optional
+        Whether to run prechecks for NaN handling (default False).
+
+    Returns
+    -------
+    dict
+        Dictionary mapping subject codes to their metric dictionaries.
+    """
     no_subjects = predictions.shape[0]
     assert (
         metadata_dict["subject_code"].shape[0] == no_subjects
@@ -288,7 +477,28 @@ def subjectwise_metrics_wrapper(
     return metrics_subjectwise
 
 
-def check_target_pred_ratio(targets, predictions, subject_code):
+def check_target_pred_ratio(
+    targets: np.ndarray, predictions: np.ndarray, subject_code: str
+) -> None:
+    """
+    Check for scale mismatch between targets and predictions.
+
+    Logs warnings if the ratio between prediction and target means is infinite
+    or NaN, which may indicate standardization issues.
+
+    Parameters
+    ----------
+    targets : np.ndarray
+        Ground truth values.
+    predictions : np.ndarray
+        Imputed predictions.
+    subject_code : str
+        Subject identifier for logging purposes.
+
+    Returns
+    -------
+    None
+    """
     # if the other is standardized, and the other is destandardized
     target_mean = np.mean(targets)
     predictions_mean = np.mean(predictions)
@@ -317,8 +527,30 @@ def check_target_pred_ratio(targets, predictions, subject_code):
         )
 
 
-def remove_NaNs_from_triplet(X, Y, mask):
-    def crop_arrays(x, nonnan_mask):
+def remove_NaNs_from_triplet(
+    X: np.ndarray, Y: np.ndarray, mask: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Remove NaN values from predictions, targets, and mask arrays by cropping.
+
+    Handles NaNs that may occur from padding in models like MOMENT.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Predictions array.
+    Y : np.ndarray
+        Targets array.
+    mask : np.ndarray
+        Indicating mask array.
+
+    Returns
+    -------
+    tuple
+        (X, Y, mask) with NaN regions cropped out.
+    """
+
+    def crop_arrays(x: np.ndarray, nonnan_mask: np.ndarray) -> np.ndarray:
         # Crop the arrays based on the non-NaN mask from the X
         coords = np.argwhere(nonnan_mask)
         x_min, y_min, _ = coords.min(axis=0)
@@ -336,8 +568,30 @@ def remove_NaNs_from_triplet(X, Y, mask):
     return X, Y, mask
 
 
-def check_for_nan_subjects(X, Y, mask, return_nanfree: bool = False):
-    def get_nan_subjects(X):
+def check_for_nan_subjects(
+    X: np.ndarray, Y: np.ndarray, mask: np.ndarray, return_nanfree: bool = False
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Check for and optionally remove subjects with NaN values.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Predictions array, shape (n_subjects, n_timepoints, n_features).
+    Y : np.ndarray
+        Targets array, shape (n_subjects, n_timepoints, n_features).
+    mask : np.ndarray
+        Indicating mask array, shape (n_subjects, n_timepoints, n_features).
+    return_nanfree : bool, optional
+        If True, return arrays with NaN subjects removed (default False).
+
+    Returns
+    -------
+    tuple
+        (X, Y, mask) optionally filtered to exclude subjects with NaNs.
+    """
+
+    def get_nan_subjects(X: np.ndarray) -> np.ndarray:
         squeezed_X = np.squeeze(X)  # e.g. (1981,) when just one subject
         if len(squeezed_X.shape) == 1:
             subject_sums = np.array((np.count_nonzero(np.isnan(squeezed_X))))
@@ -375,10 +629,31 @@ def imputation_metrics_wrapper(
     masks: np.ndarray,
     subject_code: str,
     prechecks: bool = False,
-):
+) -> Dict:
+    """
+    Compute imputation metrics (MAE, MSE, MRE) using PyPOTS utilities.
+
+    Parameters
+    ----------
+    predictions : np.ndarray
+        Imputed predictions array.
+    targets : np.ndarray
+        Ground truth values array.
+    masks : np.ndarray
+        Binary mask indicating missing values.
+    subject_code : str
+        Subject identifier or 'global' for aggregate metrics.
+    prechecks : bool, optional
+        Whether to run NaN removal and validation checks (default False).
+
+    Returns
+    -------
+    dict
+        Dictionary with 'mae', 'mse', 'mre', 'missing_rate' keys.
+    """
     # This will import the annoying Timeseries ASCII logo so keep it here
     # TODO! replace these to get rid of the logo after each imputation method (not just PyPots)
-    from pypots.utils.metrics import calc_mae, calc_mse, calc_mre
+    from pypots.utils.metrics import calc_mae, calc_mre, calc_mse
 
     if prechecks:
         try:
@@ -413,6 +688,23 @@ def imputation_metrics_wrapper(
     return metrics
 
 
-def if_recompute_metrics(metrics_path, metrics_cfg):
+def if_recompute_metrics(metrics_path: str, _metrics_cfg: DictConfig) -> bool:
+    """
+    Determine whether to recompute imputation metrics.
+
+    Currently a placeholder that always returns True.
+
+    Parameters
+    ----------
+    metrics_path : str
+        Path to existing metrics file.
+    _metrics_cfg : DictConfig
+        Metrics configuration (unused).
+
+    Returns
+    -------
+    bool
+        Always returns True (recompute metrics).
+    """
     logger.debug("Placeholder, always recompute the metrics")
     return True

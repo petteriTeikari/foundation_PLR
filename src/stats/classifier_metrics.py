@@ -2,25 +2,27 @@ import warnings
 
 import mlflow
 import numpy as np
-from sklearn.metrics import (
-    roc_curve,
-    auc,
-    precision_recall_curve,
-    f1_score,
-    balanced_accuracy_score,
-    accuracy_score,
-)
-from loguru import logger
-from sklearn.metrics import confusion_matrix
-from omegaconf import DictConfig
 from libauc.metrics.metrics import pauc_roc_score
+from loguru import logger
+from omegaconf import DictConfig
+from sklearn.metrics import (
+    accuracy_score,
+    auc,
+    balanced_accuracy_score,
+    confusion_matrix,
+    f1_score,
+    precision_recall_curve,
+    roc_curve,
+)
+
+from src.stats._defaults import DEFAULT_TPAUC_SENSITIVITY, DEFAULT_TPAUC_SPECIFICITY
 
 
 def compute_tpAUC(
     y_true: np.ndarray,
     preds: dict,
-    sensitivity: float = 0.862,
-    specificity: float = 0.821,
+    sensitivity: float = DEFAULT_TPAUC_SENSITIVITY,
+    specificity: float = DEFAULT_TPAUC_SPECIFICITY,
 ) -> float:
     """
     Two-way Partial AUC (tpAUC)? Sensitivity and Specificity desired for glaucoma screening / case finding?

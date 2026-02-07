@@ -1,12 +1,36 @@
+"""
+Calibration metrics for classification models.
+
+Provides ECE (Expected Calibration Error), Brier score, and calibration curves.
+"""
+
 import numpy as np
 import torch
-from sklearn.metrics import brier_score_loss
 from sklearn.calibration import calibration_curve
-
+from sklearn.metrics import brier_score_loss
 from torchmetrics.classification import BinaryCalibrationError
 
 
 def get_calibration_curve(model, y_true, preds: dict, n_bins: int):
+    """
+    Compute calibration curve using sklearn.
+
+    Parameters
+    ----------
+    model : object
+        Classifier model (unused, kept for API compatibility).
+    y_true : np.ndarray
+        True binary labels.
+    preds : dict
+        Dictionary with 'y_pred_proba' key.
+    n_bins : int
+        Number of bins for calibration curve.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'prob_true' and 'prob_pred' arrays.
+    """
     prob_true, prob_pred = calibration_curve(
         y_true, preds["y_pred_proba"], n_bins=n_bins
     )

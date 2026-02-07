@@ -1,11 +1,11 @@
 import numpy as np
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
 
 
 def get_array_triplet_for_pypots_metrics_from_imputer(
-    split_imputation, split_data, split, cfg: DictConfig
-):
+    split_imputation: dict, split_data: dict, split: str, cfg: DictConfig
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # Input data used to train the imputer with missing values
     X = split_data["data"]["X"].copy()[:, :, np.newaxis]
     indicating_mask = split_data["data"]["mask"][:, :, np.newaxis]
@@ -24,7 +24,9 @@ def get_array_triplet_for_pypots_metrics_from_imputer(
     return X, X_gt, X_imputed, indicating_mask
 
 
-def check_array_triplet(predictions, targets, masks):
+def check_array_triplet(
+    predictions: np.ndarray, targets: np.ndarray, masks: np.ndarray
+) -> None:
     assert predictions.shape[0] == targets.shape[0] == masks.shape[0], (
         f"Predictions, targets, and masks should have the same number of subjects, "
         f"but got {predictions.shape[0]}, {targets.shape[0]}, and {masks.shape[0]}"
@@ -38,8 +40,10 @@ def check_array_triplet(predictions, targets, masks):
         raise ValueError("Predictions are now 2D and not 3D as expected")
 
 
-def get_subjectwise_arrays(predictions, targets, masks, i):
-    def pick_subject_and_expand(X_in, i):
+def get_subjectwise_arrays(
+    predictions: np.ndarray, targets: np.ndarray, masks: np.ndarray, i: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def pick_subject_and_expand(X_in: np.ndarray, i: int) -> np.ndarray:
         return np.expand_dims(X_in[i], axis=0)
 
     return (
@@ -49,8 +53,8 @@ def get_subjectwise_arrays(predictions, targets, masks, i):
     )
 
 
-def init_metrics_dict():
-    metrics = {}
+def init_metrics_dict() -> dict[str, dict | list]:
+    metrics: dict[str, dict | list] = {}
     metrics["scalars"] = {}
     metrics["arrays"] = {}
     metrics["arrays_flat"] = []
