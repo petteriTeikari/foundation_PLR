@@ -1,0 +1,363 @@
+/*
+ * Foundation PLR Visualization - Design System
+ * Swiss Minimalism + Nature/Science Style
+ * Typography: Neue Haas Grotesk Black + Manrope
+ */
+
+/* ============================================
+   FONTS
+   ============================================ */
+
+/* Manrope from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
+
+/* JetBrains Mono for numerical values */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ============================================
+   CSS CUSTOM PROPERTIES
+   ============================================ */
+
+:root {
+  /* Typography - Font Families */
+  --font-heading: 'Neue Haas Grotesk Display', 'NeueHaasGroteskDispProBlk',
+                  'Helvetica Neue', 'Arial Black', sans-serif;
+  --font-body: 'Manrope', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+
+  /* Typography - Weights */
+  --font-weight-black: 900;
+  --font-weight-bold: 700;
+  --font-weight-medium: 500;
+  --font-weight-regular: 400;
+  --font-weight-light: 300;
+
+  /* Typography - Sizes (for figures) */
+  --font-size-title: 18px;
+  --font-size-subtitle: 14px;
+  --font-size-axis-label: 12px;
+  --font-size-annotation: 11px;
+  --font-size-tick: 10px;
+  --font-size-legend: 11px;
+
+  /* Line Heights */
+  --line-height-tight: 1.1;
+  --line-height-normal: 1.3;
+  --line-height-relaxed: 1.5;
+
+  /* Letter Spacing */
+  --letter-spacing-tight: -0.01em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.02em;
+
+  /* ==========================================
+     COLORS - Paul Tol Colorblind-Safe Palette
+     ========================================== */
+
+  /* Primary Data Colors (Paul Tol Colorblind-Safe) */
+  --color-primary: #0077BB;        /* Blue - main data line */
+  --color-secondary: #EE7733;      /* Orange - comparison */
+  --color-tertiary: #009988;       /* Teal - third series */
+  --color-quaternary: #CC3311;     /* Red - emphasis */
+
+  /* ===========================================
+     HYPERPARAM COMBO COLORS (Semantic Naming)
+     Use these for multi-method comparison figures
+     =========================================== */
+  --color-ground-truth: #666666;   /* Gray - reference standard */
+  --color-fm-primary: #0072B2;     /* Blue - best FM pipeline */
+  --color-fm-secondary: #56B4E9;   /* Light blue - ensemble */
+  --color-fm-tertiary: #009E73;    /* Teal - alternative FM */
+  --color-traditional: #E69F00;    /* Orange - traditional methods */
+  --color-baseline: #CC79A7;       /* Pink - simple baseline */
+
+  /* Classifier comparison colors */
+  --color-classifier-catboost: #0072B2;
+  --color-classifier-xgboost: #D55E00;
+  --color-classifier-tabpfn: #009E73;
+  --color-classifier-logreg: #CC79A7;
+
+  /* Semantic Colors */
+  --color-case: #CC3311;           /* Glaucoma cases */
+  --color-control: #0077BB;        /* Controls */
+  --color-improvement: #009988;    /* Positive change */
+  --color-reference: #888888;      /* Reference lines */
+
+  /* Confidence Intervals */
+  --color-ci: rgba(0, 119, 187, 0.25);
+  --color-ci-stroke: rgba(0, 119, 187, 0.4);
+
+  /* Neutral Grays */
+  --color-axis: #333333;
+  --color-tick: #555555;
+  --color-grid: #E0E0E0;
+  --color-grid-major: #CCCCCC;
+  --color-background: #FFFFFF;
+  --color-annotation-bg: rgba(255, 255, 255, 0.9);
+
+  /* ==========================================
+     SPACING & LAYOUT
+     ========================================== */
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Figure Dimensions */
+  --figure-padding: 48px;
+  --figure-margin-top: 24px;
+  --figure-margin-right: 24px;
+  --figure-margin-bottom: 48px;
+  --figure-margin-left: 56px;
+
+  /* ==========================================
+     LINE WEIGHTS (for SVG strokes)
+     ========================================== */
+
+  --stroke-data: 2px;
+  --stroke-data-hover: 2.5px;
+  --stroke-baseline: 1px;
+  --stroke-axis: 1px;
+  --stroke-grid: 0.5px;
+  --stroke-ci: 0;
+
+  /* ==========================================
+     TRANSITIONS
+     ========================================== */
+
+  --transition-fast: 150ms ease-out;
+  --transition-normal: 300ms ease-out;
+  --transition-slow: 500ms ease-out;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-axis);
+  background: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   SVG TYPOGRAPHY CLASSES
+   ============================================ */
+
+.figure-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-black);
+  font-size: var(--font-size-title);
+  letter-spacing: var(--letter-spacing-tight);
+  fill: var(--color-axis);
+}
+
+.figure-subtitle {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-subtitle);
+  fill: var(--color-tick);
+}
+
+.axis-label {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-axis-label);
+  fill: var(--color-axis);
+}
+
+.tick-label {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-regular);
+  font-size: var(--font-size-tick);
+  fill: var(--color-tick);
+}
+
+.annotation {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-annotation);
+  line-height: var(--line-height-normal);
+  fill: var(--color-axis);
+}
+
+.annotation-value {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+}
+
+.legend-label {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-regular);
+  font-size: var(--font-size-legend);
+  fill: var(--color-axis);
+}
+
+/* ============================================
+   SVG ELEMENT CLASSES
+   ============================================ */
+
+.data-line {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: var(--stroke-data);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.data-line:hover {
+  stroke-width: var(--stroke-data-hover);
+}
+
+.baseline-line {
+  fill: none;
+  stroke: var(--color-baseline);
+  stroke-width: var(--stroke-baseline);
+  stroke-dasharray: 6, 4;
+}
+
+.ci-band {
+  fill: var(--color-ci);
+  stroke: none;
+}
+
+.ci-band-stroke {
+  fill: none;
+  stroke: var(--color-ci-stroke);
+  stroke-width: 0.5px;
+}
+
+.axis-line {
+  stroke: var(--color-axis);
+  stroke-width: var(--stroke-axis);
+}
+
+.grid-line {
+  stroke: var(--color-grid);
+  stroke-width: var(--stroke-grid);
+}
+
+.grid-line-major {
+  stroke: var(--color-grid-major);
+  stroke-width: var(--stroke-grid);
+}
+
+/* ============================================
+   ANNOTATION BOX
+   ============================================ */
+
+.annotation-box {
+  fill: var(--color-annotation-bg);
+  stroke: var(--color-grid-major);
+  stroke-width: 1px;
+  rx: 4px;
+}
+
+/* ============================================
+   DATA POINTS
+   ============================================ */
+
+.data-point {
+  fill: var(--color-primary);
+  stroke: var(--color-background);
+  stroke-width: 1.5px;
+  r: 3px;
+  transition: all var(--transition-fast);
+}
+
+.data-point--active {
+  r: 5px;
+}
+
+.data-point--faded {
+  opacity: 0.4;
+}
+
+/* ============================================
+   AXIS ELEMENTS
+   ============================================ */
+
+.axis-tick {
+  stroke: var(--color-axis);
+  stroke-width: var(--stroke-axis);
+}
+
+/* ============================================
+   INTERACTIVE STATES
+   ============================================ */
+
+.interactive-element {
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.interactive-element:hover {
+  opacity: 0.8;
+}
+
+.interaction-overlay {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.hover-line {
+  stroke: var(--color-axis);
+  stroke-width: 1px;
+  stroke-dasharray: 4, 4;
+  opacity: 0.5;
+}
+
+/* ============================================
+   ANNOTATION STYLES
+   ============================================ */
+
+.annotation-change {
+  fill: var(--color-tick);
+}
+
+/* Tooltip */
+.tooltip {
+  position: absolute;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-background);
+  border: 1px solid var(--color-grid-major);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-family: var(--font-body);
+  font-size: var(--font-size-annotation);
+  pointer-events: none;
+  z-index: 100;
+}
+
+.tooltip-value {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+  :root {
+    --stroke-data: 2.5px;
+    --stroke-baseline: 1.5px;
+    --stroke-axis: 1.5px;
+    --stroke-grid: 0.75px;
+  }
+
+  .ci-band {
+    /* Convert transparency to pattern for print */
+    fill: url(#ci-pattern);
+  }
+}

@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🎨 Checking for hard-coded styles..."
+cd visualization && npx tsx scripts/lint-no-hardcoded-styles.ts
+
+echo "✅ Pre-commit checks passed!"
