@@ -1,0 +1,204 @@
+# MkDocs Configuration for Foundation PLR
+# Documentation-as-Code setup following research analysis (docs/research/documentation-as-code-analysis.md)
+#
+# Phase 1: MkDocs + Material + mkdocstrings (Now - Oct 2026)
+# Phase 2: Migrate to Zensical when stable (Oct 2026+)
+#
+# Deployment: GitHub Pages (deploy-docs.yml workflow)
+
+strict: true
+
+site_name: Foundation PLR Documentation
+site_description: Foundation Models for Pupillary Light Reflex Analysis - Preprocessing Sensitivity Study
+site_author: Foundation PLR Team
+site_url: https://petteriTeikari.github.io/foundation_PLR/
+
+repo_name: foundation_PLR
+repo_url: https://github.com/petteriTeikari/foundation_PLR
+
+# Theme configuration
+theme:
+  name: material
+  language: en
+
+  # Color scheme
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  # Features
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+
+  # Icons
+  icon:
+    repo: fontawesome/brands/github
+
+# Extensions
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+  # PyMdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Plugins
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+
+  # Auto-generate API docs from docstrings
+  - mkdocstrings:
+      default_handler: python
+      enabled: !ENV [ENABLE_MKDOCSTRINGS, true]
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: numpy
+            docstring_section_style: spacy
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            merge_init_into_class: true
+            separate_signature: true
+            signature_crossrefs: true
+            show_signature_annotations: true
+            # Don't fail on import errors
+            allow_inspection: true
+
+  # Git revision dates
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+      fallback_to_build_date: true
+
+  # Mermaid diagrams
+  - mermaid2
+
+# Extra JavaScript for math rendering
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+# Extra CSS (optional customizations)
+extra_css:
+  - stylesheets/extra.css
+
+# Navigation structure
+nav:
+  - Home: index.md
+
+  - Getting Started:
+    - getting-started/index.md
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Configuration: getting-started/configuration.md
+
+  - User Guide:
+    - user-guide/index.md
+    - Pipeline Overview: user-guide/pipeline-overview.md
+    - Outlier Detection: user-guide/outlier-detection.md
+    - Imputation: user-guide/imputation.md
+    - Featurization: user-guide/featurization.md
+    - Classification: user-guide/classification.md
+
+  - API Reference:
+    - api-reference/index.md
+    - anomaly_detection: api-reference/anomaly_detection.md
+    - classification: api-reference/classification.md
+    - data_io: api-reference/data_io.md
+    - featurization: api-reference/featurization.md
+    - imputation: api-reference/imputation.md
+    - ensemble: api-reference/ensemble.md
+    - log_helpers: api-reference/log_helpers.md
+    - stats: api-reference/stats.md
+    - metrics: api-reference/metrics.md
+    - orchestration: api-reference/orchestration.md
+    - preprocess: api-reference/preprocess.md
+    - summarization: api-reference/summarization.md
+    - viz: api-reference/viz.md
+    - decomposition: api-reference/decomposition.md
+
+  - Tutorials:
+    - tutorials/index.md
+    - Running Experiments: tutorials/running-experiments.md
+    - Adding New Methods: tutorials/adding-new-methods.md
+
+  - Explanation:
+    - explanation/index.md
+    - Research Question: explanation/research-question.md
+    - STRATOS Metrics: explanation/stratos-metrics.md
+
+  - Research:
+    - research/index.md
+    - Documentation Strategy: research/documentation-as-code-analysis.md
+
+# Footer
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/petteriTeikari/foundation_PLR
+
+  # Version (for future versioning with mike)
+  # version:
+  #   provider: mike
