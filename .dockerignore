@@ -1,0 +1,88 @@
+# .dockerignore - Exclude files from Docker build context
+# =====================================================
+# This reduces build context size and prevents sensitive data leakage
+
+# Git
+.git
+.gitignore
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# renv library (packages restored during build)
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
+
+# R temporary files
+.Rhistory
+.RData
+*.Rproj.user
+
+# Node.js (visualization app)
+**/node_modules/
+apps/visualization/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Output files (generated during container run, not build)
+figures/generated/
+outputs/
+logs/
+
+# Private data (NEVER include in Docker)
+data/private/
+**/subject_lookup.yaml
+**/subject_lookup.json
+**/*_lookup_table.*
+
+# Large data files
+*.db
+*.sqlite
+*.duckdb
+data/*.csv
+data/*.xlsx
+
+# MLflow (too large for build context)
+mlruns/
+
+# Documentation build
+site/
+docs/_build/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+*.log

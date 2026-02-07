@@ -1,0 +1,189 @@
+# docker-compose.yml - Foundation PLR Development Environment
+#
+# Orchestrates development containers with proper volume mounts
+# for live code editing and data access.
+#
+# Usage:
+#   docker-compose up -d dev       # Start development environment
+#   docker-compose exec dev bash   # Interactive shell
+#   docker-compose run --rm r-figures  # Generate R figures
+#   docker-compose down            # Stop all services
+#
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Main development environment (Python + R + Node.js)
+  # ===========================================================================
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: foundation-plr:latest
+    container_name: foundation-plr-dev
+    stdin_open: true
+    tty: true
+    volumes:
+      # Source code (live editing)
+      - ./src:/project/src:rw
+      - ./scripts:/project/scripts:rw
+      - ./tests:/project/tests:rw
+      - ./configs:/project/configs:rw
+      - ./apps:/project/apps:rw
+
+      # Output directories (persistent)
+      - ./figures/generated:/project/figures/generated:rw
+      - ./outputs:/project/outputs:rw
+
+      # Data directories (read-only for safety)
+      - ./data/public:/project/data/public:ro
+
+      # Keep package caches between runs
+      - uv-cache:/root/.cache/uv
+      - renv-cache:/project/renv/cache
+    environment:
+      - PREFECT_DISABLED=1
+      - PYTHONPATH=/project/src
+      - R_LIBS_USER=/project/renv/library
+    working_dir: /project
+    command: bash
+
+  # ===========================================================================
+  # R figure generation service
+  # ===========================================================================
+  r-figures:
+    build:
+      context: .
+      dockerfile: Dockerfile.r
+    image: foundation-plr-r:latest
+    container_name: foundation-plr-r
+    volumes:
+      # R source code
+      - ./src/r:/project/src/r:ro
+
+      # Data inputs (read-only)
+      - ./outputs/r_data:/project/outputs/r_data:ro
+      - ./configs:/project/configs:ro
+
+      # Figure outputs (read-write)
+      - ./figures/generated/ggplot2:/project/figures/generated/ggplot2:rw
+    environment:
+      - R_LIBS_USER=/project/renv/library
+    working_dir: /project
+    command: >
+      Rscript -e "
+        for(f in list.files('src/r/figures', pattern='\\.R$$', full.names=TRUE)) {
+          cat('Running:', f, '\n');
+          tryCatch(source(f), error=function(e) cat('  Error:', e$$message, '\n'))
+        }
+      "
+
+  # ===========================================================================
+  # Python test runners (lightweight Python-only image)
+  # ===========================================================================
+  test:
+    build: { context: ., dockerfile: Dockerfile.test }
+    image: foundation-plr-test:latest
+    volumes:
+      - ./src:/project/src:ro
+      - ./tests:/project/tests:ro
+      - ./configs:/project/configs:ro
+      - ./scripts:/project/scripts:ro
+    environment:
+      - PREFECT_DISABLED=1
+      - PYTHONPATH=/project/src
+      - MPLBACKEND=Agg
+    working_dir: /project
+    command: >
+      python -m pytest tests/ -m "unit or guardrail"
+      --ignore=tests/test_docker_r.py --ignore=tests/test_docker_full.py
+      -n auto -v --tb=short
+
+  test-fast:
+    build: { context: ., dockerfile: Dockerfile.test }
+    image: foundation-plr-test:latest
+    volumes:
+      - ./src:/project/src:ro
+      - ./tests:/project/tests:ro
+      - ./configs:/project/configs:ro
+      - ./scripts:/project/scripts:ro
+    environment:
+      - PREFECT_DISABLED=1
+      - PYTHONPATH=/project/src
+      - MPLBACKEND=Agg
+    command: >
+      python -m pytest tests/ -m "unit or guardrail"
+      --ignore=tests/test_docker_r.py --ignore=tests/test_docker_full.py
+      -n auto -v --tb=short
+
+  test-data:
+    build: { context: ., dockerfile: Dockerfile.test }
+    image: foundation-plr-test:latest
+    volumes:
+      - ./src:/project/src:ro
+      - ./tests:/project/tests:ro
+      - ./configs:/project/configs:ro
+      - ./scripts:/project/scripts:ro
+      - ./data/r_data:/project/data/r_data:ro
+      - ./data/public:/project/data/public:ro
+    environment:
+      - PREFECT_DISABLED=1
+      - PYTHONPATH=/project/src
+      - MPLBACKEND=Agg
+    command: >
+      python -m pytest tests/ -m "unit or guardrail or data"
+      --ignore=tests/test_docker_r.py --ignore=tests/test_docker_full.py
+      -n auto -v --tb=short
+
+  # ===========================================================================
+  # Visualization app (React + D3.js)
+  # ===========================================================================
+  viz:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: foundation-plr:latest
+    container_name: foundation-plr-viz
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/visualization:/project/apps/visualization:rw
+      - /project/apps/visualization/node_modules  # Exclude node_modules
+    working_dir: /project/apps/visualization
+    command: npm start
+    profiles:
+      - viz  # Only start with: docker-compose --profile viz up
+
+  # ===========================================================================
+  # Shiny Server for legacy ground truth creation tools
+  # ===========================================================================
+  shiny:
+    build:
+      context: .
+      dockerfile: Dockerfile.shiny
+    image: foundation-plr-shiny:latest
+    container_name: foundation-plr-shiny
+    ports:
+      - "3838:3838"
+    volumes:
+      # Shiny apps source (live editing for development)
+      - ./src/tools/ground-truth-creation:/srv/shiny-server/ground-truth-creation:rw
+
+      # Data directories - mount as needed for your data paths
+      # These paths should match what's configured in config/paths.csv
+      # Example: uncomment and adjust paths as needed
+      # - /path/to/your/PLR/data:/data/PLR:rw
+
+    environment:
+      - DOCKER_CONTAINER=TRUE
+    profiles:
+      - shiny  # Only start with: docker-compose --profile shiny up
+
+# =============================================================================
+# Named volumes for caching
+# =============================================================================
+volumes:
+  uv-cache:
+    name: foundation-plr-uv-cache
+  renv-cache:
+    name: foundation-plr-renv-cache

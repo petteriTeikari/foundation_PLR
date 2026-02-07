@@ -1,0 +1,103 @@
+# Dockerfile.shiny - R Shiny environment for legacy ground truth creation tools
+#
+# This Dockerfile creates a Shiny Server environment for running the legacy
+# PLR ground truth creation tools (inspect_outliers, inspect_EMD).
+#
+# Build: docker build -t foundation-plr-shiny -f Dockerfile.shiny .
+# Run:   docker-compose --profile shiny up shiny
+# Access: http://localhost:3838/inspect_outliers or http://localhost:3838/inspect_EMD
+#
+# These are legacy tools used for the original ground truth annotation.
+# They are preserved for reproducibility and documentation purposes.
+#
+# =============================================================================
+
+FROM rocker/shiny:4.5.2
+
+LABEL maintainer="Foundation PLR Team"
+LABEL description="R Shiny Server for legacy ground truth creation tools"
+LABEL version="1.0.0"
+LABEL org.opencontainers.image.source="https://github.com/petteri-lab/foundation_plr"
+
+# =============================================================================
+# System dependencies
+# =============================================================================
+# Cairo and related dependencies for ggplot2 rendering in Shiny
+# libxml2-dev and git are required by renv packages (xml2, remotes)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libcairo2-dev \
+    libgtk2.0-dev \
+    xvfb \
+    xauth \
+    xfonts-base \
+    libxt-dev \
+    libgit2-dev \
+    libxml2-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# =============================================================================
+# renv setup
+# =============================================================================
+# Install renv for reproducible package management
+ENV RENV_VERSION=1.1.6
+RUN R -e "install.packages('remotes', repos = 'https://cloud.r-project.org'); remotes::install_version('renv', version = '1.1.6', repos = 'https://cloud.r-project.org')"
+
+# Set working directory for renv restore
+WORKDIR /project
+
+# =============================================================================
+# Package installation (layer caching optimization)
+# =============================================================================
+# Copy renv files FIRST for Docker layer caching
+COPY renv.lock renv.lock
+COPY .Rprofile .Rprofile
+COPY renv/activate.R renv/activate.R
+COPY renv/settings.json renv/settings.json
+
+# Restore R packages from lockfile
+RUN R -e "options(warn = 1); renv::restore(prompt = FALSE)"
+
+# =============================================================================
+# Additional packages for Shiny apps
+# =============================================================================
+# These packages are used by the legacy ground truth creation tools
+# and may not be in renv.lock
+RUN R -e "install.packages(c('hht', 'missForest', 'changepoint', 'imputeTS', 'doParallel', 'moments', 'Cairo'), repos = 'https://cloud.r-project.org')"
+
+# =============================================================================
+# Copy Shiny apps
+# =============================================================================
+# Copy the ground truth creation tools
+COPY src/tools/ground-truth-creation/ /srv/shiny-server/ground-truth-creation/
+
+# Create symlinks for the Shiny apps at the root level
+RUN ln -s /srv/shiny-server/ground-truth-creation/shiny-apps/inspect_outliers /srv/shiny-server/inspect_outliers \
+    && ln -s /srv/shiny-server/ground-truth-creation/shiny-apps/inspect_EMD /srv/shiny-server/inspect_EMD
+
+# =============================================================================
+# Shiny Server configuration
+# =============================================================================
+# The default shiny-server.conf should work, but we ensure proper permissions
+RUN chown -R shiny:shiny /srv/shiny-server
+
+# =============================================================================
+# Environment configuration
+# =============================================================================
+# Set locale for proper font/character rendering
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Docker detection environment variable for path handling in R scripts
+ENV DOCKER_CONTAINER=TRUE
+
+# =============================================================================
+# Expose port
+# =============================================================================
+EXPOSE 3838
+
+# =============================================================================
+# Default command
+# =============================================================================
+# Start Shiny Server
+CMD ["/usr/bin/shiny-server"]
