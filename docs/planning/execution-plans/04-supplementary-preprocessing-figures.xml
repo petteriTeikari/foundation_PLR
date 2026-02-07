@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EXECUTION PLAN 04: Supplementary Preprocessing Quality Figures
+  Priority: P2-MEDIUM
+  Purpose: Add figures showing outlier detection and imputation quality directly
+
+  Cold-Start Context:
+  - Author noted: "Maybe we need more supplementary figures on the actual outlier
+    detection quality and the imputation/reconstruction quality itself to make it
+    clearer that the TSFM preprocessing part is our main focus, not the classifier"
+  - Core message: TSFM preprocessing is the MAIN contribution
+  - Classification is just a downstream proxy
+
+  Self-Contained: This plan has ALL context needed for execution from cold start.
+-->
+<execution-plan id="04-preprocessing-figures" version="1.0">
+  <metadata>
+    <created>2026-01-29</created>
+    <priority>P2-MEDIUM</priority>
+    <estimated-effort>3-4 hours</estimated-effort>
+    <rationale>Emphasize preprocessing as core contribution over classification</rationale>
+  </metadata>
+
+  <context>
+    <author-direction>
+      "The TSFM preprocessing part is our CORE message, and not the classifier!
+      Classifier part is only the downstream proxy now for the TSFM part."
+    </author-direction>
+    <data-sources>
+      <source name="Outlier detection metrics">MLflow runs contain F1, precision, recall for outlier detection</source>
+      <source name="Imputation metrics">MAE, RMSE for reconstruction vs ground truth</source>
+      <source name="Signal traces">Demo subjects in configs/demo_subjects.yaml</source>
+    </data-sources>
+  </context>
+
+  <!-- PHASE 1: OUTLIER DETECTION QUALITY FIGURE -->
+  <phase id="1-outlier-quality" name="Outlier Detection Quality Figure">
+
+    <step id="1.1">
+      <task>Extract outlier detection metrics from MLflow</task>
+      <metrics>
+        - F1 score (outlier detection)
+        - Precision (how many detected artifacts are real)
+        - Recall (how many real artifacts are detected)
+      </metrics>
+      <output>data/r_data/outlier_detection_metrics.json</output>
+    </step>
+
+    <step id="1.2">
+      <task>Create outlier detection comparison figure</task>
+      <type>Bar chart or forest plot</type>
+      <methods>
+        - MOMENT-gt-finetune
+        - MOMENT-gt-zeroshot
+        - UniTS-gt-finetune
+        - TimesNet-gt
+        - LOF (traditional)
+        - OneClassSVM (traditional)
+        - PROPHET (traditional)
+        - pupil-gt (ground truth reference)
+      </methods>
+      <output>fig_outlier_detection_quality.png</output>
+    </step>
+
+    <step id="1.3">
+      <task>Add to supplementary figure registry</task>
+      <file>configs/VISUALIZATION/figure_layouts.yaml</file>
+    </step>
+  </phase>
+
+  <!-- PHASE 2: IMPUTATION QUALITY FIGURE -->
+  <phase id="2-imputation-quality" name="Imputation Quality Figure">
+
+    <step id="2.1">
+      <task>Extract imputation quality metrics from MLflow</task>
+      <metrics>
+        - MAE (mean absolute error vs ground truth)
+        - RMSE (root mean squared error)
+        - Potentially: correlation with ground truth
+      </metrics>
+      <output>data/r_data/imputation_quality_metrics.json</output>
+    </step>
+
+    <step id="2.2">
+      <task>Create imputation quality comparison figure</task>
+      <type>Bar chart or forest plot</type>
+      <methods>
+        - MOMENT-finetune
+        - MOMENT-zeroshot
+        - SAITS
+        - CSDI
+        - TimesNet
+        - linear (traditional)
+        - pupil-gt (ground truth reference)
+      </methods>
+      <output>fig_imputation_quality.png</output>
+    </step>
+  </phase>
+
+  <!-- PHASE 3: SIGNAL RECONSTRUCTION EXAMPLES -->
+  <phase id="3-reconstruction-examples" name="Signal Reconstruction Examples">
+    <description>
+      Show before/after examples of PLR signal preprocessing.
+      Use demo subjects from configs/demo_subjects.yaml.
+    </description>
+
+    <step id="3.1">
+      <task>Load demo subjects from config</task>
+      <config>configs/demo_subjects.yaml</config>
+      <subjects>
+        - H001-H004: Healthy controls (2 low outlier, 2 high outlier)
+        - G001-G004: Glaucoma patients (2 low outlier, 2 high outlier)
+      </subjects>
+      <note>Use anonymized codes only - lookup table is private</note>
+    </step>
+
+    <step id="3.2">
+      <task>Create multi-panel reconstruction figure</task>
+      <panels>
+        <panel>A: High-outlier subject, raw signal</panel>
+        <panel>B: Same subject, MOMENT reconstruction</panel>
+        <panel>C: Same subject, ground truth reconstruction</panel>
+        <panel>D: Overlay comparison</panel>
+      </panels>
+      <output>fig_reconstruction_examples.png</output>
+    </step>
+
+    <step id="3.3">
+      <task>Privacy check</task>
+      <critical>Do NOT commit subject-level JSON data to git</critical>
+      <action>Add to .gitignore if not already present</action>
+    </step>
+  </phase>
+
+  <!-- PHASE 4: ERROR PROPAGATION VISUALIZATION -->
+  <phase id="4-error-propagation" name="Error Propagation Figure">
+    <description>
+      Show how outlier detection errors propagate to imputation errors
+      and ultimately to classification performance.
+    </description>
+
+    <step id="4.1">
+      <task>Design error propagation concept figure</task>
+      <concept><![CDATA[
+        [Outlier Detection] → [Imputation] → [Featurization] → [Classification]
+              ↓ error            ↓ error         ↓ error          ↓ AUROC
+           (F1 gap)           (MAE gap)      (feature drift)    (final metric)
+      ]]></concept>
+    </step>
+
+    <step id="4.2">
+      <task>Extract metrics at each pipeline stage</task>
+      <metrics>
+        - Outlier F1 by method
+        - Imputation MAE by method
+        - Final AUROC by (outlier × imputation) combination
+      </metrics>
+    </step>
+
+    <step id="4.3">
+      <task>Create error propagation figure</task>
+      <type>Sankey diagram or multi-stage bar chart</type>
+      <output>fig_error_propagation.png</output>
+    </step>
+  </phase>
+
+  <!-- SUCCESS CRITERIA -->
+  <success-criteria>
+    <criterion>Outlier detection quality figure created</criterion>
+    <criterion>Imputation quality figure created</criterion>
+    <criterion>At least one signal reconstruction example</criterion>
+    <criterion>All figures use Economist styling</criterion>
+    <criterion>Data sources properly documented in JSON</criterion>
+    <criterion>Privacy maintained for subject-level data</criterion>
+  </success-criteria>
+
+  <!-- DEFERRED -->
+  <deferred>
+    <item>Figure pruning decisions - defer per author instruction</item>
+    <item>Main vs supplementary assignment - may change during manuscript prep</item>
+  </deferred>
+</execution-plan>

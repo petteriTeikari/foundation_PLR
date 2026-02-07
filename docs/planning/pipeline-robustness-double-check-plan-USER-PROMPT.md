@@ -1,0 +1,7 @@
+# User Prompt - Pipeline Robustness Double-Check Plan
+
+**Saved verbatim on**: 2026-02-02
+
+---
+
+What todos we have left, is the test harness optimal for the training pipeline? What if we did an Iterated LLM Council Skill type of iterated improvement for the training and the new config system robustness! Should we add the version numbering for all the config files (v-1.26.2.1, version 1 and the date) and make sure that config versions are also tracked in the mlflow, and in the gnerated duckdb files so that it is clear what version number lead to whatever artifacts?) And how would you have more principled way to version the configs, the git commit of the last committed config version should be attached? As what if someone changes the config, and they most likely will forget to change the version number of it, right? Should there be a precommit check that cannot accept changed config .yaml files if the user has changed the content without changing the version number? What are your thoughts? Let's create a plan here /home/petteri/Dropbox/github-personal/foundation-PLR/foundation_PLR/docs/planning/pipeline-robustness-double-check-plan.md what to do next then with the some multi-hypothesis planning with pros and cons of different choices listed, and evaluate them with extensive use of reviewer agents until we have converged into an optimal report with the recommended action plan for the TDD execution of more production-grade "LabOps" system for maximum reproducibility

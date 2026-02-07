@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EXECUTION PLAN 03: LaTeX Manuscript Updates
+  Priority: P2-MEDIUM
+  Purpose: Sync figure report findings with manuscript .tex files
+
+  Cold-Start Context:
+  - Manuscript is in: /home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR/
+  - Main tracking file: manuscript-comments.xml (41 comments, 10 themes)
+  - CLAUDE.md defines scope: TSFM preprocessing is CORE, classification is proxy
+  - EPV should be 7.0 (8 features from featuresSimple.yaml)
+
+  Self-Contained: This plan has ALL context needed for execution from cold start.
+-->
+<execution-plan id="03-latex-updates" version="1.0">
+  <metadata>
+    <created>2026-01-29</created>
+    <priority>P2-MEDIUM</priority>
+    <estimated-effort>3-4 hours</estimated-effort>
+    <manuscript-path>/home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR/</manuscript-path>
+    <comments-tracker>iterated-llm-council/04-improvements-from-comments/manuscript-comments.xml</comments-tracker>
+  </metadata>
+
+  <context>
+    <manuscript-scope>
+      This paper evaluates TSFM preprocessing utility, NOT classifier development.
+      Classification (N=208, 56 events) is a downstream proxy for preprocessing quality (N=507).
+    </manuscript-scope>
+    <key-values>
+      <value name="GT_AUROC">0.9110</value>
+      <value name="BEST_AUROC">0.9130</value>
+      <value name="EPV">7.0</value>
+      <value name="N_PREPROCESSING">507</value>
+      <value name="N_CLASSIFICATION">208</value>
+    </key-values>
+    <related-plans>
+      - manuscript-comments.xml: 41 author comments tracking
+      - CLAUDE.md: Manuscript scope and guardrails
+    </related-plans>
+  </context>
+
+  <!-- PHASE 1: METHODS.TEX UPDATES -->
+  <phase id="1-methods" name="Methods Section Updates">
+    <file>methods.tex</file>
+
+    <step id="1.1">
+      <task>Add EPV calculation</task>
+      <location>After feature extraction description</location>
+      <text><![CDATA[
+With 56 glaucoma events and 8 handcrafted features (4 amplitude bins per color
+from \texttt{featuresSimple.yaml}), our events-per-variable ratio is $\text{EPV} = 7.0$,
+meeting minimum guidelines for prediction model development~\citep{riley_calculating_2020}.
+For MOMENT embeddings (96 dimensions), $\text{EPV} = 0.58$ precludes reliable inference;
+embedding-based results should be interpreted as exploratory.
+      ]]></text>
+      <related-comment>METH-01 (verify dimensionality)</related-comment>
+    </step>
+
+    <step id="1.2">
+      <task>Clarify preprocessing vs featurization scope</task>
+      <location>Methods opening</location>
+      <text><![CDATA[
+We define \emph{preprocessing} as signal cleaning operations (outlier detection,
+imputation, baseline correction) and \emph{featurization} as discriminative
+feature extraction from the cleaned signal. This distinction is important:
+TSFMs may excel at preprocessing (generic temporal patterns suffice) while
+underperforming for featurization (domain knowledge essential).
+      ]]></text>
+      <related-comment>DISC-02 (scope definitions)</related-comment>
+    </step>
+
+    <step id="1.3">
+      <task>Add sample size clarification</task>
+      <text><![CDATA[
+Preprocessing quality was evaluated on $N=507$ subjects (approximately 1 million
+timepoints). Classification performance was assessed on the $N=208$ labeled subset
+(152 control, 56 glaucoma), with classification serving as a downstream proxy
+for preprocessing impact rather than a primary clinical validation endpoint.
+      ]]></text>
+    </step>
+  </phase>
+
+  <!-- PHASE 2: DISCUSSION.TEX UPDATES -->
+  <phase id="2-discussion" name="Discussion Section Updates">
+    <file>discussion.tex</file>
+
+    <step id="2.1">
+      <task>Replace placeholder numbers (-?-, 0.???)</task>
+      <location>Multiple locations per DISC-03, DISC-04, DISC-05</location>
+      <values>
+        <replace from="-?-" to="specific numbers from DuckDB"></replace>
+        <replace from="0.???" to="verified AUROC values"></replace>
+      </values>
+      <related-comments>DISC-03, DISC-04, DISC-05 (placeholder numbers)</related-comments>
+    </step>
+
+    <step id="2.2">
+      <task>Add pilot study framing paragraph</task>
+      <location>Limitations section</location>
+      <text><![CDATA[
+Several limitations warrant consideration. First, this is a proof-of-concept
+pilot study demonstrating TSFM preprocessing feasibility, not a clinical
+validation study. With $N=208$ labeled subjects (56 glaucoma events) and
+$\text{EPV} = 7.0$ for handcrafted features, calibration instability is
+statistically expected~\citep{riley_clinical_2023} and does not diminish the
+preprocessing findings, which represent the study's core contribution.
+The calibration slope of 0.52 indicates model overconfidence typical of
+small-sample development; we explicitly chose not to apply post-hoc
+recalibration to avoid masking this fundamental limitation.
+      ]]></text>
+    </step>
+
+    <step id="2.3">
+      <task>Add dimensionality reduction caveat</task>
+      <location>Embedding discussion</location>
+      <text><![CDATA[
+The observed performance gap between MOMENT embeddings ($\text{AUROC} = 0.704$)
+and handcrafted features ($\text{AUROC} = 0.830$) cannot be definitively attributed
+to representation quality without controlling for dimensionality. Future research
+should systematically compare embeddings at matched feature lengths (8, 16, 32, 64, 96)
+using dimensionality reduction techniques (PCA, UMAP, NMF) or learned adapters.
+      ]]></text>
+      <related-comment>Author caveat on dimensionality</related-comment>
+    </step>
+
+    <step id="2.4">
+      <task>Add uncertainty propagation discussion</task>
+      <location>Future directions</location>
+      <text><![CDATA[
+A critical limitation of current PLR analysis is the treatment of preprocessing
+uncertainty. Studies typically report downstream classification metrics without
+propagating input uncertainty through the pipeline~\citep{mure_melanopsin_2009}.
+Future end-to-end systems should incorporate uncertainty quantification at each
+stage: SAMv3 pupil segmentation (with pixel-level confidence), TSFM reconstruction
+(with per-timepoint uncertainty), and calibrated classification (with selective
+abstention for uncertain predictions).
+      ]]></text>
+      <related-comment>DISC-02, DISC-23 (uncertainty propagation)</related-comment>
+    </step>
+
+    <step id="2.5">
+      <task>Add citations for discussion claims</task>
+      <related-comments>DISC-06, DISC-08, DISC-16, DISC-25, DISC-27, DISC-28</related-comments>
+      <action>Review manuscript-comments.xml THEME-1 for all missing citations</action>
+    </step>
+  </phase>
+
+  <!-- PHASE 3: INTRODUCTION.TEX UPDATES -->
+  <phase id="3-introduction" name="Introduction Section Updates">
+    <file>introduction.tex</file>
+
+    <step id="3.1">
+      <task>Add ophthalmic FM context (OBLIGATORY)</task>
+      <location>Before TSFM introduction</location>
+      <related-comment>INTRO-09 (RetFound, oculomics)</related-comment>
+      <text><![CDATA[
+Foundation models for ophthalmic imaging have demonstrated remarkable
+generalizability, with RetFound~\citep{zhou_foundation_2023} achieving
+state-of-the-art performance across multiple retinal pathologies and
+even systemic disease detection---exemplifying the emerging paradigm of
+``oculomics''~\citep{wagner_systemic_2020}. While image-based foundation
+models have flourished, time-series foundation models for ophthalmic
+signals remain largely unexplored.
+      ]]></text>
+    </step>
+
+    <step id="3.2">
+      <task>Add MIRA citation (OBLIGATORY)</task>
+      <location>After MOMENT/UniTS/TimesNet mention</location>
+      <related-comment>INTRO-10 (MIRA, generalist vs specialist)</related-comment>
+      <text><![CDATA[
+Recently, MIRA~\citep{li_mira_2025} demonstrated that medical-specific TSFM
+pretraining on ICU physiological signals can outperform generalist models,
+raising questions about the generalist-vs-specialist tradeoff first
+characterized by~\citet{kataria_generalist_2025}.
+      ]]></text>
+    </step>
+
+    <step id="3.3">
+      <task>Add explicit novelty statement</task>
+      <location>End of introduction, before structure paragraph</location>
+      <related-comment>INTRO-12 (novelty statement missing)</related-comment>
+      <text><![CDATA[
+To our knowledge, this is the first systematic evaluation of time-series
+foundation models for pupillometry preprocessing. Our contributions are:
+(1) demonstrating that generic TSFMs achieve competitive preprocessing
+quality without domain-specific training; (2) quantifying how preprocessing
+choices propagate to downstream classification across 407 configurations;
+(3) providing STRATOS-compliant benchmarks for future PLR foundation model
+development.
+      ]]></text>
+    </step>
+  </phase>
+
+  <!-- PHASE 4: CROSS-REFERENCE VERIFICATION -->
+  <phase id="4-verification" name="Cross-Reference Verification">
+
+    <step id="4.1">
+      <task>Verify all numbers match between results.tex and discussion.tex</task>
+      <critical>No conflicting AUROC values allowed</critical>
+    </step>
+
+    <step id="4.2">
+      <task>Verify figure references match captions</task>
+      <critical>No orphan figure references</critical>
+    </step>
+
+    <step id="4.3">
+      <task>Run LaTeX compilation</task>
+      <command>cd /home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts && make TEX=foundationPLR/foundation-plr-manuscript.tex</command>
+    </step>
+  </phase>
+
+  <!-- SUCCESS CRITERIA -->
+  <success-criteria>
+    <criterion>EPV = 7.0 stated correctly in methods</criterion>
+    <criterion>Pilot study framing explicit in discussion</criterion>
+    <criterion>No placeholder numbers remain (-?-, 0.???)</criterion>
+    <criterion>RetFound/oculomics context added (OBLIGATORY)</criterion>
+    <criterion>MIRA citation added (OBLIGATORY)</criterion>
+    <criterion>Novelty statement present in introduction</criterion>
+    <criterion>All numbers consistent between sections</criterion>
+    <criterion>LaTeX compiles without errors</criterion>
+  </success-criteria>
+
+  <!-- RELATED DOCUMENTS -->
+  <related-documents>
+    <document path="manuscript-comments.xml">41 author comments with tracking status</document>
+    <document path="CLAUDE.md">Manuscript scope and critical numbers</document>
+    <document path="figure-reports-expert-review-v2.md">Verified metrics and findings</document>
+  </related-documents>
+</execution-plan>

@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EXECUTION PLAN 01: pminternal Prediction Instability Plots
+  Priority: P1-HIGH (Author requested multiple times)
+  Approach: Test-Driven Development (TDD)
+
+  Cold-Start Context:
+  - Author requested pminternal instability plots 3+ times
+  - Bootstrap predictions EXIST in MLflow (n_subjects × 1000 iterations)
+  - Need ggplot2 implementation with Economist styling
+  - Reference: Riley RD et al. (2023) "Clinical prediction models and the multiverse of madness"
+
+  Self-Contained: This plan has ALL context needed for execution from cold start.
+-->
+<execution-plan id="01-pminternal" version="1.0">
+  <metadata>
+    <created>2026-01-29</created>
+    <priority>P1-HIGH</priority>
+    <estimated-effort>4-6 hours</estimated-effort>
+    <approach>TDD</approach>
+    <failure-doc>.claude/docs/meta-learnings/FAILURE-003-repeated-instruction-amnesia.md</failure-doc>
+  </metadata>
+
+  <context>
+    <research-question>
+      How do preprocessing choices affect downstream prediction quality?
+      TSFM preprocessing is the CORE message, not classification.
+    </research-question>
+    <why-pminternal>
+      Riley 2023 shows that with small samples (N=208, 56 events),
+      individual prediction instability is often more concerning than
+      aggregate metrics. pminternal visualizes this per-patient instability.
+    </why-pminternal>
+    <data-location>/home/petteri/mlruns/253031330985650090/*/artifacts/metrics/</data-location>
+    <data-format>
+      y_pred_proba: shape (n_subjects × 1000 bootstrap iterations)
+      Available per run in pickle files
+    </data-format>
+  </context>
+
+  <!-- PHASE 1: TEST SPECIFICATION (Write tests FIRST) -->
+  <phase id="1-tests" name="Write Tests First">
+    <description>Create test file before any implementation code</description>
+
+    <step id="1.1">
+      <task>Create test file for pminternal data extraction</task>
+      <output>tests/test_pminternal_extraction.py</output>
+      <tests-to-write>
+        <test name="test_bootstrap_predictions_shape">
+          Assert predictions matrix is (n_subjects, n_bootstrap)
+        </test>
+        <test name="test_ground_truth_config_exists">
+          Verify pupil-gt + pupil-gt + CatBoost run can be found
+        </test>
+        <test name="test_predictions_valid_range">
+          All probabilities in [0, 1]
+        </test>
+        <test name="test_subject_count_matches">
+          n_subjects matches expected (63 for test split)
+        </test>
+      </tests-to-write>
+    </step>
+
+    <step id="1.2">
+      <task>Create test file for pminternal JSON export</task>
+      <output>tests/test_pminternal_json.py</output>
+      <tests-to-write>
+        <test name="test_json_schema_valid">
+          JSON has required fields: config_id, n_patients, n_bootstrap, y_prob_original, y_prob_bootstrap
+        </test>
+        <test name="test_json_dimensions_consistent">
+          y_prob_bootstrap shape matches (n_bootstrap, n_patients)
+        </test>
+        <test name="test_multiple_configs_exported">
+          At least ground_truth and best_ensemble configs present
+        </test>
+      </tests-to-write>
+    </step>
+
+    <step id="1.3">
+      <task>Create test file for R figure generation</task>
+      <output>tests/test_pminternal_figure.R</output>
+      <tests-to-write>
+        <test name="test_figure_output_exists">
+          PNG file created at expected path
+        </test>
+        <test name="test_figure_dimensions">
+          Width and height match config
+        </test>
+        <test name="test_diagonal_reference_present">
+          Plot has y=x reference line
+        </test>
+        <test name="test_percentile_bands_present">
+          95% CI dashed lines exist
+        </test>
+      </tests-to-write>
+    </step>
+  </phase>
+
+  <!-- PHASE 2: DATA EXTRACTION -->
+  <phase id="2-extraction" name="Extract Bootstrap Predictions">
+    <description>Create Python script to extract bootstrap predictions from MLflow</description>
+
+    <step id="2.1">
+      <task>Create extraction script</task>
+      <output>scripts/extract_pminternal_data.py</output>
+      <implementation-notes><![CDATA[
+import pickle
+import json
+import numpy as np
+from pathlib import Path
+
+MLFLOW_BASE = Path("/home/petteri/mlruns/253031330985650090")
+
+# Target configs (from plot_hyperparam_combos.yaml)
+CONFIGS = {
+    "ground_truth": {
+        "outlier": "pupil-gt",
+        "imputation": "pupil-gt",
+        "classifier": "CATBOOST"
+    },
+    "best_ensemble": {
+        "outlier": "ensemble-LOF-MOMENT-...",
+        "imputation": "CSDI",
+        "classifier": "CATBOOST"
+    }
+}
+
+def find_run_by_config(outlier, imputation, classifier, featurization="simple1.0"):
+    """Find MLflow run matching config."""
+    # Implementation: iterate runs, match params
+    pass
+
+def extract_bootstrap_predictions(run_path):
+    """Extract (n_bootstrap, n_subjects) predictions matrix."""
+    metrics_files = list(run_path.glob("artifacts/metrics/*.pickle"))
+    for f in metrics_files:
+        with open(f, 'rb') as fp:
+            data = pickle.load(fp)
+        # Navigate to: metrics_iter['test']['preds']['arrays']['predictions']['y_pred_proba']
+        preds = data['metrics_iter']['test']['preds']['arrays']['predictions']['y_pred_proba']
+        # Shape is (n_subjects, n_bootstrap) - transpose for R
+        return preds.T  # (n_bootstrap, n_subjects)
+
+def export_to_json(output_path):
+    """Export data for R consumption."""
+    pass
+      ]]></implementation-notes>
+    </step>
+
+    <step id="2.2">
+      <task>Run tests for extraction</task>
+      <command>pytest tests/test_pminternal_extraction.py -v</command>
+      <acceptance>All tests pass</acceptance>
+    </step>
+
+    <step id="2.3">
+      <task>Execute extraction and export JSON</task>
+      <command>uv run python scripts/extract_pminternal_data.py</command>
+      <output>data/r_data/pminternal_bootstrap_predictions.json</output>
+    </step>
+
+    <step id="2.4">
+      <task>Run JSON validation tests</task>
+      <command>pytest tests/test_pminternal_json.py -v</command>
+      <acceptance>All tests pass</acceptance>
+    </step>
+  </phase>
+
+  <!-- PHASE 3: R IMPLEMENTATION -->
+  <phase id="3-r-figure" name="ggplot2 Figure Implementation">
+    <description>Create Economist-styled ggplot2 instability plot</description>
+
+    <step id="3.1">
+      <task>Create R figure script</task>
+      <output>src/r/figures/fig_instability_combined.R</output>
+      <implementation-notes><![CDATA[
+# Load figure system
+source(file.path(PROJECT_ROOT, "src/r/figure_system/config_loader.R"))
+source(file.path(PROJECT_ROOT, "src/r/figure_system/save_figure.R"))
+
+# Load data
+data <- jsonlite::fromJSON("data/r_data/pminternal_bootstrap_predictions.json")
+
+create_instability_plot <- function(config_data, title) {
+  # Extract predictions
+  y_original <- config_data$y_prob_original
+  y_bootstrap <- config_data$y_prob_bootstrap  # (n_bootstrap x n_subjects)
+
+  # Create long-format for ggplot
+  df <- expand.grid(
+    subject = 1:length(y_original),
+    bootstrap = 1:nrow(y_bootstrap)
+  )
+  df$original <- y_original[df$subject]
+  df$predicted <- as.vector(t(y_bootstrap))[df$bootstrap + (df$subject-1)*nrow(y_bootstrap)]
+
+  # Compute percentiles per subject
+  percentiles <- apply(y_bootstrap, 2, quantile, probs = c(0.025, 0.975))
+
+  ggplot(df, aes(x = original, y = predicted)) +
+    geom_abline(slope = 1, intercept = 0, color = "#333333", linewidth = 0.5) +
+    geom_point(alpha = 0.02, size = 0.3, color = "#666666") +
+    geom_ribbon(
+      data = data.frame(x = y_original, ymin = percentiles[1,], ymax = percentiles[2,]),
+      aes(x = x, ymin = ymin, ymax = ymax),
+      inherit.aes = FALSE, fill = "#006BA2", alpha = 0.2
+    ) +
+    labs(
+      title = title,
+      x = "Predicted risk (developed model)",
+      y = "Predicted risk (bootstrap models)"
+    ) +
+    theme_foundation_plr()
+}
+
+# Create 2-panel figure
+p_gt <- create_instability_plot(data$configs$ground_truth, "A  Ground Truth Preprocessing")
+p_auto <- create_instability_plot(data$configs$best_ensemble, "B  Automated Preprocessing")
+
+combined <- p_gt + p_auto + plot_layout(ncol = 2)
+
+save_publication_figure(combined, "fig_instability_combined", width = 12, height = 6)
+      ]]></implementation-notes>
+    </step>
+
+    <step id="3.2">
+      <task>Run R figure generation</task>
+      <command>Rscript src/r/figures/fig_instability_combined.R</command>
+      <output>figures/generated/ggplot2/supplementary/fig_instability_combined.png</output>
+    </step>
+
+    <step id="3.3">
+      <task>Run figure tests</task>
+      <command>Rscript tests/test_pminternal_figure.R</command>
+      <acceptance>All tests pass</acceptance>
+    </step>
+
+    <step id="3.4">
+      <task>Visual verification</task>
+      <action>Use Read tool to view generated PNG</action>
+      <verify>
+        - Diagonal reference line present
+        - 95% CI bands visible
+        - Two panels (GT vs Automated)
+        - Economist styling applied
+        - No visual clutter
+      </verify>
+    </step>
+  </phase>
+
+  <!-- PHASE 4: INTEGRATION -->
+  <phase id="4-integration" name="Pipeline Integration">
+    <step id="4.1">
+      <task>Add to figure_layouts.yaml</task>
+      <file>configs/VISUALIZATION/figure_layouts.yaml</file>
+      <content><![CDATA[
+fig_instability_combined:
+  type: supplementary
+  description: "Riley 2023-style prediction instability plots"
+  panels: 2
+  width: 12
+  height: 6
+  data_source: pminternal_bootstrap_predictions.json
+  requires_bootstrap_data: true
+      ]]></content>
+    </step>
+
+    <step id="4.2">
+      <task>Update figure generation pipeline</task>
+      <action>Add to Makefile or generate_all_figures.py</action>
+    </step>
+
+    <step id="4.3">
+      <task>Commit changes</task>
+      <files>
+        - tests/test_pminternal_*.py
+        - tests/test_pminternal_figure.R
+        - scripts/extract_pminternal_data.py
+        - src/r/figures/fig_instability_combined.R
+        - data/r_data/pminternal_bootstrap_predictions.json
+        - figures/generated/ggplot2/supplementary/fig_instability_combined.png
+        - configs/VISUALIZATION/figure_layouts.yaml
+      </files>
+    </step>
+  </phase>
+
+  <!-- SUCCESS CRITERIA -->
+  <success-criteria>
+    <criterion>All Python tests pass (pytest)</criterion>
+    <criterion>All R tests pass</criterion>
+    <criterion>PNG output matches Riley 2023 Figure 2 style</criterion>
+    <criterion>Two panels comparing GT vs automated preprocessing</criterion>
+    <criterion>Economist styling (off-white background, blue accents)</criterion>
+    <criterion>JSON data saved for reproducibility</criterion>
+    <criterion>Visual verification completed (no amnesia!)</criterion>
+  </success-criteria>
+
+  <!-- REFERENCES -->
+  <references>
+    <reference>Riley RD et al. (2023) "Clinical prediction models and the multiverse of madness." BMC Medicine 21:502</reference>
+    <reference>Rhodes SA et al. (2025) pminternal R package: https://cran.r-project.org/package=pminternal</reference>
+    <reference>docs/planning/pminternal-instability.md</reference>
+  </references>
+</execution-plan>

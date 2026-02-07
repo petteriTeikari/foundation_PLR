@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Foundation PLR - Context Engineering Action Plan
+
+  PURPOSE: Crash-resistant execution checklist
+  REASONING: See improvement-from-openai-and-gemini.md
+  LAST UPDATED: 2026-01-22
+
+  INSTRUCTIONS FOR CLAUDE:
+  1. Read this file at session start
+  2. Find first unchecked item [ ]
+  3. Execute it
+  4. Mark as [x] when done
+  5. Commit progress periodically
+-->
+
+<action_plan version="1.0" goal="Excellent documentation for efficient collaboration">
+
+  <!-- ============================================== -->
+  <!-- PHASE 0: ALREADY COMPLETED                     -->
+  <!-- ============================================== -->
+  <phase id="0" name="Foundation" status="COMPLETE">
+    <task id="0.1" status="done">Save Gemini/OpenAI feedback verbatim</task>
+    <task id="0.2" status="done">Add data provenance to CLAUDE.md (Najjar 2023)</task>
+    <task id="0.3" status="done">Add sister repo links to CLAUDE.md</task>
+    <task id="0.4" status="done">Create Skills: /figures, /validate, /manuscript</task>
+    <task id="0.5" status="done">Create Rules: 00-research-question.md, 10-figures.md</task>
+  </phase>
+
+  <!-- ============================================== -->
+  <!-- PHASE 1: COMPLIANCE VALIDATION                 -->
+  <!-- ============================================== -->
+  <phase id="1" name="Compliance Validation" status="COMPLETE">
+
+    <task id="1.1" status="done" priority="P0">
+      <name>Create check-compliance.py</name>
+      <file>scripts/check-compliance.py</file>
+      <checks>
+        <check>No hardcoded combo names in viz scripts</check>
+        <check>ground_truth present in comparison figures</check>
+        <check>Max 4 curves in main figures</check>
+        <check>setup_style() called before plotting</check>
+        <check>No PRIVATE JSON staged for commit</check>
+      </checks>
+      <test>python scripts/check-compliance.py</test>
+      <completed>2026-01-22</completed>
+    </task>
+
+    <task id="1.2" status="done" priority="P1">
+      <name>Add AIDEV-NOTE comments to critical files</name>
+      <files>
+        <file line="62">src/viz/plot_config.py - colors definition</file>
+        <file line="1">src/viz/retained_metric.py - combo loading</file>
+        <file line="3">configs/VISUALIZATION/figure_registry.yaml - top of file</file>
+      </files>
+      <completed>2026-01-22</completed>
+    </task>
+
+  </phase>
+
+  <!-- ============================================== -->
+  <!-- PHASE 2: FIGURE RECREATION                     -->
+  <!-- ============================================== -->
+  <phase id="2" name="Figure Recreation" status="COMPLETE">
+
+    <task id="2.1" status="todo" priority="P0">
+      <name>Fix fig_retained_multi_metric to show 4 combos</name>
+      <file>src/viz/retained_metric.py</file>
+      <expected>4 curves: ground_truth, best_ensemble, best_single_fm, traditional</expected>
+    </task>
+
+    <task id="2.2" status="todo" priority="P1">
+      <name>Apply Economist/ggplot2 styling to all figures</name>
+      <reference>https://altaf-ali.github.io/ggplot_tutorial/challenge.html</reference>
+      <style>
+        <item>Light gray background (#FAFAFA)</item>
+        <item>Y-axis gridlines only</item>
+        <item>Left and bottom spines only</item>
+        <item>Paul Tol colorblind-safe palette</item>
+      </style>
+    </task>
+
+    <task id="2.3" status="todo" priority="P1">
+      <name>Regenerate all 11 main figures</name>
+      <command>python src/viz/generate_all_figures.py</command>
+      <figures>
+        <fig id="M3">fig_M3_factorial_matrix</fig>
+        <fig id="R7">fig_R7_featurization_comparison</fig>
+        <fig id="R8">fig_R8_foundation_model_dashboard</fig>
+        <fig id="retained">fig_retained_multi_metric</fig>
+        <fig id="calibration">fig_calibration_smoothed</fig>
+        <fig id="dca">fig_dca_curves</fig>
+        <fig id="cd">cd_preprocessing_comparison</fig>
+        <fig id="uncertainty">fig_uncertainty_vs_prob</fig>
+        <fig id="prob_dist">fig_prob_dist_by_outcome</fig>
+        <fig id="utility">fig_C3_utility_matrix</fig>
+        <fig id="traces">fig_subject_traces (PRIVATE)</fig>
+      </figures>
+    </task>
+
+  </phase>
+
+  <!-- ============================================== -->
+  <!-- PHASE 3: DEVELOPER EXPERIENCE                  -->
+  <!-- ============================================== -->
+  <phase id="3" name="Developer Experience" status="COMPLETE">
+
+    <task id="3.1" status="done" priority="P2">
+      <name>Create Makefile</name>
+      <file>Makefile</file>
+      <targets>
+        <target>figures - generate all</target>
+        <target>figure ID=X - generate one</target>
+        <target>validate - run validation</target>
+        <target>compliance - run compliance check</target>
+      </targets>
+      <completed>2026-01-22</completed>
+    </task>
+
+    <task id="3.2" status="done" priority="P2">
+      <name>Create CLAUDE.local.md template</name>
+      <file>CLAUDE.local.md.template</file>
+      <purpose>Machine-specific paths (not committed)</purpose>
+      <completed>2026-01-22</completed>
+    </task>
+
+    <task id="3.3" status="done" priority="P3">
+      <name>Add pre-commit hook for compliance</name>
+      <file>scripts/pre-commit</file>
+      <install>make install-hooks</install>
+      <completed>2026-01-22</completed>
+    </task>
+
+  </phase>
+
+  <!-- ============================================== -->
+  <!-- QUICK REFERENCE                                -->
+  <!-- ============================================== -->
+  <reference>
+    <research_question>How preprocessing affects downstream classification</research_question>
+    <classifier>CatBoost (fixed)</classifier>
+    <subjects>507 preprocess, 208 classify</subjects>
+    <best_auroc>0.913</best_auroc>
+    <data_source>Subset of Najjar et al. 2023 (their AUROC: 0.94)</data_source>
+
+    <combos type="standard">
+      <combo id="ground_truth" auroc="0.9110">pupil-gt + pupil-gt</combo>
+      <combo id="best_ensemble" auroc="0.9130">Ensemble + CSDI</combo>
+      <combo id="best_single_fm" auroc="0.9099">MOMENT-gt-finetune + SAITS</combo>
+      <combo id="traditional" auroc="0.8599">LOF + SAITS</combo>
+    </combos>
+
+    <sister_repos>
+      <repo name="manuscript">/home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR/latent-methods-results/</repo>
+      <repo name="literature">/home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR/appendix-literature-review/</repo>
+    </sister_repos>
+  </reference>
+
+</action_plan>
