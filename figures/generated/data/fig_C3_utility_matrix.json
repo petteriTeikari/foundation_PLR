@@ -1,0 +1,22 @@
+{
+  "tasks": [
+    "Outlier Detection",
+    "Imputation",
+    "Featurization"
+  ],
+  "utility_assessment": {
+    "Outlier Detection": true,
+    "Imputation": true,
+    "Featurization": false
+  },
+  "fm_performance": {
+    "Outlier Detection": 0.892,
+    "Imputation": 0.887,
+    "Featurization": 0.812
+  },
+  "baseline_performance": {
+    "Outlier Detection": 0.854,
+    "Imputation": 0.883,
+    "Featurization": 0.891
+  }
+}

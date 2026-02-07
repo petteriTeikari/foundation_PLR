@@ -1,0 +1,1038 @@
+{
+  "metadata": {
+    "created": "2026-01-25T04:25:26.341573",
+    "source": "outputs/shap_summary_top10.pkl",
+    "n_configs": 10
+  },
+  "figures": {
+    "feature_importance_config_1": {
+      "config_idx": 1,
+      "outlier_method": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+      "imputation_method": "CSDI",
+      "auroc": 0.9129769820971867,
+      "n_bootstrap": 1000,
+      "features": [
+        {
+          "name": "Blue_SUSTAINED_value",
+          "importance_mean": 0.16959935164550274,
+          "importance_std": 0.01777543222410674,
+          "importance_ci_lo": 0.13475950448625354,
+          "importance_ci_hi": 0.20443919880475195
+        },
+        {
+          "name": "Blue_MAX_CONSTRICTION_value",
+          "importance_mean": 0.16418793844290996,
+          "importance_std": 0.01591908878617107,
+          "importance_ci_lo": 0.13298652442201467,
+          "importance_ci_hi": 0.19538935246380526
+        },
+        {
+          "name": "Red_PHASIC_value",
+          "importance_mean": 0.14692198943123078,
+          "importance_std": 0.024024076692814464,
+          "importance_ci_lo": 0.09983479911331443,
+          "importance_ci_hi": 0.1940091797491471
+        },
+        {
+          "name": "Blue_PIPR_AUC_value",
+          "importance_mean": 0.12182541770236344,
+          "importance_std": 0.03366260006943766,
+          "importance_ci_lo": 0.055846721566265634,
+          "importance_ci_hi": 0.18780411383846124
+        },
+        {
+          "name": "Red_MAX_CONSTRICTION_value",
+          "importance_mean": 0.11792630059202786,
+          "importance_std": 0.02403047327198195,
+          "importance_ci_lo": 0.07082657297894324,
+          "importance_ci_hi": 0.16502602820511247
+        },
+        {
+          "name": "Red_SUSTAINED_value",
+          "importance_mean": 0.11757152470640739,
+          "importance_std": 0.018281435014968043,
+          "importance_ci_lo": 0.08173991207707001,
+          "importance_ci_hi": 0.15340313733574476
+        },
+        {
+          "name": "Blue_PHASIC_value",
+          "importance_mean": 0.11231613584192472,
+          "importance_std": 0.017890940778237763,
+          "importance_ci_lo": 0.0772498919165787,
+          "importance_ci_hi": 0.14738237976727075
+        },
+        {
+          "name": "Red_PIPR_AUC_value",
+          "importance_mean": 0.06331913400516583,
+          "importance_std": 0.026646714824592417,
+          "importance_ci_lo": 0.011091572948964686,
+          "importance_ci_hi": 0.11554669506136697
+        }
+      ]
+    },
+    "feature_importance_config_2": {
+      "config_idx": 2,
+      "outlier_method": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+      "imputation_method": "TimesNet",
+      "auroc": 0.9121739130434783,
+      "n_bootstrap": 1000,
+      "features": [
+        {
+          "name": "Red_PHASIC_value",
+          "importance_mean": 0.05863728481855323,
+          "importance_std": 0.008349061531559647,
+          "importance_ci_lo": 0.04227312421669632,
+          "importance_ci_hi": 0.07500144542041014
+        },
+        {
+          "name": "Blue_MAX_CONSTRICTION_value",
+          "importance_mean": 0.05493299706561961,
+          "importance_std": 0.00587349510892055,
+          "importance_ci_lo": 0.043420946652135334,
+          "importance_ci_hi": 0.06644504747910389
+        },
+        {
+          "name": "Blue_SUSTAINED_value",
+          "importance_mean": 0.04521024856325334,
+          "importance_std": 0.005357131235516569,
+          "importance_ci_lo": 0.03471027134164087,
+          "importance_ci_hi": 0.05571022578486581
+        },
+        {
+          "name": "Blue_PHASIC_value",
+          "importance_mean": 0.04185509565896424,
+          "importance_std": 0.005655305619887996,
+          "importance_ci_lo": 0.03077069664398377,
+          "importance_ci_hi": 0.05293949467394471
+        },
+        {
+          "name": "Red_MAX_CONSTRICTION_value",
+          "importance_mean": 0.04157618761756123,
+          "importance_std": 0.008392585979899525,
+          "importance_ci_lo": 0.025126719096958162,
+          "importance_ci_hi": 0.0580256561381643
+        },
+        {
+          "name": "Red_SUSTAINED_value",
+          "importance_mean": 0.041352759028725095,
+          "importance_std": 0.006582924633642059,
+          "importance_ci_lo": 0.02845022674678666,
+          "importance_ci_hi": 0.054255291310663534
+        },
+        {
+          "name": "Blue_PIPR_AUC_value",
+          "importance_mean": 0.035616508646294134,
+          "importance_std": 0.009854864802502642,
+          "importance_ci_lo": 0.016300973633388956,
+          "importance_ci_hi": 0.05493204365919931
+        },
+        {
+          "name": "Red_PIPR_AUC_value",
+          "importance_mean": 0.023547060765490773,
+          "importance_std": 0.007905669180565705,
+          "importance_ci_lo": 0.008051949171581991,
+          "importance_ci_hi": 0.03904217235939955
+        }
+      ]
+    },
+    "feature_importance_config_3": {
+      "config_idx": 3,
+      "outlier_method": "ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune",
+      "imputation_method": "CSDI",
+      "auroc": 0.9115524296675191,
+      "n_bootstrap": 1000,
+      "features": [
+        {
+          "name": "Blue_SUSTAINED_value",
+          "importance_mean": 0.09829656074447118,
+          "importance_std": 0.009745010031052005,
+          "importance_ci_lo": 0.07919634108360926,
+          "importance_ci_hi": 0.1173967804053331
+        },
+        {
+          "name": "Red_MAX_CONSTRICTION_value",
+          "importance_mean": 0.0842439282162068,
+          "importance_std": 0.015945904143644978,
+          "importance_ci_lo": 0.052989956094662644,
+          "importance_ci_hi": 0.11549790033775095
+        },
+        {
+          "name": "Blue_MAX_CONSTRICTION_value",
+          "importance_mean": 0.07418406861606741,
+          "importance_std": 0.008263401620825216,
+          "importance_ci_lo": 0.05798780143924999,
+          "importance_ci_hi": 0.09038033579288483
+        },
+        {
+          "name": "Red_SUSTAINED_value",
+          "importance_mean": 0.07245917237766884,
+          "importance_std": 0.010808009198454614,
+          "importance_ci_lo": 0.051275474348697794,
+          "importance_ci_hi": 0.09364287040663989
+        },
+        {
+          "name": "Red_PHASIC_value",
+          "importance_mean": 0.06949008084698198,
+          "importance_std": 0.010141584477884057,
+          "importance_ci_lo": 0.04961257527032922,
+          "importance_ci_hi": 0.08936758642363474
+        },
+        {
+          "name": "Blue_PIPR_AUC_value",
+          "importance_mean": 0.06676496997662333,
+          "importance_std": 0.01706430648683538,
+          "importance_ci_lo": 0.03331892926242599,
+          "importance_ci_hi": 0.10021101069082067
+        },
+        {
+          "name": "Blue_PHASIC_value",
+          "importance_mean": 0.06635314435513615,
+          "importance_std": 0.008334231145224715,
+          "importance_ci_lo": 0.050018051310495706,
+          "importance_ci_hi": 0.08268823739977658
+        },
+        {
+          "name": "Red_PIPR_AUC_value",
+          "importance_mean": 0.039037805503920955,
+          "importance_std": 0.013503082450664028,
+          "importance_ci_lo": 0.01257176390061946,
+          "importance_ci_hi": 0.06550384710722246
+        }
+      ]
+    },
+    "feature_importance_config_4": {
+      "config_idx": 4,
+      "outlier_method": "ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune",
+      "imputation_method": "TimesNet",
+      "auroc": 0.9113132992327366,
+      "n_bootstrap": 1000,
+      "features": [
+        {
+          "name": "Blue_SUSTAINED_value",
+          "importance_mean": 0.05622467131351141,
+          "importance_std": 0.005861098531547645,
+          "importance_ci_lo": 0.04473691819167802,
+          "importance_ci_hi": 0.0677124244353448
+        },
+        {
+          "name": "Blue_MAX_CONSTRICTION_value",
+          "importance_mean": 0.050671708652299544,
+          "importance_std": 0.005696590236797242,
+          "importance_ci_lo": 0.03950639178817695,
+          "importance_ci_hi": 0.06183702551642214
+        },
+        {
+          "name": "Red_MAX_CONSTRICTION_value",
+          "importance_mean": 0.04805039556831769,
+          "importance_std": 0.009238424403293059,
+          "importance_ci_lo": 0.029943083737863294,
+          "importance_ci_hi": 0.06615770739877208
+        },
+        {
+          "name": "Red_SUSTAINED_value",
+          "importance_mean": 0.04595062293151347,
+          "importance_std": 0.007239202312645057,
+          "importance_ci_lo": 0.031761786398729154,
+          "importance_ci_hi": 0.06013945946429778
+        },
+        {
+          "name": "Blue_PHASIC_value",
+          "importance_mean": 0.04444517531511505,
+          "importance_std": 0.00502095276499415,
+          "importance_ci_lo": 0.034604107895726516,
+          "importance_ci_hi": 0.05428624273450358
+        },
+        {
+          "name": "Red_PHASIC_value",
+          "importance_mean": 0.041690987681213015,
+          "importance_std": 0.005973749230382679,
+          "importance_ci_lo": 0.029982439189662966,
+          "importance_ci_hi": 0.053399536172763065
+        },
+        {
+          "name": "Blue_PIPR_AUC_value",
+          "importance_mean": 0.04028574891051202,
+          "importance_std": 0.009460266196622784,
+          "importance_ci_lo": 0.021743627165131365,
+          "importance_ci_hi": 0.05882787065589268
+        },
+        {
+          "name": "Red_PIPR_AUC_value",
+          "importance_mean": 0.029975230525094338,
+          "importance_std": 0.008503010275204196,
+          "importance_ci_lo": 0.013309330385694113,
+          "importance_ci_hi": 0.04664113066449456
+        }
+      ]
+    },
+    "feature_importance_config_5": {
+      "config_idx": 5,
+      "outlier_method": "pupil-gt",
+      "imputation_method": "pupil-gt",
+      "auroc": 0.9109820971867006,
+      "n_bootstrap": 1000,
+      "features": [
+        {
+          "name": "Blue_PHASIC_value",
+          "importance_mean": 0.11266935578864752,
+          "importance_std": 0.015524182282545481,
+          "importance_ci_lo": 0.08224195851485838,
+          "importance_ci_hi": 0.14309675306243666
+        },
+        {
+          "name": "Red_PHASIC_value",
+          "importance_mean": 0.1044907758750086,
+          "importance_std": 0.01558078624120861,
+          "importance_ci_lo": 0.07395243484223973,
+          "importance_ci_hi": 0.13502911690777747
+        },
+        {
+          "name": "Blue_SUSTAINED_value",
+          "importance_mean": 0.1017632309766161,
+          "importance_std": 0.010393186781229602,
+          "importance_ci_lo": 0.08139258488540609,
+          "importance_ci_hi": 0.12213387706782612
+        },
+        {
+          "name": "Blue_MAX_CONSTRICTION_value",
+          "importance_mean": 0.10036439763926598,
+          "importance_std": 0.010384083818587155,
+          "importance_ci_lo": 0.08001159335483515,
+          "importance_ci_hi": 0.12071720192369681
+        },
+        {
+          "name": "Red_SUSTAINED_value",
+          "importance_mean": 0.09928912843617914,
+          "importance_std": 0.016416205974036754,
+          "importance_ci_lo": 0.06711336472706711,
+          "importance_ci_hi": 0.13146489214529117
+        },
+        {
+          "name": "Red_MAX_CONSTRICTION_value",
+          "importance_mean": 0.09658426368088036,
+          "importance_std": 0.018285813833866446,
+          "importance_ci_lo": 0.06074406856650212,
+          "importance_ci_hi": 0.1324244587952586
+        },
+        {
+          "name": "Blue_PIPR_AUC_value",
+          "importance_mean": 0.06705850258732221,
+          "importance_std": 0.019822592531779842,
+          "importance_ci_lo": 0.028206221225033717,
+          "importance_ci_hi": 0.1059107839496107
+        },
+        {
+          "name": "Red_PIPR_AUC_value",
+          "importance_mean": 0.04197104913140253,
+          "importance_std": 0.015930545611461764,
+          "importance_ci_lo": 0.010747179732937474,
+          "importance_ci_hi": 0.07319491852986759
+        }
+      ]
+    },
+    "feature_importance_config_6": {
+      "config_idx": 6,
+      "outlier_method": "pupil-gt",
+      "imputation_method": "ensemble-CSDI-MOMENT-SAITS",
+      "auroc": 0.9109539641943734,
+      "n_bootstrap": 1000,
+      "features": [
+        {
+          "name": "Blue_MAX_CONSTRICTION_value",
+          "importance_mean": 0.14829537040652935,
+          "importance_std": 0.01597891420103517,
+          "importance_ci_lo": 0.11697669857250041,
+          "importance_ci_hi": 0.17961404224055827
+        },
+        {
+          "name": "Blue_SUSTAINED_value",
+          "importance_mean": 0.1432635069400884,
+          "importance_std": 0.014210808290983054,
+          "importance_ci_lo": 0.11541032268976162,
+          "importance_ci_hi": 0.1711166911904152
+        },
+        {
+          "name": "Red_PHASIC_value",
+          "importance_mean": 0.13772630649177753,
+          "importance_std": 0.021251793675504043,
+          "importance_ci_lo": 0.09607279088778961,
+          "importance_ci_hi": 0.17937982209576545
+        },
+        {
+          "name": "Red_SUSTAINED_value",
+          "importance_mean": 0.1349885228458904,
+          "importance_std": 0.021391232641880073,
+          "importance_ci_lo": 0.09306170686780546,
+          "importance_ci_hi": 0.17691533882397537
+        },
+        {
+          "name": "Red_MAX_CONSTRICTION_value",
+          "importance_mean": 0.12143325616384562,
+          "importance_std": 0.022765767675757345,
+          "importance_ci_lo": 0.07681235151936122,
+          "importance_ci_hi": 0.16605416080833002
+        },
+        {
+          "name": "Blue_PIPR_AUC_value",
+          "importance_mean": 0.11523539000574706,
+          "importance_std": 0.03116538713154958,
+          "importance_ci_lo": 0.054151231227909886,
+          "importance_ci_hi": 0.17631954878358425
+        },
+        {
+          "name": "Blue_PHASIC_value",
+          "importance_mean": 0.11516811440596797,
+          "importance_std": 0.017603259119557565,
+          "importance_ci_lo": 0.08066572653163515,
+          "importance_ci_hi": 0.1496705022803008
+        },
+        {
+          "name": "Red_PIPR_AUC_value",
+          "importance_mean": 0.06685784076867503,
+          "importance_std": 0.027790855708146114,
+          "importance_ci_lo": 0.012387763580708644,
+          "importance_ci_hi": 0.12132791795664141
+        }
+      ]
+    },
+    "feature_importance_config_7": {
+      "config_idx": 7,
+      "outlier_method": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+      "imputation_method": "SAITS",
+      "auroc": 0.9103797953964193,
+      "n_bootstrap": 1000,
+      "features": [
+        {
+          "name": "Blue_PHASIC_value",
+          "importance_mean": 0.1476329898639282,
+          "importance_std": 0.023157569713582436,
+          "importance_ci_lo": 0.10224415322530662,
+          "importance_ci_hi": 0.1930218265025498
+        },
+        {
+          "name": "Blue_SUSTAINED_value",
+          "importance_mean": 0.1454221330448949,
+          "importance_std": 0.014745645650176099,
+          "importance_ci_lo": 0.11652066757054975,
+          "importance_ci_hi": 0.17432359851924006
+        },
+        {
+          "name": "Blue_MAX_CONSTRICTION_value",
+          "importance_mean": 0.14289617596691198,
+          "importance_std": 0.015253944271834232,
+          "importance_ci_lo": 0.11299844519411689,
+          "importance_ci_hi": 0.17279390673970707
+        },
+        {
+          "name": "Red_SUSTAINED_value",
+          "importance_mean": 0.13559421092470145,
+          "importance_std": 0.02397913515356765,
+          "importance_ci_lo": 0.08859510602370885,
+          "importance_ci_hi": 0.18259331582569405
+        },
+        {
+          "name": "Red_PHASIC_value",
+          "importance_mean": 0.12777442242556147,
+          "importance_std": 0.01972440377158173,
+          "importance_ci_lo": 0.08911459103326128,
+          "importance_ci_hi": 0.16643425381786167
+        },
+        {
+          "name": "Red_MAX_CONSTRICTION_value",
+          "importance_mean": 0.1145615091437239,
+          "importance_std": 0.021854049320620142,
+          "importance_ci_lo": 0.07172757247530842,
+          "importance_ci_hi": 0.15739544581213938
+        },
+        {
+          "name": "Blue_PIPR_AUC_value",
+          "importance_mean": 0.10220647167748213,
+          "importance_std": 0.030949005775534232,
+          "importance_ci_lo": 0.04154642035743504,
+          "importance_ci_hi": 0.16286652299752924
+        },
+        {
+          "name": "Red_PIPR_AUC_value",
+          "importance_mean": 0.06166723838998237,
+          "importance_std": 0.02633218834059351,
+          "importance_ci_lo": 0.010056149242419092,
+          "importance_ci_hi": 0.11327832753754566
+        }
+      ]
+    },
+    "feature_importance_config_8": {
+      "config_idx": 8,
+      "outlier_method": "pupil-gt",
+      "imputation_method": "CSDI",
+      "auroc": 0.9102506393861893,
+      "n_bootstrap": 1000,
+      "features": [
+        {
+          "name": "Blue_MAX_CONSTRICTION_value",
+          "importance_mean": 0.15509469241354568,
+          "importance_std": 0.016747682975894553,
+          "importance_ci_lo": 0.12226923378079235,
+          "importance_ci_hi": 0.187920151046299
+        },
+        {
+          "name": "Blue_SUSTAINED_value",
+          "importance_mean": 0.14206421223495988,
+          "importance_std": 0.01413130922275543,
+          "importance_ci_lo": 0.11436684615835924,
+          "importance_ci_hi": 0.16976157831156052
+        },
+        {
+          "name": "Red_SUSTAINED_value",
+          "importance_mean": 0.13152130323450067,
+          "importance_std": 0.022795717795338254,
+          "importance_ci_lo": 0.0868416963556377,
+          "importance_ci_hi": 0.17620091011336364
+        },
+        {
+          "name": "Red_PHASIC_value",
+          "importance_mean": 0.12400011307713124,
+          "importance_std": 0.02083234874484296,
+          "importance_ci_lo": 0.08316870953723904,
+          "importance_ci_hi": 0.16483151661702344
+        },
+        {
+          "name": "Blue_PIPR_AUC_value",
+          "importance_mean": 0.12168286742598117,
+          "importance_std": 0.03435835160642857,
+          "importance_ci_lo": 0.054340498277381175,
+          "importance_ci_hi": 0.18902523657458115
+        },
+        {
+          "name": "Blue_PHASIC_value",
+          "importance_mean": 0.12094524816703091,
+          "importance_std": 0.020649739768204195,
+          "importance_ci_lo": 0.08047175822135069,
+          "importance_ci_hi": 0.16141873811271112
+        },
+        {
+          "name": "Red_MAX_CONSTRICTION_value",
+          "importance_mean": 0.1183914350934954,
+          "importance_std": 0.023724410374844372,
+          "importance_ci_lo": 0.07189159075880042,
+          "importance_ci_hi": 0.16489127942819037
+        },
+        {
+          "name": "Red_PIPR_AUC_value",
+          "importance_mean": 0.0654975595477605,
+          "importance_std": 0.02678216176372477,
+          "importance_ci_lo": 0.013004522490859954,
+          "importance_ci_hi": 0.11799059660466105
+        }
+      ]
+    },
+    "feature_importance_config_9": {
+      "config_idx": 9,
+      "outlier_method": "MOMENT-gt-finetune",
+      "imputation_method": "SAITS",
+      "auroc": 0.9099398976982097,
+      "n_bootstrap": 1000,
+      "features": [
+        {
+          "name": "Blue_SUSTAINED_value",
+          "importance_mean": 0.09174147524190161,
+          "importance_std": 0.01963720807384955,
+          "importance_ci_lo": 0.053252547417156494,
+          "importance_ci_hi": 0.13023040306664674
+        },
+        {
+          "name": "Blue_MAX_CONSTRICTION_value",
+          "importance_mean": 0.07623143965690923,
+          "importance_std": 0.018957122085797928,
+          "importance_ci_lo": 0.039075480368745294,
+          "importance_ci_hi": 0.11338739894507317
+        },
+        {
+          "name": "Blue_PIPR_AUC_value",
+          "importance_mean": 0.07570468123956059,
+          "importance_std": 0.016410659830809526,
+          "importance_ci_lo": 0.043539787971173916,
+          "importance_ci_hi": 0.10786957450794726
+        },
+        {
+          "name": "Red_SUSTAINED_value",
+          "importance_mean": 0.0684910457965204,
+          "importance_std": 0.01907996095262843,
+          "importance_ci_lo": 0.03109432232936868,
+          "importance_ci_hi": 0.10588776926367213
+        },
+        {
+          "name": "Red_PIPR_AUC_value",
+          "importance_mean": 0.06599451823306952,
+          "importance_std": 0.017967143420210486,
+          "importance_ci_lo": 0.030778917129456976,
+          "importance_ci_hi": 0.10121011933668207
+        },
+        {
+          "name": "Blue_PHASIC_value",
+          "importance_mean": 0.0659416867906006,
+          "importance_std": 0.01388089809890859,
+          "importance_ci_lo": 0.03873512651673976,
+          "importance_ci_hi": 0.09314824706446144
+        },
+        {
+          "name": "Red_PHASIC_value",
+          "importance_mean": 0.05882361081414602,
+          "importance_std": 0.015508582937276433,
+          "importance_ci_lo": 0.02842678825708421,
+          "importance_ci_hi": 0.08922043337120783
+        },
+        {
+          "name": "Red_MAX_CONSTRICTION_value",
+          "importance_mean": 0.05601787025792178,
+          "importance_std": 0.019251398496743892,
+          "importance_ci_lo": 0.01828512920430375,
+          "importance_ci_hi": 0.0937506113115398
+        }
+      ]
+    },
+    "feature_importance_config_10": {
+      "config_idx": 10,
+      "outlier_method": "pupil-gt",
+      "imputation_method": "TimesNet",
+      "auroc": 0.9092186700767263,
+      "n_bootstrap": 1000,
+      "features": [
+        {
+          "name": "Red_SUSTAINED_value",
+          "importance_mean": 0.10086273720782928,
+          "importance_std": 0.017241850569011726,
+          "importance_ci_lo": 0.06706871009256629,
+          "importance_ci_hi": 0.13465676432309226
+        },
+        {
+          "name": "Blue_SUSTAINED_value",
+          "importance_mean": 0.10015927494710988,
+          "importance_std": 0.009334642308570536,
+          "importance_ci_lo": 0.08186337602231164,
+          "importance_ci_hi": 0.11845517387190813
+        },
+        {
+          "name": "Red_PHASIC_value",
+          "importance_mean": 0.0984467723131421,
+          "importance_std": 0.015233341469421884,
+          "importance_ci_lo": 0.0685894230330752,
+          "importance_ci_hi": 0.12830412159320898
+        },
+        {
+          "name": "Red_MAX_CONSTRICTION_value",
+          "importance_mean": 0.0947586793488064,
+          "importance_std": 0.01994543901449895,
+          "importance_ci_lo": 0.05566561888038846,
+          "importance_ci_hi": 0.13385173981722434
+        },
+        {
+          "name": "Blue_MAX_CONSTRICTION_value",
+          "importance_mean": 0.09245632160419415,
+          "importance_std": 0.009983508474389653,
+          "importance_ci_lo": 0.07288864499439043,
+          "importance_ci_hi": 0.11202399821399786
+        },
+        {
+          "name": "Blue_PHASIC_value",
+          "importance_mean": 0.0860582875322638,
+          "importance_std": 0.010708038427887869,
+          "importance_ci_lo": 0.06507053221360358,
+          "importance_ci_hi": 0.10704604285092402
+        },
+        {
+          "name": "Blue_PIPR_AUC_value",
+          "importance_mean": 0.08291834496203117,
+          "importance_std": 0.021743770733385095,
+          "importance_ci_lo": 0.04030055432459638,
+          "importance_ci_hi": 0.12553613559946597
+        },
+        {
+          "name": "Red_PIPR_AUC_value",
+          "importance_mean": 0.047437201254027485,
+          "importance_std": 0.01567455528767646,
+          "importance_ci_lo": 0.016715072890181627,
+          "importance_ci_hi": 0.07815932961787334
+        }
+      ]
+    },
+    "feature_importance_comparison": {
+      "features": [
+        "Red_MAX_CONSTRICTION_value",
+        "Red_PHASIC_value",
+        "Red_SUSTAINED_value",
+        "Red_PIPR_AUC_value",
+        "Blue_MAX_CONSTRICTION_value",
+        "Blue_PHASIC_value",
+        "Blue_SUSTAINED_value",
+        "Blue_PIPR_AUC_value"
+      ],
+      "configs": [
+        {
+          "idx": 1,
+          "outlier": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+          "imputation": "CSDI",
+          "auroc": 0.9129769820971867,
+          "importance": [
+            0.11792630059202786,
+            0.14692198943123078,
+            0.11757152470640739,
+            0.06331913400516583,
+            0.16418793844290996,
+            0.11231613584192472,
+            0.16959935164550274,
+            0.12182541770236344
+          ]
+        },
+        {
+          "idx": 2,
+          "outlier": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+          "imputation": "TimesNet",
+          "auroc": 0.9121739130434783,
+          "importance": [
+            0.04157618761756123,
+            0.05863728481855323,
+            0.041352759028725095,
+            0.023547060765490773,
+            0.05493299706561961,
+            0.04185509565896424,
+            0.04521024856325334,
+            0.035616508646294134
+          ]
+        },
+        {
+          "idx": 3,
+          "outlier": "ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune",
+          "imputation": "CSDI",
+          "auroc": 0.9115524296675191,
+          "importance": [
+            0.0842439282162068,
+            0.06949008084698198,
+            0.07245917237766884,
+            0.039037805503920955,
+            0.07418406861606741,
+            0.06635314435513615,
+            0.09829656074447118,
+            0.06676496997662333
+          ]
+        },
+        {
+          "idx": 4,
+          "outlier": "ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune",
+          "imputation": "TimesNet",
+          "auroc": 0.9113132992327366,
+          "importance": [
+            0.04805039556831769,
+            0.041690987681213015,
+            0.04595062293151347,
+            0.029975230525094338,
+            0.050671708652299544,
+            0.04444517531511505,
+            0.05622467131351141,
+            0.04028574891051202
+          ]
+        },
+        {
+          "idx": 5,
+          "outlier": "pupil-gt",
+          "imputation": "pupil-gt",
+          "auroc": 0.9109820971867006,
+          "importance": [
+            0.09658426368088036,
+            0.1044907758750086,
+            0.09928912843617914,
+            0.04197104913140253,
+            0.10036439763926598,
+            0.11266935578864752,
+            0.1017632309766161,
+            0.06705850258732221
+          ]
+        },
+        {
+          "idx": 6,
+          "outlier": "pupil-gt",
+          "imputation": "ensemble-CSDI-MOMENT-SAITS",
+          "auroc": 0.9109539641943734,
+          "importance": [
+            0.12143325616384562,
+            0.13772630649177753,
+            0.1349885228458904,
+            0.06685784076867503,
+            0.14829537040652935,
+            0.11516811440596797,
+            0.1432635069400884,
+            0.11523539000574706
+          ]
+        },
+        {
+          "idx": 7,
+          "outlier": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+          "imputation": "SAITS",
+          "auroc": 0.9103797953964193,
+          "importance": [
+            0.1145615091437239,
+            0.12777442242556147,
+            0.13559421092470145,
+            0.06166723838998237,
+            0.14289617596691198,
+            0.1476329898639282,
+            0.1454221330448949,
+            0.10220647167748213
+          ]
+        },
+        {
+          "idx": 8,
+          "outlier": "pupil-gt",
+          "imputation": "CSDI",
+          "auroc": 0.9102506393861893,
+          "importance": [
+            0.1183914350934954,
+            0.12400011307713124,
+            0.13152130323450067,
+            0.0654975595477605,
+            0.15509469241354568,
+            0.12094524816703091,
+            0.14206421223495988,
+            0.12168286742598117
+          ]
+        },
+        {
+          "idx": 9,
+          "outlier": "MOMENT-gt-finetune",
+          "imputation": "SAITS",
+          "auroc": 0.9099398976982097,
+          "importance": [
+            0.05601787025792178,
+            0.05882361081414602,
+            0.0684910457965204,
+            0.06599451823306952,
+            0.07623143965690923,
+            0.0659416867906006,
+            0.09174147524190161,
+            0.07570468123956059
+          ]
+        },
+        {
+          "idx": 10,
+          "outlier": "pupil-gt",
+          "imputation": "TimesNet",
+          "auroc": 0.9092186700767263,
+          "importance": [
+            0.0947586793488064,
+            0.0984467723131421,
+            0.10086273720782928,
+            0.047437201254027485,
+            0.09245632160419415,
+            0.0860582875322638,
+            0.10015927494710988,
+            0.08291834496203117
+          ]
+        }
+      ]
+    },
+    "feature_importance_uncertainty": {
+      "n_configs": 10,
+      "n_features": 8
+    },
+    "gt_vs_ensemble_comparison": {
+      "ground_truth": {
+        "auroc": 0.9109820971867006,
+        "importance": [
+          0.09658426368088036,
+          0.1044907758750086,
+          0.09928912843617914,
+          0.04197104913140253,
+          0.10036439763926598,
+          0.11266935578864752,
+          0.1017632309766161,
+          0.06705850258732221
+        ]
+      },
+      "best_ensemble": {
+        "outlier": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+        "imputation": "CSDI",
+        "auroc": 0.9129769820971867,
+        "importance": [
+          0.11792630059202786,
+          0.14692198943123078,
+          0.11757152470640739,
+          0.06331913400516583,
+          0.16418793844290996,
+          0.11231613584192472,
+          0.16959935164550274,
+          0.12182541770236344
+        ]
+      },
+      "importance_correlation": 0.6881013651539566,
+      "features": [
+        "Red_MAX_CONSTRICTION_value",
+        "Red_PHASIC_value",
+        "Red_SUSTAINED_value",
+        "Red_PIPR_AUC_value",
+        "Blue_MAX_CONSTRICTION_value",
+        "Blue_PHASIC_value",
+        "Blue_SUSTAINED_value",
+        "Blue_PIPR_AUC_value"
+      ]
+    },
+    "shap_beeswarm_config_1": {
+      "config": {
+        "rank": 1,
+        "run_id": "50bf2ff80d7d43059582f3ec5a6d91e4",
+        "outlier_method": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+        "imputation_method": "CSDI",
+        "featurization": "simple1.0",
+        "auroc_mean": 0.9129769820971867,
+        "auroc_ci_lo": 0.9040920716112533,
+        "auroc_ci_hi": 0.9194373401534527,
+        "n_bootstrap": 1000,
+        "model_path": "/home/petteri/mlruns/253031330985650090/50bf2ff80d7d43059582f3ec5a6d91e4/artifacts/model/model_CATBOOST_eval-auc__simple1.0__CSDI__ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune.pickle"
+      },
+      "n_samples": 63,
+      "n_features": 8
+    },
+    "shap_beeswarm_config_2": {
+      "config": {
+        "rank": 2,
+        "run_id": "d36659217bec47eead3e7f689821f9f2",
+        "outlier_method": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+        "imputation_method": "TimesNet",
+        "featurization": "simple1.0",
+        "auroc_mean": 0.9121739130434783,
+        "auroc_ci_lo": 0.90153452685422,
+        "auroc_ci_hi": 0.9207161125319693,
+        "n_bootstrap": 1000,
+        "model_path": "/home/petteri/mlruns/253031330985650090/d36659217bec47eead3e7f689821f9f2/artifacts/model/model_CATBOOST_eval-auc__simple1.0__TimesNet__ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune.pickle"
+      },
+      "n_samples": 63,
+      "n_features": 8
+    },
+    "shap_beeswarm_config_3": {
+      "config": {
+        "rank": 3,
+        "run_id": "af4cd42260834c8780190c0248a697de",
+        "outlier_method": "ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune",
+        "imputation_method": "CSDI",
+        "featurization": "simple1.0",
+        "auroc_mean": 0.9115524296675191,
+        "auroc_ci_lo": 0.9040920716112533,
+        "auroc_ci_hi": 0.918158567774936,
+        "n_bootstrap": 1000,
+        "model_path": "/home/petteri/mlruns/253031330985650090/af4cd42260834c8780190c0248a697de/artifacts/model/model_CATBOOST_eval-auc__simple1.0__CSDI__ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune.pickle"
+      },
+      "n_samples": 63,
+      "n_features": 8
+    },
+    "shap_beeswarm_config_4": {
+      "config": {
+        "rank": 4,
+        "run_id": "89483feaeb0d4c0e809cf0cc56d4e2b0",
+        "outlier_method": "ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune",
+        "imputation_method": "TimesNet",
+        "featurization": "simple1.0",
+        "auroc_mean": 0.9113132992327366,
+        "auroc_ci_lo": 0.9028132992327366,
+        "auroc_ci_hi": 0.9194373401534527,
+        "n_bootstrap": 1000,
+        "model_path": "/home/petteri/mlruns/253031330985650090/89483feaeb0d4c0e809cf0cc56d4e2b0/artifacts/model/model_CATBOOST_eval-auc__simple1.0__TimesNet__ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune.pickle"
+      },
+      "n_samples": 63,
+      "n_features": 8
+    },
+    "shap_beeswarm_config_5": {
+      "config": {
+        "rank": 5,
+        "run_id": "d483dc7262f447379f9c41f845f8b65e",
+        "outlier_method": "pupil-gt",
+        "imputation_method": "pupil-gt",
+        "featurization": "simple1.0",
+        "auroc_mean": 0.9109820971867006,
+        "auroc_ci_lo": 0.9028132992327366,
+        "auroc_ci_hi": 0.918158567774936,
+        "n_bootstrap": 1000,
+        "model_path": "/home/petteri/mlruns/253031330985650090/d483dc7262f447379f9c41f845f8b65e/artifacts/model/model_CATBOOST_eval-auc__simple1.0__pupil-gt__pupil-gt.pickle"
+      },
+      "n_samples": 63,
+      "n_features": 8
+    },
+    "shap_beeswarm_config_6": {
+      "config": {
+        "rank": 6,
+        "run_id": "9011e4f306464019b7a0f2ebf571b850",
+        "outlier_method": "pupil-gt",
+        "imputation_method": "ensemble-CSDI-MOMENT-SAITS",
+        "featurization": "simple1.0",
+        "auroc_mean": 0.9109539641943734,
+        "auroc_ci_lo": 0.9028132992327366,
+        "auroc_ci_hi": 0.918158567774936,
+        "n_bootstrap": 1000,
+        "model_path": "/home/petteri/mlruns/253031330985650090/9011e4f306464019b7a0f2ebf571b850/artifacts/model/model_CATBOOST_eval-auc__simple1.0__ensemble-CSDI-MOMENT-SAITS__pupil-gt.pickle"
+      },
+      "n_samples": 63,
+      "n_features": 8
+    },
+    "shap_beeswarm_config_7": {
+      "config": {
+        "rank": 7,
+        "run_id": "3c83f65dff8b45d7afacf8430252a7d7",
+        "outlier_method": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+        "imputation_method": "SAITS",
+        "featurization": "simple1.0",
+        "auroc_mean": 0.9103797953964193,
+        "auroc_ci_lo": 0.9028132992327366,
+        "auroc_ci_hi": 0.9168797953964195,
+        "n_bootstrap": 1000,
+        "model_path": "/home/petteri/mlruns/253031330985650090/3c83f65dff8b45d7afacf8430252a7d7/artifacts/model/model_CATBOOST_eval-auc__simple1.0__SAITS__ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune.pickle"
+      },
+      "n_samples": 63,
+      "n_features": 8
+    },
+    "shap_beeswarm_config_8": {
+      "config": {
+        "rank": 8,
+        "run_id": "2ab792cff1774ce79bd1a48b39386e11",
+        "outlier_method": "pupil-gt",
+        "imputation_method": "CSDI",
+        "featurization": "simple1.0",
+        "auroc_mean": 0.9102506393861893,
+        "auroc_ci_lo": 0.9027813299232735,
+        "auroc_ci_hi": 0.9168797953964195,
+        "n_bootstrap": 1000,
+        "model_path": "/home/petteri/mlruns/253031330985650090/2ab792cff1774ce79bd1a48b39386e11/artifacts/model/model_CATBOOST_eval-auc__simple1.0__CSDI__pupil-gt.pickle"
+      },
+      "n_samples": 63,
+      "n_features": 8
+    },
+    "shap_beeswarm_config_9": {
+      "config": {
+        "rank": 9,
+        "run_id": "a348d88ce4584014ba589d9c4f4f768a",
+        "outlier_method": "MOMENT-gt-finetune",
+        "imputation_method": "SAITS",
+        "featurization": "simple1.0",
+        "auroc_mean": 0.9099398976982097,
+        "auroc_ci_lo": 0.8989769820971867,
+        "auroc_ci_hi": 0.9207161125319694,
+        "n_bootstrap": 1000,
+        "model_path": "/home/petteri/mlruns/253031330985650090/a348d88ce4584014ba589d9c4f4f768a/artifacts/model/model_CATBOOST_eval-auc__simple1.0__SAITS__MOMENT-gt-finetune.pickle"
+      },
+      "n_samples": 63,
+      "n_features": 8
+    },
+    "shap_beeswarm_config_10": {
+      "config": {
+        "rank": 10,
+        "run_id": "64b8bee69f664e2589d06ebf20102511",
+        "outlier_method": "pupil-gt",
+        "imputation_method": "TimesNet",
+        "featurization": "simple1.0",
+        "auroc_mean": 0.9092186700767263,
+        "auroc_ci_lo": 0.90153452685422,
+        "auroc_ci_hi": 0.9156010230179028,
+        "n_bootstrap": 1000,
+        "model_path": "/home/petteri/mlruns/253031330985650090/64b8bee69f664e2589d06ebf20102511/artifacts/model/model_CATBOOST_eval-auc__simple1.0__TimesNet__pupil-gt.pickle"
+      },
+      "n_samples": 63,
+      "n_features": 8
+    }
+  }
+}

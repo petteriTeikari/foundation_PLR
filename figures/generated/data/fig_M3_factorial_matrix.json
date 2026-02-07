@@ -1,0 +1,15 @@
+{
+  "factors": {
+    "outlier": 0,
+    "imputation": 0,
+    "featurization": 0,
+    "classifier": 0
+  },
+  "total_configurations": 0,
+  "methods": {
+    "outlier": [],
+    "imputation": [],
+    "featurization": [],
+    "classifier": []
+  }
+}
