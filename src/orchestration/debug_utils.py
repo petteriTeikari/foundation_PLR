@@ -1,8 +1,25 @@
-from omegaconf import DictConfig, open_dict
+from typing import Any
+
 from loguru import logger
+from omegaconf import DictConfig, open_dict
 
 
-def debug_classification_macro(cfg):
+def debug_classification_macro(cfg: DictConfig) -> DictConfig:
+    """Reduce bootstrap iterations for faster debugging.
+
+    Modifies the configuration to use only 50 bootstrap iterations
+    instead of the default (typically 1000).
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary to modify.
+
+    Returns
+    -------
+    DictConfig
+        Modified configuration with reduced bootstrap iterations.
+    """
     with open_dict(cfg):
         cfg["CLS_EVALUATION"]["BOOTSTRAP"]["n_iterations"] = 50
         logger.info(
@@ -13,14 +30,50 @@ def debug_classification_macro(cfg):
     return cfg
 
 
-def pick_one_model(cfg: DictConfig, model_name: str = "SAITS"):
+def pick_one_model(cfg: DictConfig, model_name: str = "SAITS") -> DictConfig:
+    """Keep only one model in configuration for testing.
+
+    Reduces the model dictionary to contain only the specified model.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration with MODELS dictionary.
+    model_name : str, optional
+        Name of the model to keep. Default is 'SAITS'.
+
+    Returns
+    -------
+    DictConfig
+        Modified configuration with single model.
+    """
     logger.warning("Picking just one model for testing purposes: {}".format(model_name))
     cfg["MODELS"] = {model_name: cfg["MODELS"][model_name]}
     return cfg
 
 
-def debug_train_only_for_one_epoch(cfg):
-    def replace_item(obj, key, replace_value):
+def debug_train_only_for_one_epoch(cfg: DictConfig) -> DictConfig:
+    """Reduce all epoch counts to 1 for quick debugging.
+
+    Recursively searches configuration for epoch-related keys and
+    sets them to 1 for fast iteration during development.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary to modify.
+
+    Returns
+    -------
+    DictConfig
+        Modified configuration with all epoch counts set to 1.
+
+    Notes
+    -----
+    Modifies keys: 'epochs', 'max_epoch', 'train_epochs'.
+    """
+
+    def replace_item(obj: DictConfig, key: str, replace_value: Any) -> DictConfig:
         for k, v in obj.items():
             if isinstance(v, DictConfig):
                 obj[k] = replace_item(v, key, replace_value)
@@ -43,7 +96,23 @@ def debug_train_only_for_one_epoch(cfg):
     return cfg_modified
 
 
-def fix_tree_learners_for_debug(cfg, model_name):
+def fix_tree_learners_for_debug(cfg: DictConfig, model_name: str) -> DictConfig:
+    """Reduce tree-based model iterations for debugging.
+
+    Specifically handles MissForest by reducing max_iter to 2.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary.
+    model_name : str
+        Name of the model to check.
+
+    Returns
+    -------
+    DictConfig
+        Modified configuration if MissForest, otherwise unchanged.
+    """
     if "MISSFOREST" in model_name:
         logger.warning("DEBUG | Setting the MissForest max_iter to 2")
         with open_dict(cfg):

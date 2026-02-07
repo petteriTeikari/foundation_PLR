@@ -1,16 +1,31 @@
-from omegaconf import DictConfig
 from loguru import logger
-from omegaconf import open_dict
+from omegaconf import DictConfig, open_dict
 
 from src.log_helpers.log_naming_uris_and_dirs import update_outlier_detection_run_name
 from src.orchestration.hyperparamer_list_utils import (
-    define_list_hyperparam_combos,
     create_name_from_model_params,
     define_grid_hyperparam_combos,
+    define_list_hyperparam_combos,
 )
 
 
 def flatten_the_nested_dicts(cfgs, delimiter="_"):
+    """Flatten nested configuration dictionaries to a single level.
+
+    Extracts configurations from the first model's nested structure.
+
+    Parameters
+    ----------
+    cfgs : dict
+        Nested dictionary with model names as keys.
+    delimiter : str, optional
+        Delimiter for flattened keys (currently unused). Default is '_'.
+
+    Returns
+    -------
+    dict
+        Flattened configuration dictionary.
+    """
     cfgs_flat = cfgs[list(cfgs.keys())[0]].copy()
     logger.debug(
         "HYPERPARAMETER SEARCH | {} model architectures".format(len(cfgs.keys()))
@@ -25,8 +40,32 @@ def flatten_the_nested_dicts(cfgs, delimiter="_"):
 
 
 def drop_other_models(cfg_model, model, task: str):
-    """
-    Drop all models from the config except the one specified
+    """Drop all models from the config except the one specified.
+
+    Creates a copy of the configuration with only the specified model,
+    ensuring exactly one model per configuration for hyperparameter sweeps.
+
+    Parameters
+    ----------
+    cfg_model : DictConfig
+        Configuration containing multiple models.
+    model : str
+        Name of the model to keep.
+    task : str
+        Task type determining config key: 'outlier_detection', 'imputation',
+        or 'classification'.
+
+    Returns
+    -------
+    DictConfig
+        Configuration with only the specified model.
+
+    Raises
+    ------
+    ValueError
+        If task is not recognized.
+    AssertionError
+        If resulting config doesn't have exactly one model.
     """
     if task == "outlier_detection":
         model_cfg_key = "OUTLIER_MODELS"
@@ -47,16 +86,35 @@ def drop_other_models(cfg_model, model, task: str):
 
     # as you copy the config for each hyperparameter combo, only
     # one model per cfg is allowed
-    assert (
-        len(cfg_out[model_cfg_key]) == 1
-    ), "Only one model per cfg is allowed, you had {}".format(
-        list(cfg_out[model_cfg_key].keys())
+    assert len(cfg_out[model_cfg_key]) == 1, (
+        "Only one model per cfg is allowed, you had {}".format(
+            list(cfg_out[model_cfg_key].keys())
+        )
     )
 
     return cfg_out
 
 
 def pick_cfg_key(cfg: DictConfig, task: str):
+    """Get the configuration key for models based on task type.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary (currently unused).
+    task : str
+        Task type: 'outlier_detection', 'imputation', or 'classification'.
+
+    Returns
+    -------
+    str
+        Configuration key: 'OUTLIER_MODELS', 'MODELS', or 'CLS_MODELS'.
+
+    Raises
+    ------
+    ValueError
+        If task is not recognized.
+    """
     if task == "outlier_detection":
         cfg_key = "OUTLIER_MODELS"
     elif task == "imputation":
@@ -69,6 +127,30 @@ def pick_cfg_key(cfg: DictConfig, task: str):
 
 
 def define_hyperparameter_search(cfg: DictConfig, task: str, cfg_key: str) -> dict:
+    """Define hyperparameter search configurations for all models.
+
+    Creates configuration variants for each model based on their defined
+    search space (LIST or GRID method).
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Main configuration with model definitions.
+    task : str
+        Task type for naming conventions.
+    cfg_key : str
+        Key to access model configurations (e.g., 'MODELS').
+
+    Returns
+    -------
+    dict
+        Dictionary mapping configuration names to their configs.
+
+    Raises
+    ------
+    ValueError
+        If search method is unknown or parameters are missing.
+    """
     cfgs = {}
     no_models = len(cfg[cfg_key].keys())  # dict containing the Hydra DictConfigs
     logger.debug("HYPERPARAMETER SEARCH | {} model architectures".format(no_models))
@@ -142,6 +224,32 @@ def define_hyperparameter_search(cfg: DictConfig, task: str, cfg_key: str) -> di
 
 
 def define_hyperparam_group(cfg: DictConfig, task: str) -> dict:
+    """Define a group of hyperparameter configurations for a task.
+
+    Main entry point for hyperparameter configuration generation.
+    Either creates multiple configs for hyperparameter search or
+    a single config for default parameters.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Main configuration with EXPERIMENT.hyperparam_search flag.
+    task : str
+        Task type: 'outlier_detection', 'imputation', or 'classification'.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping run names to their configurations.
+
+    Raises
+    ------
+    ValueError
+        If multiple models defined without hyperparameter search enabled,
+        or if task is not recognized.
+    NotImplementedError
+        If classification naming is requested (not yet implemented).
+    """
     cfg_key = pick_cfg_key(cfg=cfg, task=task)
     if cfg["EXPERIMENT"]["hyperparam_search"]:
         try:
