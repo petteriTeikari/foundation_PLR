@@ -1,21 +1,23 @@
-from loguru import logger
 import os
+from pathlib import Path
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import polars as pl
 import seaborn as sns
-
+from loguru import logger
 from omegaconf import DictConfig
+
 from src.data_io.data_utils import get_unique_polars_rows
 from src.utils import get_artifacts_dir
+from src.viz.plot_config import save_figure
 from src.viz.viz_subplots import (
-    viz_timeseries_subplot,
     viz_individual_metric_distribution_subplot,
+    viz_timeseries_subplot,
 )
 from src.viz.viz_utils import (
-    get_font_scaler,
     filter_imputation_df_for_orig,
+    get_font_scaler,
     get_subjectwise_df_metrics,
 )
 
@@ -26,6 +28,25 @@ from src.viz.viz_utils import (
 #     description="Imputation Visualization",
 # )
 def visualize_imputations(imputation_artifacts: dict, cfg: DictConfig):
+    """Generate imputation quality figures for every data split.
+
+    Iterate over the splits present in the first model's metrics and
+    produce a quality visualization for each via
+    :func:`visualize_imputation_quality`.
+
+    Parameters
+    ----------
+    imputation_artifacts : dict
+        Dict with ``"metrics"`` (nested model -> split -> metrics) and
+        ``"df"`` (Polars DataFrame of imputed signals).
+    cfg : DictConfig
+        Full Hydra configuration (``VISUALIZATION`` sub-key is used).
+
+    Returns
+    -------
+    dict[str, str]
+        Mapping of ``"global_{split}"`` to saved figure paths.
+    """
     logger.info("Visualizing the imputed data")
     models = list(imputation_artifacts["metrics"].keys())
     fig_paths = {}
@@ -58,9 +79,45 @@ def visualize_imputation_quality(
     plot_gt_with_imputations: bool = True,
     split: str = "val",
     split_key="gt",
-    compare_splits: bool = False,
+    _compare_splits: bool = False,
     y_lims: tuple = (-80, 20),
 ):
+    """Create a multi-row figure comparing imputation models against raw/GT signals.
+
+    Row 0 shows the raw and ground-truth PLR signals. Subsequent rows
+    show each imputation model's output with its global MAE. The final
+    panel displays the subject-wise metric distribution.
+
+    Parameters
+    ----------
+    metrics : dict
+        Nested dict ``{model_name: {split: {split_key: {"global": ..., "subjectwise": ...}}}}``.
+    df : pl.DataFrame
+        Polars DataFrame of imputed signals with ``subject_code``,
+        ``split_key``, and signal columns.
+    cfg : DictConfig
+        Full Hydra configuration.
+    viz_cfg : DictConfig
+        Visualization sub-config with layout, style, and font settings.
+    use_class_labels : bool, optional
+        Whether to color traces by class label. Default is ``True``.
+    plot_gt_with_imputations : bool, optional
+        Whether to overlay ground truth on imputation panels.
+        Default is ``True``.
+    split : str, optional
+        Data split to visualize (e.g. ``"val"``). Default is ``"val"``.
+    split_key : str, optional
+        Split key label (e.g. ``"gt"``). Default is ``"gt"``.
+    _compare_splits : bool, optional
+        Reserved for future cross-split comparison. Default is ``False``.
+    y_lims : tuple of float, optional
+        Y-axis limits ``(ymin, ymax)``. Default is ``(-80, 20)``.
+
+    Returns
+    -------
+    str
+        Absolute path to the saved figure PNG.
+    """
     # These are the actual PLR recorded ('raw') and the manually supervised denoising
     orig_keys = {"Raw": "pupil_raw", "Denoised Grouth Truth": "gt"}
     n_cols = 2
@@ -186,8 +243,9 @@ def visualize_imputation_quality(
         viz_cfg,
     )
 
-    path_output_dir = os.path.join(output_dir, f"imputations_{split}_{split_key}.png")
-    logger.info(f"Saving the feature visualization to {path_output_dir}")
-    fig.savefig(path_output_dir)
+    output_dir_path = Path(output_dir) if output_dir else None
+    filename = f"imputations_{split}_{split_key}"
+    saved_path = save_figure(fig, filename, output_dir=output_dir_path)
+    logger.info(f"Saved the feature visualization to {saved_path}")
 
-    return path_output_dir
+    return str(saved_path)

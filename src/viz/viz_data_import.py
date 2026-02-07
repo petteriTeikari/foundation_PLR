@@ -1,19 +1,34 @@
 import os
+from pathlib import Path
 
-from omegaconf import DictConfig
-import polars as pl
-from tqdm import tqdm
-import seaborn as sns
 import matplotlib.pyplot as plt
+import polars as pl
+import seaborn as sns
+from omegaconf import DictConfig
+from tqdm import tqdm
 
 from src.data_io.data_utils import get_list_of_unique_subjects
 from src.utils import get_artifacts_dir
+from src.viz.plot_config import save_figure
 from src.viz.viz_styling_utils import blank_subplot
 from src.viz.viz_subplots import viz_input_subplot
 from src.viz.viz_utils import get_font_scaler
 
 
 def pick_input_viz_numpy_arrays(df_subject: pl.DataFrame) -> dict:
+    """Extract time and pupil columns from a subject DataFrame as NumPy arrays.
+
+    Parameters
+    ----------
+    df_subject : pl.DataFrame
+        Single-subject Polars DataFrame containing ``time``, ``pupil_orig``,
+        ``pupil_raw``, and ``gt`` columns.
+
+    Returns
+    -------
+    dict
+        Nested dict with ``"x"`` (time array) and ``"y"`` (orig, raw, gt arrays).
+    """
     # Get the numpy arrays for the visualization
     return {
         "x": {
@@ -28,6 +43,20 @@ def pick_input_viz_numpy_arrays(df_subject: pl.DataFrame) -> dict:
 
 
 def compute_PLR_residuals(data_to_plot):
+    """Compute residuals between original/raw signals and ground truth.
+
+    Parameters
+    ----------
+    data_to_plot : dict
+        Nested dict produced by :func:`pick_input_viz_numpy_arrays` with
+        ``"x"`` and ``"y"`` sub-dicts.
+
+    Returns
+    -------
+    dict
+        Nested dict with ``"x"`` (time) and ``"y"`` containing
+        ``"orig-gt"`` and ``"raw-gt"`` residual arrays.
+    """
     return {
         "x": {
             "time": data_to_plot["x"]["time"],
@@ -40,6 +69,27 @@ def compute_PLR_residuals(data_to_plot):
 
 
 def visualize_input_per_subject(df_subject, code, cfg, viz_cfg):
+    """Generate a 2-row figure showing PLR signals and residuals for one subject.
+
+    Row 0 plots the original, raw, and ground-truth signals. Row 1 plots
+    the corresponding residuals against ground truth.
+
+    Parameters
+    ----------
+    df_subject : pl.DataFrame
+        Single-subject Polars DataFrame with PLR signal columns.
+    code : str
+        Subject identifier used as filename and in the figure title.
+    cfg : DictConfig
+        Full Hydra config (unused directly but forwarded for consistency).
+    viz_cfg : DictConfig
+        Visualization sub-config with ``SNS``, ``dpi``, and font settings.
+
+    Returns
+    -------
+    str
+        Absolute path to the saved figure PNG.
+    """
     # Get the data as numpy arrays in dicts
     data_to_plot = pick_input_viz_numpy_arrays(df_subject)
     residuals_to_plot = compute_PLR_residuals(data_to_plot)
@@ -95,9 +145,10 @@ def visualize_input_per_subject(df_subject, code, cfg, viz_cfg):
         )
     blank_subplot(ax_in=axes[r, col + 1], viz_cfg=viz_cfg)
 
-    path_out = os.path.join(output_dir, f"{code}.png")
-    plt.savefig(path_out)
-    return path_out
+    fig = plt.gcf()
+    output_dir_path = Path(output_dir) if output_dir else None
+    saved_path = save_figure(fig, code, output_dir=output_dir_path)
+    return str(saved_path)
 
 
 # @task(
@@ -106,6 +157,32 @@ def visualize_input_per_subject(df_subject, code, cfg, viz_cfg):
 #     description="Examine that the data quality is good",
 # )
 def visualize_input_data(df: pl.DataFrame, cfg: DictConfig, PLR_length: int = 1981):
+    """Generate per-subject input visualization figures for all subjects.
+
+    Iterate over every unique subject in *df*, assert the expected PLR
+    length, and produce a diagnostic figure via
+    :func:`visualize_input_per_subject`.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Multi-subject Polars DataFrame containing a ``subject_code``
+        column and the standard PLR signal columns.
+    cfg : DictConfig
+        Full Hydra configuration (``VISUALIZATION`` sub-key is used).
+    PLR_length : int, optional
+        Expected number of rows per subject. Default is ``1981``.
+
+    Returns
+    -------
+    list[str]
+        Paths to the saved figure PNGs, one per subject.
+
+    Raises
+    ------
+    AssertionError
+        If any subject's row count does not equal *PLR_length*.
+    """
     unique_subjects = sorted(get_list_of_unique_subjects(df))
     paths_out = []
     for i, code in enumerate(

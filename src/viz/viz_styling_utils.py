@@ -1,14 +1,41 @@
-from loguru import logger
 import seaborn as sns
+from loguru import logger
 
 from src.viz.viz_utils import get_font_scaler
 
 
 def blank_subplot(ax_in, viz_cfg):
+    """Turn off all axis elements to create a blank subplot placeholder.
+
+    Parameters
+    ----------
+    ax_in : matplotlib.axes.Axes
+        Axes instance to blank out.
+    viz_cfg : DictConfig
+        Visualization config (accepted for API consistency, unused).
+    """
     ax_in.axis("off")
 
 
 def style_timeseries_ax(ax_in, title_str, y_lims, legend_on=False, font_scaler=1.0):
+    """Apply standard PLR time-series styling to an axes.
+
+    Set axis labels (Time / Pupil Constriction), despine, configure legend
+    visibility, apply y-limits, and format the title.
+
+    Parameters
+    ----------
+    ax_in : matplotlib.axes.Axes
+        Axes instance to style.
+    title_str : str
+        Bold left-aligned title text.
+    y_lims : tuple of float or None
+        ``(ymin, ymax)`` limits. Pass ``None`` to leave auto-scaled.
+    legend_on : bool, optional
+        Whether the legend should remain visible. Default is ``False``.
+    font_scaler : float, optional
+        Multiplier applied to base font sizes. Default is ``1.0``.
+    """
     # https://seaborn.pydata.org/tutorial/aesthetics.html#removing-axes-spines
     try:
         sns.despine(ax=ax_in, offset=2)
@@ -36,6 +63,17 @@ def style_timeseries_ax(ax_in, title_str, y_lims, legend_on=False, font_scaler=1
 
 
 def style_distribution_plot(ax_in, title_str, viz_cfg):
+    """Apply standard distribution-plot styling (title and despine) to an axes.
+
+    Parameters
+    ----------
+    ax_in : matplotlib.axes.Axes
+        Axes instance to style.
+    title_str : str
+        Bold left-aligned title text.
+    viz_cfg : DictConfig
+        Visualization config used to derive the font scaler.
+    """
     ax_in.set_title(
         f"{title_str}",
         y=1,

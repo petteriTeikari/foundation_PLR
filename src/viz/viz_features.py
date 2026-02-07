@@ -1,19 +1,20 @@
-from loguru import logger
 import os
+from pathlib import Path
 
+import matplotlib.pyplot as plt
 import seaborn as sns
+from loguru import logger
 from omegaconf import DictConfig
 
 from src.featurization.feature_utils import (
     get_feature_names,
 )
-import matplotlib.pyplot as plt
-
 from src.utils import get_artifacts_dir
+from src.viz.plot_config import save_figure
 from src.viz.viz_subplots import feature_subplot
 from src.viz.viz_utils import (
-    pick_single_feature_with_code_from_df,
     get_font_scaler,
+    pick_single_feature_with_code_from_df,
 )
 
 
@@ -23,6 +24,26 @@ from src.viz.viz_utils import (
 #     description="Visualize the PLR data, and the derived features for publication and for 'graphical unit testing' of the data",
 # )
 def visualize_features(features: dict, cfg: DictConfig):
+    """Generate feature-distribution figures for all color/split combinations.
+
+    Iterate over split keys (``"gt"``, ``"raw"``) and LED colors
+    (``"Blue"``, ``"Red"``), producing one figure per combination via
+    :func:`viz_features_per_color`.
+
+    Parameters
+    ----------
+    features : dict
+        Nested feature dict keyed by source model, then ``"data"`` ->
+        split -> split_key -> DataFrame.
+    cfg : DictConfig
+        Full Hydra configuration (``VISUALIZATION`` sub-key is used).
+
+    Returns
+    -------
+    dict[str, str]
+        Mapping of ``"features_{color}_{split_key}"`` to saved figure
+        paths.
+    """
     logger.info("Visualizing the PLR features")
     sources = list(features.keys())
     feature_names = get_feature_names(features)
@@ -73,6 +94,36 @@ def viz_features_per_color(
     viz_cfg,
     output_dir=None,
 ):
+    """Plot feature distributions for a single LED color and split key.
+
+    Create a grid figure with one row per source model and columns for
+    each (feature x split) combination, then save to disk.
+
+    Parameters
+    ----------
+    features : dict
+        Nested feature dict keyed by source model.
+    sources : list[str]
+        Model/source names (determines row count).
+    feature_names : list[str]
+        All available feature names; filtered by *color* substring.
+    splits : list[str]
+        Data splits (e.g. ``["train", "val"]``).
+    split_key : str
+        Split key label (``"gt"`` or ``"raw"``).
+    color : str
+        LED color substring to filter features (``"Blue"`` or ``"Red"``).
+    viz_cfg : DictConfig
+        Visualization config with layout and style settings.
+    output_dir : str or None, optional
+        Directory for the saved figure. Default is ``None`` (auto-resolved).
+
+    Returns
+    -------
+    str or None
+        Path to the saved figure, or ``None`` if a feature could not be
+        extracted.
+    """
     # Keep only the feature names with the desired color substring
     features_per_color = [f for f in feature_names if color in f]
     n_cols = len(features_per_color) * len(splits)
@@ -143,10 +194,9 @@ def viz_features_per_color(
                     feature_name=feature_name,
                 )
 
-    path_output_dir = os.path.join(
-        output_dir, f"features_{color}_{split}_{split_key}.png"
-    )
-    logger.debug(f"Saving the feature visualization to {path_output_dir}")
-    fig.savefig(path_output_dir)
+    output_dir_path = Path(output_dir) if output_dir else None
+    filename = f"features_{color}_{split}_{split_key}"
+    saved_path = save_figure(fig, filename, output_dir=output_dir_path)
+    logger.debug(f"Saved the feature visualization to {saved_path}")
 
-    return path_output_dir
+    return str(saved_path)
