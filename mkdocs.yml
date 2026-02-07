@@ -123,7 +123,9 @@ plugins:
             separate_signature: true
             signature_crossrefs: true
             show_signature_annotations: true
-            # Don't fail on import errors
+            # Allow inspection for proper type resolution.
+            # Modules with missing deps (catboost, torch) fall back to
+            # static analysis automatically.
             allow_inspection: true
 
   # Git revision dates

@@ -206,8 +206,8 @@ def torch_to_numpy(_torch_tensor) -> None:
 
     Parameters
     ----------
-    torch_tensor : torch.Tensor
-        Input tensor.
+    _torch_tensor : torch.Tensor
+        Input tensor (currently unused — placeholder).
 
     Returns
     -------

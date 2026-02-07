@@ -4409,6 +4409,15 @@ dev = [
     { name = "pytest-xdist" },
     { name = "types-pyyaml" },
 ]
+docs = [
+    { name = "mkdocs" },
+    { name = "mkdocs-git-revision-date-localized-plugin" },
+    { name = "mkdocs-material" },
+    { name = "mkdocs-mermaid2-plugin" },
+    { name = "mkdocstrings" },
+    { name = "mkdocstrings-python" },
+    { name = "prefect" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -4478,6 +4487,15 @@ dev = [
     { name = "pytest", specifier = ">=8.3.3" },
     { name = "pytest-xdist", specifier = ">=3.5.0" },
     { name = "types-pyyaml", specifier = ">=6.0.0" },
+]
+docs = [
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-git-revision-date-localized-plugin", specifier = ">=1.5.1" },
+    { name = "mkdocs-material", specifier = ">=9.7.1" },
+    { name = "mkdocs-mermaid2-plugin", specifier = ">=1.2.3" },
+    { name = "mkdocstrings", specifier = ">=1.0.2" },
+    { name = "mkdocstrings-python", specifier = ">=2.0.1" },
+    { name = "prefect", specifier = ">=3.0.11" },
 ]
 
 [[package]]

@@ -19,12 +19,11 @@ Usage:
 """
 
 import gc
-import os
 import pickle
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
+from typing import Any, Dict, Optional, Tuple
 
 import duckdb
 import numpy as np
@@ -42,34 +41,8 @@ from src.utils.paths import (
     get_seri_db_path,
 )
 
-# Check if we should use Prefect (disabled in tests or when PREFECT_DISABLED env var is set)
-USE_PREFECT = os.environ.get("PREFECT_DISABLED", "").lower() not in ("1", "true", "yes")
-
-try:
-    if USE_PREFECT:
-        from prefect import flow, task
-
-        PREFECT_AVAILABLE = True
-    else:
-        raise ImportError("Prefect disabled by environment variable")
-except ImportError:
-    # Fallback for running without Prefect
-    PREFECT_AVAILABLE = False
-    from typing import Callable, TypeVar
-
-    F = TypeVar("F", bound=Callable[..., Any])
-
-    def task(fn: Optional[F] = None, **kwargs: Any) -> Any:
-        """No-op decorator when Prefect is not available."""
-        if fn is None:
-            return lambda f: f
-        return fn
-
-    def flow(fn: Optional[F] = None, **kwargs: Any) -> Any:
-        """No-op decorator when Prefect is not available."""
-        if fn is None:
-            return lambda f: f
-        return fn
+# Prefect compatibility layer (uses importlib for static-analysis safety)
+from src.orchestration._prefect_compat import flow, task
 
 
 # ============================================================================

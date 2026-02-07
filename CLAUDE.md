@@ -39,6 +39,7 @@ Errors at each stage propagate downstream. FM embeddings underperform handcrafte
 | 12 | **grep/sed/awk BANNED** for structured data: Use AST/YAML parsers | See below |
 | 13 | **DevEx**: Automate everything, no copy-paste walls, one command setup | See below |
 | 14 | **Proactive behavior**: Plan before executing, propose alternatives, raise issues | See below |
+| 15 | **Academic rigor over speed**: Correctness first, no lazy shortcuts for CI/build speed | See below |
 
 ## Figure QA (CRITICAL-FAILURE-001)
 
@@ -173,6 +174,17 @@ Plan before executing. Propose alternatives. Check existing code/config FIRST be
 | Selective classification | Barrenada 2025, Geifman 2017 | AURC, Risk-Coverage plots |
 
 Metric sets defined in `src/viz/metric_registry.py` (STRATOS Core, Discrimination, Calibration, Clinical Utility, Outlier Detection, Imputation).
+
+## Academic Rigor Over Speed
+
+This repository is being frozen for academic publication. **Correctness and rigor always take priority over build speed or convenience.**
+
+- **No `continue-on-error`**: CI failures must be genuinely fixed, never masked
+- **No disabling features for speed**: If a tool (mkdocstrings, strict mode, pre-commit) fails, fix the root cause
+- **Install real dependencies**: Don't skip deps to make builds faster if it means features don't work
+- **Strict mode everywhere**: `mkdocs build --strict`, `pytest --strict-markers`, ruff checks — all enforced
+- **Fix warnings, don't suppress them**: Every griffe warning, deprecation, or lint issue gets a proper fix
+- **This is NOT a startup**: No "ship fast, fix later" mentality. Every commit is publication-ready
 
 ## Future Vision
 

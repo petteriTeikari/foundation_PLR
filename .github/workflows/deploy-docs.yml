@@ -29,10 +29,11 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
-      - run: uv python install 3.11 && uv sync --dev --frozen
+      - name: Install docs dependencies
+        run: uv python install 3.11 && uv sync --only-group docs --frozen
 
       - name: Build docs
-        run: ENABLE_MKDOCSTRINGS=false uv run python -m mkdocs build --strict
+        run: uv run python -m mkdocs build --strict
 
       - uses: actions/upload-pages-artifact@v3
         with:

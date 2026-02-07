@@ -44,8 +44,8 @@ def interpolation_wrapper(
         Number of samples for interpolation.
     metric : str
         Metric name ('AUROC', 'AUPR', 'calibration_curve').
-    kind : str, default 'linear'
-        Interpolation method.
+    _kind : str, default 'linear'
+        Interpolation method (currently unused).
 
     Returns
     -------
@@ -1081,8 +1081,8 @@ def bootstrap_subject_stats_dict(
         Predictions keyed by subject code.
     labels : np.ndarray
         True labels for subjects.
-    codes_train : np.ndarray
-        Subject codes for ordering.
+    _codes_train : np.ndarray
+        Subject codes for ordering (currently unused).
     key : str
         Prediction key (e.g., 'y_pred_proba').
     split : str

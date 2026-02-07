@@ -44,9 +44,15 @@ Each module page shows:
 - **Classes**: With attributes and methods
 - **Source code**: Links to the implementation
 
+## R Code Documentation
+
+R code in `src/r/` uses [roxygen2](https://roxygen2.r-lib.org/) documentation conventions.
+mkdocstrings does not have an R handler, so R function documentation is maintained
+separately via roxygen2 comments (`#'`) in `.R` files. See `src/r/README.md` for R API details.
+
 ## Docstring Style
 
-All docstrings follow NumPy style:
+All Python docstrings follow NumPy style:
 
 ```python
 def example_function(param1: int, param2: str) -> dict:

@@ -15,7 +15,7 @@ Usage in Prefect flow:
 import pickle
 import re
 from pathlib import Path
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Optional
 
 import duckdb
 import yaml
@@ -23,22 +23,8 @@ import yaml
 # Registry validation - SINGLE SOURCE OF TRUTH
 from src.data_io.registry import validate_imputation_method, validate_outlier_method
 
-# Try to import Prefect, but make module usable without it
-try:
-    from prefect import get_run_logger, task
-
-    PREFECT_AVAILABLE = True
-except ImportError:
-    PREFECT_AVAILABLE = False
-
-    # Dummy decorator for standalone use
-    F = TypeVar("F", bound=Callable[..., Any])
-
-    def task(*args: Any, **kwargs: Any) -> Any:
-        def decorator(func: F) -> F:
-            return func
-
-        return decorator if not args else decorator(args[0])
+# Prefect compatibility layer (uses importlib for static-analysis safety)
+from src.orchestration._prefect_compat import PREFECT_AVAILABLE, get_run_logger, task
 
 
 # Project paths

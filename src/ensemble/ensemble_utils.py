@@ -1491,8 +1491,8 @@ def get_ensemble_permutations(
     ----------
     best_unique_models : dict
         Dictionary of available submodels.
-    ensemble_cfg : DictConfig
-        Ensemble-specific configuration.
+    _ensemble_cfg : DictConfig
+        Ensemble-specific configuration (currently unused).
     cfg : DictConfig
         Main Hydra configuration.
 
