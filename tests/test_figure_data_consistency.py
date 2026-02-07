@@ -77,7 +77,8 @@ class TestROCRCDataConsistency:
     def roc_rc_data(self):
         """Load ROC/RC JSON data."""
         json_path = PROJECT_ROOT / "data" / "r_data" / "roc_rc_data.json"
-        assert json_path.exists(), f"JSON not found: {json_path}. Run: make analyze"
+        if not json_path.exists():
+            pytest.skip(f"JSON not found: {json_path}. Run: make analyze")
         with open(json_path) as f:
             return json.load(f)
 
@@ -156,7 +157,8 @@ class TestSelectiveClassificationDataConsistency:
         json_path = (
             PROJECT_ROOT / "data" / "r_data" / "selective_classification_data.json"
         )
-        assert json_path.exists(), f"JSON not found: {json_path}. Run: make analyze"
+        if not json_path.exists():
+            pytest.skip(f"JSON not found: {json_path}. Run: make analyze")
         with open(json_path) as f:
             return json.load(f)
 
@@ -213,8 +215,9 @@ class TestDatabaseAUROCMatch:
     @pytest.fixture
     def db_connection(self):
         """Get database connection."""
-        db_path = PROJECT_ROOT / "data" / "public" / "foundation_plr_results_stratos.db"
-        assert db_path.exists(), f"Database not found: {db_path}. Run: make extract"
+        db_path = PROJECT_ROOT / "data" / "public" / "foundation_plr_results.db"
+        if not db_path.exists():
+            pytest.skip(f"Database not found: {db_path}. Run: make extract")
         conn = duckdb.connect(str(db_path), read_only=True)
         yield conn
         conn.close()
@@ -280,7 +283,8 @@ class TestCategoryColorConsistency:
     def roc_rc_data(self):
         """Load ROC/RC JSON data."""
         json_path = PROJECT_ROOT / "data" / "r_data" / "roc_rc_data.json"
-        assert json_path.exists(), f"JSON not found: {json_path}. Run: make analyze"
+        if not json_path.exists():
+            pytest.skip(f"JSON not found: {json_path}. Run: make analyze")
         with open(json_path) as f:
             return json.load(f)
 
