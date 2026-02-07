@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Foundation Models for Pupillary Light Reflex (PLR) Preprocessing"
+abstract: >-
+  Benchmark comparing time series foundation models (MOMENT, UniTS, TimesNet)
+  against traditional methods (LOF, SVM, linear interpolation) for outlier
+  detection and imputation in pupillary light reflex signals for glaucoma
+  screening. Implements STRATOS-compliant evaluation metrics including
+  discrimination, calibration, and clinical utility measures.
+authors:
+  - family-names: Teikari
+    given-names: Petteri
+    email: petteri.teikari@gmail.com
+    affiliation: Independent Researcher
+repository-code: "https://github.com/petteriTeikari/foundation_PLR"
+url: "https://github.com/petteriTeikari/foundation_PLR"
+license: MIT
+keywords:
+  - time-series
+  - foundation-models
+  - pupillometry
+  - pupillary-light-reflex
+  - glaucoma-screening
+  - biosignal-preprocessing
+  - machine-learning
+  - catboost
+  - moment
+  - timesnet
+  - units
+  - stratos
+  - clinical-ai
+  - ophthalmology
+  - mlflow
+  - hydra
+  - prefect
+references:
+  - type: article
+    authors:
+      - family-names: Najjar
+        given-names: Raymond P.
+    title: "Handheld chromatic pupillometry can accurately and rapidly reveal functional loss in glaucoma"
+    journal: "British Journal of Ophthalmology"
+    year: 2023
+    volume: 107
+    start: 663
+    end: 670
+    doi: "10.1136/bjophthalmol-2021-319938"
