@@ -1,0 +1,4 @@
+data_in,linux,/data/PLR/input
+data_out,linux,/data/PLR/output
+data_in,windows,C:/Data/PLR/input
+data_out,windows,C:/Data/PLR/output

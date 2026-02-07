@@ -4,6 +4,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.guardrail
+
 
 @pytest.fixture
 def response():
