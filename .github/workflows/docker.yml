@@ -1,14 +1,18 @@
 # GitHub Actions workflow for Docker image build and test
 #
 # Triggered on:
-# - Push to main/chore/* branches
-# - Pull requests to main
-# - Manual dispatch
+# - Pull requests to main (lightweight: R image + test image only)
+# - Manual dispatch (full: includes full dev image)
 #
-# Jobs:
+# Jobs (always):
 # 1. build-r: Build and test R Docker image (~15 min)
-# 2. build-full: Build and test full dev Docker image (~25 min)
-# 3. test-python: Run Python tests in Docker
+# 2. build-test: Build test image and run Tier 1 tests (~20 min)
+#
+# Jobs (manual dispatch only):
+# 3. build-full: Build full dev Docker image (Python+R+Node, ~25 min)
+#    NOTE: Requires >7 GB RAM — OOM-kills on free-tier GitHub Actions runners.
+#    Use a larger runner or build locally for full image validation.
+# 4. test-python: Run Python tests in full Docker image
 #
 name: Docker CI
 
@@ -105,11 +109,14 @@ jobs:
           docker run --rm -e MPLBACKEND=Agg foundation-plr-test:test
 
   # ===========================================================================
-  # Build and test full development Docker image
+  # Build and test full development Docker image (manual dispatch only)
+  # NOTE: This image (Python+R+Node) exceeds free-tier runner memory (~7 GB).
+  # Use workflow_dispatch with a larger runner or build locally.
   # ===========================================================================
   build-full:
     name: Build Full Dev Docker Image
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
     timeout-minutes: 60
 
     steps:
@@ -146,12 +153,13 @@ jobs:
           docker run --rm foundation-plr:test npm --version
 
   # ===========================================================================
-  # Run Python tests in Docker
+  # Run Python tests in Docker (manual dispatch only, depends on build-full)
   # ===========================================================================
   test-python:
     name: Python Tests in Docker
     runs-on: ubuntu-latest
     needs: build-full
+    if: github.event_name == 'workflow_dispatch'
     timeout-minutes: 30
 
     steps:
