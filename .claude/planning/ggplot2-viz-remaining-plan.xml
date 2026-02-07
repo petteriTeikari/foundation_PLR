@@ -1,0 +1,534 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ggplot2 Visualization REMAINING Plan for Foundation PLR
+  Created: 2026-01-25 (Updated after Phase 1, 5 completion)
+  Status: ACTIVE - Ready for reviewer optimization
+
+  Goal: Complete remaining ggplot2 figures with automated visual QA
+-->
+<visualization-plan>
+  <metadata>
+    <title>Foundation PLR ggplot2 - Remaining Tasks</title>
+    <created>2026-01-25</created>
+    <updated>2026-01-25</updated>
+    <author>Foundation PLR Team</author>
+    <status>READY_FOR_REVIEW</status>
+    <style>Economist-style with off-white background (#FBF9F3)</style>
+  </metadata>
+
+  <!-- ================================================================== -->
+  <!-- COMPLETED PHASES (for reference) -->
+  <!-- ================================================================== -->
+  <completed-phases>
+    <phase id="5" name="R Infrastructure" status="DONE">
+      <completed-task id="5.1">r/ directory with setup.R, theme_foundation_plr.R, color_palettes.R, load_data.R</completed-task>
+      <completed-task id="5.2">Economist-style theme with gg_add() workaround for S7/ggplot2 4.0+</completed-task>
+      <completed-task id="5.3">Colorblind-safe palette: Blue #006BA2, Red #E3120B</completed-task>
+    </phase>
+
+    <phase id="1" name="Data Export" status="DONE">
+      <completed-task id="1.1">scripts/export_data_for_r.py -> outputs/r_data/essential_metrics.csv</completed-task>
+      <completed-task id="1.2">scripts/export_shap_for_r.py -> shap_feature_importance.json, shap_ensemble_aggregated.json</completed-task>
+      <completed-task id="1.3">scripts/compute_vif.py -> outputs/r_data/vif_analysis.json</completed-task>
+    </phase>
+
+    <phase id="3-partial" name="SHAP Figures" status="PARTIAL">
+      <completed-task id="3.1">fig_shap_importance.R -> 3 figures (gt, multi, ensemble)</completed-task>
+    </phase>
+
+    <phase id="4-partial" name="New Visualizations" status="PARTIAL">
+      <completed-task id="4.1">fig_vif_analysis.R -> VIF bar chart with wavelength coloring</completed-task>
+    </phase>
+  </completed-phases>
+
+  <!-- ================================================================== -->
+  <!-- NEW PHASE 0: VISUAL VERIFICATION SYSTEM -->
+  <!-- ================================================================== -->
+  <phase id="0" name="Visual Verification System" priority="CRITICAL">
+    <description>
+      Automated QA to catch visual issues BEFORE human review.
+      Prevents slow feedback cycles for annotation overlap, legend clipping, etc.
+    </description>
+
+    <task id="0.1" priority="CRITICAL" estimated-time="1h">
+      <name>Figure Specification Registry</name>
+      <output>config/figure_specs.yaml</output>
+      <description>
+        Define expected properties for each figure:
+        - Required text elements (title, axis labels, annotations)
+        - Expected dimensions (width, height in pixels/inches)
+        - Color palette requirements
+        - Legend position constraints
+        - Margin requirements
+      </description>
+      <schema><![CDATA[
+figures:
+  fig_vif_analysis:
+    dimensions:
+      width: 9
+      height: 5
+      units: inches
+    required_text:
+      - "Feature collinearity"
+      - "Mean VIF"
+      - "Moderate"
+      - "High"
+    legend:
+      position: top
+      must_contain: ["Blue (469nm)", "Red (640nm)"]
+    background: "#FBF9F3"
+    annotations:
+      threshold_lines: [10, 20]
+      ]]></schema>
+    </task>
+
+    <task id="0.2" priority="CRITICAL" estimated-time="1.5h">
+      <name>OCR-Based Text Verification</name>
+      <script>scripts/validate_figures_ocr.py</script>
+      <dependencies>tesseract-ocr (apt install), pytesseract (pip)</dependencies>
+      <description>
+        Use OCR to verify all expected text elements are present and readable:
+        1. Extract text from rendered PNG
+        2. Check against figure_specs.yaml required_text
+        3. Detect truncated/overlapping text via character recognition
+        4. Flag figures where expected text is missing
+      </description>
+      <checks>
+        <check>All required_text elements found in OCR output</check>
+        <check>Title contains expected substring</check>
+        <check>Legend labels match specification</check>
+        <check>Axis labels present and readable</check>
+      </checks>
+    </task>
+
+    <task id="0.3" priority="HIGH" estimated-time="1h">
+      <name>Edge Clipping Detection</name>
+      <script>scripts/validate_figures.py (enhance existing)</script>
+      <description>
+        Detect content cut off at figure edges:
+        1. Check pixel values at image borders (5px margin)
+        2. If >10% non-background pixels at edge -> CLIPPING WARNING
+        3. Right edge: often legend clipping
+        4. Bottom edge: often caption/annotation clipping
+      </description>
+      <algorithm><![CDATA[
+def check_edge_clipping(img, expected_bg="#FBF9F3"):
+    arr = np.array(img)
+    edges = {
+        "right": arr[:, -5:],
+        "bottom": arr[-5:, :],
+        "top": arr[:5, :],
+        "left": arr[:, :5]
+    }
+    for name, edge in edges.items():
+        non_bg = np.sum(edge != bg_rgb) / edge.size
+        if non_bg > 0.10:
+            warnings.append(f"CLIPPING: {name} edge ({non_bg:.0%} content)")
+      ]]></algorithm>
+    </task>
+
+    <task id="0.4" priority="HIGH" estimated-time="45min">
+      <name>Background Color Validation</name>
+      <script>scripts/validate_figures.py</script>
+      <description>
+        Ensure consistent Economist-style background:
+        1. Sample corner pixels
+        2. Verify all match #FBF9F3 (tolerance: +/-10 per channel)
+        3. Detect mixed backgrounds (partial theme application)
+      </description>
+    </task>
+
+    <task id="0.5" priority="MEDIUM" estimated-time="1h">
+      <name>Dimension and DPI Validation</name>
+      <script>scripts/validate_figures.py</script>
+      <description>
+        Ensure figures meet publication requirements:
+        - Minimum dimensions: 400x300 pixels
+        - Maximum dimensions: 4000x3000 pixels
+        - DPI: 300 for publication
+        - Aspect ratio within expected range
+      </description>
+    </task>
+
+    <task id="0.6" priority="MEDIUM" estimated-time="1.5h">
+      <name>Annotation Overlap Detection</name>
+      <script>scripts/detect_annotation_overlap.py</script>
+      <description>
+        Use bounding box analysis to detect overlapping text:
+        1. Run OCR with bounding box output
+        2. Check for bounding box intersections
+        3. Flag overlapping annotations (like "Moderate"/"High" VIF labels)
+        4. Suggest minimum separation distance
+      </description>
+      <algorithm><![CDATA[
+def detect_overlap(ocr_results):
+    boxes = [r['bbox'] for r in ocr_results]
+    for i, box1 in enumerate(boxes):
+        for j, box2 in enumerate(boxes[i+1:], i+1):
+            iou = compute_iou(box1, box2)
+            if iou > 0.1:  # >10% intersection
+                return f"OVERLAP: {ocr_results[i]['text']} <-> {ocr_results[j]['text']}"
+      ]]></algorithm>
+    </task>
+
+    <task id="0.7" priority="LOW" estimated-time="30min">
+      <name>Colorblind Accessibility Check</name>
+      <script>scripts/check_colorblind.py</script>
+      <dependencies>colorspacious (pip)</dependencies>
+      <description>
+        Simulate CVD (color vision deficiency) and verify distinguishability:
+        1. Convert to deuteranopia/protanopia simulation
+        2. Check that distinct colors remain distinct (deltaE > 10)
+        3. Warn if blue/red wavelength become indistinguishable
+      </description>
+    </task>
+
+    <task id="0.8" priority="HIGH" estimated-time="30min">
+      <name>Master Validation Runner</name>
+      <script>scripts/validate_all_figures.py</script>
+      <description>
+        Single command to run all validation checks:
+        - Load figure_specs.yaml
+        - Run all PNG files through validation pipeline
+        - Generate validation report (JSON + human-readable)
+        - Exit code 0 if all pass, 1 if warnings, 2 if errors
+      </description>
+      <output>reports/figure_validation_report.json</output>
+      <usage>python scripts/validate_all_figures.py --verbose</usage>
+    </task>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 2: EXISTING FIGURE MIGRATION (REMAINING) -->
+  <!-- ================================================================== -->
+  <phase id="2" name="Existing Figure Migration" priority="HIGH">
+    <description>Convert Python matplotlib figures to ggplot2</description>
+
+    <task id="2.1" priority="HIGH" estimated-time="1h">
+      <name>Forest Plot - Outlier Methods (fig02)</name>
+      <r-output>r/figures/fig02_forest_outlier.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig02_forest_outlier.pdf</figure-output>
+      <validation-spec>
+        <required-text>["Outlier Detection", "AUROC", "95% CI"]</required-text>
+        <expected-items>15 outlier methods with pointrange</expected-items>
+      </validation-spec>
+    </task>
+
+    <task id="2.2" priority="HIGH" estimated-time="1h">
+      <name>Forest Plot - Imputation Methods (fig03)</name>
+      <r-output>r/figures/fig03_forest_imputation.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig03_forest_imputation.pdf</figure-output>
+    </task>
+
+    <task id="2.3" priority="HIGH" estimated-time="1.5h">
+      <name>Calibration Plot (STRATOS-compliant)</name>
+      <r-output>r/figures/fig_calibration_stratos.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_calibration_stratos.pdf</figure-output>
+      <stratos-requirements>
+        <element>Smoothed calibration curve with 95% CI ribbon</element>
+        <element>Marginal histogram of predictions (patchwork layout)</element>
+        <element>Calibration slope, intercept annotations</element>
+        <element>O:E ratio annotation</element>
+        <element>Brier score annotation</element>
+        <element>Rug plot for sample distribution</element>
+      </stratos-requirements>
+    </task>
+
+    <task id="2.4" priority="HIGH" estimated-time="1h">
+      <name>Decision Curve Analysis (DCA)</name>
+      <r-output>r/figures/fig_dca_stratos.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_dca_stratos.pdf</figure-output>
+      <stratos-requirements>
+        <element>Net benefit curves for top-4 preprocessing pipelines</element>
+        <element>Treat-all reference line (computed with prevalence 3.54%)</element>
+        <element>Treat-none reference line (horizontal at 0)</element>
+        <element>Threshold range: 1%-30% for glaucoma screening</element>
+        <element>Net benefit values at 5%, 10%, 15%, 20% thresholds (annotation)</element>
+      </stratos-requirements>
+    </task>
+
+    <task id="2.5" priority="MEDIUM" estimated-time="45min">
+      <name>Factorial Design Matrix (fig_M3)</name>
+      <r-output>r/figures/fig_M3_factorial_matrix.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_M3_factorial_matrix.pdf</figure-output>
+    </task>
+
+    <task id="2.6" priority="MEDIUM" estimated-time="1h">
+      <name>Variance Decomposition (fig01)</name>
+      <r-output>r/figures/fig01_variance_decomposition.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig01_variance_decomposition.pdf</figure-output>
+    </task>
+
+    <task id="2.7" priority="MEDIUM" estimated-time="1h">
+      <name>Featurization Comparison (fig_R7)</name>
+      <r-output>r/figures/fig_R7_featurization_comparison.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_R7_featurization_comparison.pdf</figure-output>
+      <description>Shows 9pp gap: handcrafted (0.83) vs embeddings (0.74)</description>
+    </task>
+
+    <task id="2.8" priority="MEDIUM" estimated-time="1h">
+      <name>Foundation Model Dashboard (fig_R8)</name>
+      <r-output>r/figures/fig_R8_fm_dashboard.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_R8_fm_dashboard.pdf</figure-output>
+    </task>
+
+    <task id="2.9" priority="HIGH" estimated-time="1.5h">
+      <name>Specification Curve (fig06)</name>
+      <r-output>r/figures/fig06_specification_curve.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig06_specification_curve.pdf</figure-output>
+    </task>
+
+    <task id="2.10" priority="HIGH" estimated-time="1h">
+      <name>Critical Difference Diagram</name>
+      <r-output>r/figures/cd_preprocessing.R</r-output>
+      <figure-output>figures/generated/ggplot2/cd_preprocessing.pdf</figure-output>
+      <package>scmamp</package>
+    </task>
+
+    <task id="2.11" priority="MEDIUM" estimated-time="45min">
+      <name>Heatmap Sensitivity (fig05)</name>
+      <r-output>r/figures/fig05_heatmap_catboost.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig05_heatmap_catboost.pdf</figure-output>
+    </task>
+
+    <task id="2.12" priority="MEDIUM" estimated-time="45min">
+      <name>Probability Distribution by Outcome (STRATOS)</name>
+      <r-output>r/figures/fig_prob_dist_by_outcome.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_prob_dist_by_outcome.pdf</figure-output>
+      <description>Density curves for Y=0 vs Y=1 with rug plot</description>
+    </task>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 3: REMAINING SHAP FIGURES -->
+  <!-- ================================================================== -->
+  <phase id="3" name="SHAP Visualization (Remaining)" priority="HIGH">
+    <note>Task 3.1 (Feature Importance) already completed</note>
+
+    <task id="3.2" priority="HIGH" estimated-time="2h">
+      <name>SHAP Beeswarm Plot</name>
+      <r-output>r/figures/fig_shap_beeswarm.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_shap_beeswarm.pdf</figure-output>
+      <package>ggbeeswarm (geom_quasirandom)</package>
+      <parameters>
+        <param>alpha = 0.6</param>
+        <param>size = 1.5</param>
+        <param>method = "pseudorandom"</param>
+      </parameters>
+    </task>
+
+    <task id="3.3" priority="HIGH" estimated-time="1.5h">
+      <name>Ground Truth vs Ensemble Comparison</name>
+      <r-output>r/figures/fig_shap_gt_vs_ensemble.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_shap_gt_vs_ensemble.pdf</figure-output>
+      <description>Side-by-side faceted comparison with correlation annotation</description>
+    </task>
+
+    <task id="3.4" priority="MEDIUM" estimated-time="1h">
+      <name>Feature Importance Heatmap Across Configs</name>
+      <r-output>r/figures/fig_shap_heatmap.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_shap_heatmap.pdf</figure-output>
+    </task>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 4: REMAINING NEW VISUALIZATIONS -->
+  <!-- ================================================================== -->
+  <phase id="4" name="New Visualizations (Remaining)" priority="MEDIUM">
+    <note>Task 4.1 (VIF) already completed</note>
+
+    <task id="4.2" priority="HIGH" estimated-time="2h">
+      <name>Raincloud Plot for AUROC Distributions</name>
+      <r-output>r/figures/fig_raincloud_auroc.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_raincloud_auroc.pdf</figure-output>
+      <package>ggdist</package>
+      <parameters>
+        <param>stat_dots(quantiles = 100) - NOT raw 1000 points</param>
+        <param>alpha = 0.4</param>
+        <param>binwidth = 0.002 for AUROC range</param>
+      </parameters>
+    </task>
+
+    <task id="4.3" priority="MEDIUM" estimated-time="1.5h">
+      <name>Alluvial/Sankey for Pipeline Flow</name>
+      <r-output>r/figures/fig_alluvial_pipeline.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_alluvial_pipeline.pdf</figure-output>
+      <package>ggalluvial</package>
+    </task>
+
+    <task id="4.4" priority="MEDIUM" estimated-time="1h">
+      <name>Dot-and-Whisker Coefficient Plot</name>
+      <r-output>r/figures/fig_coefficient_plot.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_coefficient_plot.pdf</figure-output>
+      <package>dotwhisker</package>
+    </task>
+
+    <task id="4.5" priority="LOW" estimated-time="2h">
+      <name>Partial Dependence Plots</name>
+      <r-output>r/figures/fig_pdp.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_pdp.pdf</figure-output>
+    </task>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 6: INFRASTRUCTURE COMPLETION -->
+  <!-- ================================================================== -->
+  <phase id="6" name="Infrastructure Completion" priority="HIGH">
+    <description>Complete remaining infrastructure from reviewer recommendations</description>
+
+    <task id="6.1" priority="HIGH" estimated-time="30min">
+      <name>Initialize renv for R Environment</name>
+      <commands>
+        Rscript -e "renv::init()"
+        Rscript -e "renv::snapshot()"
+      </commands>
+      <outputs>renv.lock, .Rprofile, renv/activate.R</outputs>
+    </task>
+
+    <task id="6.2" priority="MEDIUM" estimated-time="20min">
+      <name>Create Data Version Manifest</name>
+      <output>outputs/r_data/DATA_MANIFEST.yaml</output>
+      <content>Database hash, export timestamp, subject counts</content>
+    </task>
+
+    <task id="6.3" priority="MEDIUM" estimated-time="30min">
+      <name>Master Figure Generation Script</name>
+      <output>r/generate_all_figures.R</output>
+      <description>
+        Single script to regenerate all figures:
+        1. Source theme and color palettes
+        2. Run each fig_*.R script in order
+        3. Run validation after each figure
+        4. Generate summary report
+      </description>
+    </task>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- EXECUTION SCHEDULE (Updated) -->
+  <!-- ================================================================== -->
+  <execution-schedule>
+    <priority-order>
+      <!-- Phase 0 FIRST - validation system -->
+      <step priority="1">0.1, 0.2, 0.3, 0.8 (Core validation - 4h)</step>
+      <!-- Phase 2 - main figures with validation -->
+      <step priority="2">2.3, 2.4 (STRATOS figures - 2.5h)</step>
+      <step priority="3">2.1, 2.2 (Forest plots - 2h)</step>
+      <step priority="4">2.9, 2.10 (Spec curve + CD - 2.5h)</step>
+      <!-- Phase 3 - SHAP remaining -->
+      <step priority="5">3.2, 3.3 (Beeswarm + GT comparison - 3.5h)</step>
+      <!-- Phase 4 - New viz -->
+      <step priority="6">4.2 (Raincloud - 2h)</step>
+      <!-- Phase 2 - remaining -->
+      <step priority="7">2.5-2.8, 2.11, 2.12 (Remaining figures - 5.5h)</step>
+      <!-- Phase 6 - Infrastructure -->
+      <step priority="8">6.1, 6.2, 6.3 (Infrastructure - 1.5h)</step>
+      <!-- Low priority -->
+      <step priority="9">0.4-0.7 (Additional validation - 3.75h)</step>
+      <step priority="10">3.4, 4.3-4.5 (Low priority viz - 5.5h)</step>
+    </priority-order>
+
+    <estimated-remaining-time>18-20 hours (revised from 32h)</estimated-remaining-time>
+
+    <revised-schedule note="Based on reviewer optimization">
+      <sprint id="1" name="Submission-Ready" time="8h parallel, 4h with make -j4">
+        <tasks>2.3, 2.4, 2.12, 2.1, 2.2, 2.9, 2.10</tasks>
+        <validation>0.3, 0.4, 0.5, 0.8 (simplified - no OCR)</validation>
+      </sprint>
+      <sprint id="2" name="Enhanced" time="+4h">
+        <tasks>2.6, 3.2, 2.11, 6.1</tasks>
+      </sprint>
+      <sprint id="3" name="Defer to Revision">
+        <tasks>2.5, 2.7, 2.8, 4.2-4.5, 3.3, 3.4</tasks>
+      </sprint>
+    </revised-schedule>
+  </execution-schedule>
+
+  <!-- ================================================================== -->
+  <!-- REVIEWER OPTIMIZATION RESULTS (2026-01-25) -->
+  <!-- ================================================================== -->
+  <reviewer-optimization date="2026-01-25" status="COMPLETE">
+
+    <validation-specialist>
+      <verdict>Simplify validation - OCR over-engineered for 12 figures</verdict>
+      <actions>
+        <action id="VAL-1" priority="HIGH">Graduated edge thresholds: right=3%, bottom=5%, top=5%, left=8%</action>
+        <action id="VAL-2" priority="HIGH">Add imagehash for visual regression (uv pip install imagehash)</action>
+        <action id="VAL-3" priority="DEFER">OCR is problematic for anti-aliased text - skip detailed verification</action>
+        <action id="VAL-4" priority="DEFER">Annotation overlap - ggplot2 handles this</action>
+      </actions>
+      <time-saved>3 hours</time-saved>
+    </validation-specialist>
+
+    <stratos-compliance>
+      <verdict>Plan is COMPLIANT - minor additions needed</verdict>
+      <actions>
+        <action id="STR-1" priority="HIGH">DCA 1%-30% range is APPROPRIATE for glaucoma screening</action>
+        <action id="STR-2" priority="HIGH">Add Scaled Brier (IPA) alongside raw Brier in calibration annotations</action>
+        <action id="STR-3" priority="CONFIRM">Use O:E ratio (not E:O) per STRATOS standard</action>
+        <action id="STR-4" priority="OPTIONAL">ICI not required - calibration slope + O:E + plot is sufficient</action>
+      </actions>
+      <calibration-annotations>
+        Calibration slope: 0.93 [0.83, 1.05]
+        Calibration intercept: 0.81 [0.62, 1.01]
+        O:E ratio: 1.02 [0.95, 1.09]
+        Brier: 0.131, IPA: 0.456
+        N=208 (56 glaucoma, 152 control)
+      </calibration-annotations>
+    </stratos-compliance>
+
+    <r-expert>
+      <verdict>Infrastructure solid - minor fixes</verdict>
+      <actions>
+        <action id="R-1" priority="HIGH">Fix gg_add() object_name bug (use as.list(substitute(list(...)))[-1])</action>
+        <action id="R-2" priority="HIGH">Initialize renv with explicit snapshot</action>
+        <action id="R-3" priority="SKIP">targets package NOT recommended - overkill for 15 figures</action>
+        <action id="R-4" priority="MEDIUM">Use ragg::agg_png device for better anti-aliasing</action>
+        <action id="R-5" priority="LOW">Add font fallback chain for Helvetica</action>
+      </actions>
+    </r-expert>
+
+    <efficiency>
+      <verdict>32h estimate reduced to 18-20h; submission-ready in 8h</verdict>
+      <parallelization>
+        <group name="STRATOS" tasks="2.3, 2.4, 2.12" parallel-time="1.5h"/>
+        <group name="Forest" tasks="2.1, 2.2" parallel-time="1h"/>
+        <group name="Analysis" tasks="2.9, 2.10" parallel-time="1.5h"/>
+        <group name="SHAP" tasks="3.2, 3.3, 3.4" parallel-time="2h"/>
+      </parallelization>
+      <tool>Makefile with make -j4 for local; GitHub Actions for CI only</tool>
+      <minimum-viable-set>
+        <tier1>2.3, 2.4, 2.12, 2.1, 2.2, 2.9, 2.10 (STRATOS + main results)</tier1>
+        <tier2>2.6, 3.2, 2.11 (enhanced)</tier2>
+        <tier3>defer: 2.5, 2.7, 2.8, 4.2-4.5</tier3>
+      </minimum-viable-set>
+    </efficiency>
+
+  </reviewer-optimization>
+
+  <!-- ================================================================== -->
+  <!-- SUCCESS CRITERIA (Updated with Reviewer Input) -->
+  <!-- ================================================================== -->
+  <success-criteria>
+    <criterion priority="CRITICAL">No edge clipping detected (graduated thresholds: 3-8%)</criterion>
+    <criterion priority="CRITICAL">Consistent background color (#FBF9F3) across all figures</criterion>
+    <criterion priority="CRITICAL">STRATOS-compliant: calibration with slope/O:E/IPA, DCA with references</criterion>
+    <criterion priority="HIGH">Economist-style theme consistently applied</criterion>
+    <criterion priority="HIGH">Visual regression: imagehash diff &lt; 5 from reference</criterion>
+    <criterion priority="MEDIUM">R environment reproducible via renv.lock</criterion>
+    <criterion priority="LOW">Colorblind accessibility (run once at end)</criterion>
+  </success-criteria>
+
+  <!-- ================================================================== -->
+  <!-- IMMEDIATE NEXT STEPS -->
+  <!-- ================================================================== -->
+  <next-steps>
+    <step order="1">Fix gg_add() bug in r/theme_foundation_plr.R</step>
+    <step order="2">Update validate_figures.py with graduated edge thresholds</step>
+    <step order="3">Create Makefile for parallel figure generation</step>
+    <step order="4">Generate STRATOS figures (2.3, 2.4, 2.12) first</step>
+    <step order="5">Generate Forest plots (2.1, 2.2) and CD diagram (2.10)</step>
+    <step order="6">Run basic validation (edge clipping, background, dimensions)</step>
+  </next-steps>
+
+</visualization-plan>

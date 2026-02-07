@@ -1,0 +1,60 @@
+# Figure Plan Completeness Checklist
+# Every figure plan in docs/repo-figures/figure-plans/ must pass these checks.
+
+required_sections:
+  - name: "Purpose"
+    description: "1-2 sentences explaining what this figure communicates"
+    validates: "Not empty, doesn't mention results/performance"
+
+  - name: "Visual Concept"
+    description: "Layout description for the infographic"
+    validates: "References actual repo file paths"
+
+  - name: "Config Locations"
+    description: "YAML file paths relevant to this figure"
+    validates: "All referenced files exist in configs/"
+
+  - name: "Code Paths"
+    description: "Python/R modules that implement the feature"
+    validates: "All referenced files exist in src/"
+
+  - name: "Extension Guide"
+    description: "How a user would add a new variant"
+    validates: "Steps are actionable, reference actual config patterns"
+
+content_rules:
+  # From docs/repo-figures/CLAUDE.md
+  banned_content:
+    - "AUROC"
+    - "accuracy"
+    - "F1"
+    - "performance"
+    - "beats"
+    - "outperforms"
+    - "best model"
+    - "ranking"
+    - pattern: "\\d+\\.\\d+.*(?:AUROC|AUC|accuracy)"
+      description: "Numeric performance values"
+
+  required_note: "Performance comparisons are in the manuscript, not this repository."
+
+progressive_disclosure:
+  level_1: "Infographic (visual overview, 5 seconds)"
+  level_2: "README.md (full explanation, 2 minutes)"
+  level_3: "YAML comments (minimal header + link to README)"
+  level_4: "External references (papers, docs, tutorials)"
+
+  rule: "NEVER duplicate content between levels"
+
+naming_convention:
+  pattern: "fig-repo-{NN}-{kebab-case-title}.md"
+  numbering: "Sequential from highest existing number"
+  generated_asset: "fig-repo-{NN}-{kebab-case-title}.jpg"
+  asset_location: "docs/repo-figures/assets/"
+
+personas:
+  PI: "Ophthalmology PI (non-technical)"
+  Stats: "Biostatistician (R, statistics)"
+  Sci: "Research Scientist (Python basics)"
+  ML: "ML Engineer (full stack)"
+  Agent: "LLM Agent (reads structured rules)"

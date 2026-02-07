@@ -1,0 +1,46 @@
+# Cursor AI Rules for Foundation PLR
+
+## Repository Purpose
+Evaluate foundation models for preprocessing biosignals (PLR) for glaucoma screening.
+
+## Critical Rules
+
+1. **Registry is truth**: All method names from `configs/mlflow_registry/`
+2. **No hardcoding**: Colors, paths, method names from YAML configs
+3. **Computation in extraction only**: `src/viz/` reads DuckDB, never computes
+4. **STRATOS compliance**: Not AUROC-only, include calibration + clinical utility
+
+## Package Management
+- Use `uv` (pip/conda BANNED)
+- Run: `uv pip install X` or `uv add X`
+
+## Key Files to Reference
+- `CLAUDE.md` - Complete project context
+- `configs/defaults.yaml` - Central configuration
+- `src/data_io/registry.py` - Method validation
+- `configs/VISUALIZATION/colors.yaml` - Color palette
+
+## Common Patterns
+
+### Loading from Registry
+```python
+from src.data_io.registry import get_valid_outlier_methods
+valid = get_valid_outlier_methods()  # Returns exactly 11
+```
+
+### Using Colors
+```python
+from src.viz.plot_config import COLORS
+color = COLORS["ground_truth"]
+```
+
+### Saving Figures
+```python
+from src.viz.plot_config import save_figure
+save_figure(fig, "fig_name", data=data_dict)
+```
+
+## Banned Patterns
+- `color = "#RRGGBB"` - use COLORS dict
+- `run_name.split("__")` - use registry
+- `from sklearn.metrics import *` in src/viz/ - read from DuckDB

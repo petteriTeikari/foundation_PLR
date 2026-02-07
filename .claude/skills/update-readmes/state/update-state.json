@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "iterations_completed": 0,
+  "last_run": null,
+  "scope": null,
+  "discovery": {
+    "total_readmes": 0,
+    "broken_links": 0,
+    "stale_config_tables": 0,
+    "undocumented_modules": 0,
+    "missing_docstrings": 0,
+    "docstring_drift": 0,
+    "figure_gaps": 0
+  },
+  "fixes_applied": {
+    "broken_links_fixed": 0,
+    "config_tables_updated": 0,
+    "modules_documented": 0,
+    "docstrings_added": 0,
+    "figure_plans_created": 0
+  },
+  "commits": [],
+  "remaining_issues": []
+}

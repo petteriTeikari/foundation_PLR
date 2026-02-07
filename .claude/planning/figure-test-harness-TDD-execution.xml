@@ -1,0 +1,527 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Figure Test Harness - TDD Execution Plan
+  Created: 2026-01-25
+  Context: Response to CRITICAL-FAILURE-001 (synthetic data in scientific figures)
+
+  USAGE:
+  1. Work through phases sequentially (Phase 1 → 2 → 3 → 4)
+  2. Within each phase, complete items in order (they may have dependencies)
+  3. Mark status="done" when complete, add completion_date
+  4. If blocked, add blocked_by="reason" attribute
+
+  STATUS VALUES: pending | in_progress | done | blocked | skipped
+-->
+<tdd-execution-plan version="1.0" project="figure-test-harness">
+
+  <metadata>
+    <created>2026-01-25</created>
+    <triggered_by>CRITICAL-FAILURE-001</triggered_by>
+    <goal>Automated QA for scientific figures to catch data/rendering/statistical failures</goal>
+    <architecture>Hybrid Python (orchestration) + R (ggplot2 introspection)</architecture>
+    <test_location>tests/test_figure_qa/</test_location>
+  </metadata>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- PHASE 1: P0 CRITICAL CHECKS (Would have caught CRITICAL-FAILURE-001)    -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <phase id="1" name="P0 Critical Checks" priority="CRITICAL">
+    <description>
+      These checks would have caught the synthetic data failure.
+      Implement FIRST before any other work.
+    </description>
+
+    <item id="1.1" status="pending">
+      <name>Create test directory structure</name>
+      <action>
+        mkdir -p tests/test_figure_qa
+        touch tests/test_figure_qa/__init__.py
+        touch tests/test_figure_qa/conftest.py
+      </action>
+      <output>tests/test_figure_qa/ directory exists</output>
+    </item>
+
+    <item id="1.2" status="pending" depends_on="1.1">
+      <name>Implement cross-model uniqueness validator</name>
+      <file>tests/test_figure_qa/test_data_provenance.py</file>
+      <test_function>test_cross_model_predictions_are_unique</test_function>
+      <implementation>
+        <![CDATA[
+def test_cross_model_predictions_are_unique(predictions_json_path):
+    """
+    CRITICAL: Catches CRITICAL-FAILURE-001 pattern.
+    Fail if any two models have correlation > 0.99 on y_prob.
+    """
+    import json
+    import numpy as np
+
+    with open(predictions_json_path) as f:
+        data = json.load(f)
+
+    configs = data['data']['configs']
+    n_configs = len(configs)
+
+    for i in range(n_configs):
+        for j in range(i + 1, n_configs):
+            # Extract calibration curve observed values (proxy for predictions)
+            y1 = [v for v in configs[i]['curve']['observed'] if v is not None]
+            y2 = [v for v in configs[j]['curve']['observed'] if v is not None]
+
+            if len(y1) > 2 and len(y2) > 2 and len(y1) == len(y2):
+                corr = np.corrcoef(y1, y2)[0, 1]
+                assert corr < 0.99, (
+                    f"Models {configs[i]['name']} and {configs[j]['name']} "
+                    f"have suspiciously high correlation: {corr:.4f}. "
+                    f"Possible synthetic data with shared seed?"
+                )
+        ]]>
+      </implementation>
+      <assertion>All model pairs have correlation &lt; 0.99</assertion>
+    </item>
+
+    <item id="1.3" status="pending" depends_on="1.1">
+      <name>Implement data source flag validator</name>
+      <file>tests/test_figure_qa/test_data_provenance.py</file>
+      <test_function>test_data_source_is_real</test_function>
+      <implementation>
+        <![CDATA[
+def test_data_source_is_real(predictions_json_path):
+    """
+    CRITICAL: Reject any data marked as synthetic/template.
+    """
+    import json
+
+    with open(predictions_json_path) as f:
+        data = json.load(f)
+
+    metadata = data.get('metadata', {})
+    note = metadata.get('note', '').lower()
+
+    # Fail on keywords indicating synthetic data
+    synthetic_keywords = ['synthetic', 'simulated', 'template', 'fake', 'mock']
+    for keyword in synthetic_keywords:
+        assert keyword not in note, (
+            f"Data appears to be synthetic! Found '{keyword}' in metadata note: "
+            f"{metadata.get('note')}"
+        )
+
+    # Require explicit data_source = "real" for production figures
+    # (This is a new requirement to add to export scripts)
+    if 'data_source' in metadata:
+        assert metadata['data_source'] == 'real', (
+            f"data_source must be 'real', got: {metadata['data_source']}"
+        )
+        ]]>
+      </implementation>
+      <assertion>No synthetic/template keywords in metadata</assertion>
+    </item>
+
+    <item id="1.4" status="pending" depends_on="1.1">
+      <name>Implement source file hash validator</name>
+      <file>tests/test_figure_qa/test_data_provenance.py</file>
+      <test_function>test_source_file_hash_matches</test_function>
+      <implementation>
+        <![CDATA[
+def test_source_file_hash_matches(predictions_json_path):
+    """
+    Verify the JSON data came from the claimed source file.
+    Requires source_file_hash in metadata.
+    """
+    import json
+    import hashlib
+    from pathlib import Path
+
+    with open(predictions_json_path) as f:
+        data = json.load(f)
+
+    metadata = data.get('metadata', {})
+
+    # Skip if no hash recorded (warn, don't fail - for backwards compatibility)
+    if 'source_file_hash' not in metadata:
+        import warnings
+        warnings.warn("No source_file_hash in metadata - cannot verify provenance")
+        return
+
+    source_path = Path(metadata.get('source_file', ''))
+    if source_path.exists():
+        with open(source_path, 'rb') as f:
+            actual_hash = hashlib.sha256(f.read()).hexdigest()[:16]
+
+        expected_hash = metadata['source_file_hash']
+        assert actual_hash == expected_hash, (
+            f"Source file hash mismatch! "
+            f"Expected {expected_hash}, got {actual_hash}. "
+            f"Source data may have changed since JSON was generated."
+        )
+        ]]>
+      </implementation>
+      <assertion>SHA-256 prefix matches recorded hash</assertion>
+    </item>
+
+    <item id="1.5" status="pending" depends_on="1.2,1.3,1.4">
+      <name>Add P0 checks to CI pipeline</name>
+      <file>.github/workflows/test.yml or Makefile</file>
+      <action>Add pytest tests/test_figure_qa/test_data_provenance.py to CI</action>
+      <output>P0 checks run on every PR</output>
+    </item>
+  </phase>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- PHASE 2: P1 HIGH PRIORITY CHECKS (Statistical/Visual Validity)          -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <phase id="2" name="P1 Statistical Validity" priority="HIGH">
+    <description>
+      Validate STRATOS metrics and calibration curve integrity.
+    </description>
+
+    <item id="2.1" status="pending">
+      <name>Implement STRATOS metric range validator</name>
+      <file>tests/test_figure_qa/test_statistical_validity.py</file>
+      <test_function>test_stratos_metrics_in_valid_ranges</test_function>
+      <implementation>
+        <![CDATA[
+import pytest
+
+METRIC_RANGES = {
+    'auroc': (0.5, 1.0),           # Must be >= chance
+    'brier': (0.0, 0.25),          # Theoretical max for binary
+    'ipa': (-float('inf'), 1.0),  # Scaled Brier, max 1.0
+    'calibration_slope': (0.0, 3.0),  # Negative is very bad
+    'o_e_ratio': (0.1, 10.0),     # Extreme values suspicious
+}
+
+def test_stratos_metrics_in_valid_ranges(calibration_json_path):
+    import json
+
+    with open(calibration_json_path) as f:
+        data = json.load(f)
+
+    for config in data['data']['configs']:
+        for metric, (lo, hi) in METRIC_RANGES.items():
+            if metric in config:
+                value = config[metric]
+                assert lo <= value <= hi, (
+                    f"Config {config['name']}: {metric}={value} "
+                    f"outside valid range [{lo}, {hi}]"
+                )
+        ]]>
+      </implementation>
+    </item>
+
+    <item id="2.2" status="pending">
+      <name>Implement calibration curve validity checker</name>
+      <file>tests/test_figure_qa/test_statistical_validity.py</file>
+      <test_function>test_calibration_curves_have_sufficient_data</test_function>
+      <implementation>
+        <![CDATA[
+def test_calibration_curves_have_sufficient_data(calibration_json_path):
+    """
+    Ensure calibration curves have enough non-null points.
+    """
+    import json
+
+    with open(calibration_json_path) as f:
+        data = json.load(f)
+
+    MIN_POINTS = 3  # Need at least 3 points for meaningful curve
+
+    for config in data['data']['configs']:
+        curve = config.get('curve', {})
+        observed = curve.get('observed', [])
+        non_null = [v for v in observed if v is not None]
+
+        assert len(non_null) >= MIN_POINTS, (
+            f"Config {config['name']} has only {len(non_null)} "
+            f"non-null calibration points (minimum: {MIN_POINTS})"
+        )
+        ]]>
+      </implementation>
+    </item>
+
+    <item id="2.3" status="pending">
+      <name>Implement bootstrap CI validator</name>
+      <file>tests/test_figure_qa/test_statistical_validity.py</file>
+      <test_function>test_bootstrap_cis_are_valid</test_function>
+      <implementation>
+        <![CDATA[
+def test_bootstrap_cis_are_valid(json_with_cis):
+    """
+    Check CI ordering and width sanity.
+    """
+    import json
+
+    with open(json_with_cis) as f:
+        data = json.load(f)
+
+    # Find all CI fields (pattern: *_ci_lo, *_ci_hi)
+    def check_cis(obj, path=""):
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if key.endswith('_ci_lo'):
+                    base = key[:-6]  # Remove '_ci_lo'
+                    hi_key = f"{base}_ci_hi"
+                    if hi_key in obj:
+                        lo, hi = obj[key], obj[hi_key]
+                        assert lo <= hi, f"{path}.{base}: CI inverted ({lo} > {hi})"
+                        assert hi - lo > 0, f"{path}.{base}: Zero-width CI"
+                check_cis(value, f"{path}.{key}")
+        elif isinstance(obj, list):
+            for i, item in enumerate(obj):
+                check_cis(item, f"{path}[{i}]")
+
+    check_cis(data)
+        ]]>
+      </implementation>
+    </item>
+
+    <item id="2.4" status="pending">
+      <name>Implement DCA reference strategy validator</name>
+      <file>tests/test_figure_qa/test_statistical_validity.py</file>
+      <test_function>test_dca_has_reference_strategies</test_function>
+      <implementation>
+        <![CDATA[
+def test_dca_has_reference_strategies(dca_json_path):
+    """
+    DCA must include 'Treat All' and 'Treat None' reference lines.
+    """
+    import json
+
+    with open(dca_json_path) as f:
+        data = json.load(f)
+
+    dca_data = data.get('data', {})
+
+    # Check for reference strategies
+    has_treat_all = 'treat_all' in dca_data or any(
+        'treat_all' in str(k).lower() for k in dca_data.keys()
+    )
+    has_treat_none = 'treat_none' in dca_data or any(
+        'treat_none' in str(k).lower() for k in dca_data.keys()
+    )
+
+    assert has_treat_all, "DCA missing 'Treat All' reference strategy"
+    assert has_treat_none, "DCA missing 'Treat None' reference strategy"
+        ]]>
+      </implementation>
+    </item>
+  </phase>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- PHASE 3: P1 VISUAL RENDERING CHECKS                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <phase id="3" name="P1 Visual Rendering" priority="HIGH">
+    <description>
+      Validate that figures render correctly with visible elements.
+    </description>
+
+    <item id="3.1" status="done" completion_date="2026-01-25">
+      <name>Install imagehash dependency</name>
+      <action>uv add --dev imagehash Pillow</action>
+      <output>imagehash available for import</output>
+    </item>
+
+    <item id="3.2" status="pending" depends_on="3.1">
+      <name>Implement multi-series color detection</name>
+      <file>tests/test_figure_qa/test_visual_rendering.py</file>
+      <test_function>test_figure_has_multiple_distinct_colors</test_function>
+      <implementation>
+        <![CDATA[
+def test_figure_has_multiple_distinct_colors(figure_path, expected_series_count):
+    """
+    Check that a multi-series figure has distinct colors for each series.
+    Uses color clustering to find dominant colors.
+    """
+    from PIL import Image
+    from collections import Counter
+    import numpy as np
+
+    img = Image.open(figure_path).convert('RGB')
+    pixels = np.array(img).reshape(-1, 3)
+
+    # Quantize colors to reduce noise
+    quantized = (pixels // 32) * 32  # Reduce to ~8 levels per channel
+
+    # Find unique colors (excluding near-white background)
+    unique_colors = set()
+    for pixel in quantized:
+        if not all(c > 240 for c in pixel):  # Skip white-ish
+            unique_colors.add(tuple(pixel))
+
+    # Should have at least expected_series_count distinct colors
+    # (plus axis lines, grid, etc.)
+    assert len(unique_colors) >= expected_series_count, (
+        f"Expected at least {expected_series_count} distinct line colors, "
+        f"found only {len(unique_colors)} non-background colors. "
+        f"Are all series visible?"
+    )
+        ]]>
+      </implementation>
+    </item>
+
+    <item id="3.3" status="pending" depends_on="3.1">
+      <name>Implement figure dimensions validator</name>
+      <file>tests/test_figure_qa/test_publication_standards.py</file>
+      <test_function>test_figure_meets_publication_standards</test_function>
+      <implementation>
+        <![CDATA[
+def test_figure_meets_publication_standards(figure_path):
+    """
+    Check DPI, dimensions for publication readiness.
+    """
+    from PIL import Image
+
+    img = Image.open(figure_path)
+    width_px, height_px = img.size
+
+    # Check DPI (if available in metadata)
+    dpi = img.info.get('dpi', (72, 72))
+    if isinstance(dpi, tuple):
+        dpi = dpi[0]
+
+    # For raster images, warn if DPI < 300
+    if figure_path.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff')):
+        assert dpi >= 300 or width_px >= 2100, (
+            f"Figure DPI ({dpi}) too low for print and width ({width_px}px) "
+            f"insufficient to compensate. Need DPI >= 300 or width >= 2100px."
+        )
+
+    # Check aspect ratio is reasonable (not extremely tall/wide)
+    aspect = width_px / height_px
+    assert 0.25 < aspect < 4.0, (
+        f"Aspect ratio {aspect:.2f} is extreme. "
+        f"Check for rendering issues."
+    )
+        ]]>
+      </implementation>
+    </item>
+
+    <item id="3.4" status="pending">
+      <name>Create golden file directory</name>
+      <action>mkdir -p tests/golden_files/figures</action>
+      <output>Directory for visual regression baselines</output>
+    </item>
+
+    <item id="3.5" status="pending" depends_on="3.1,3.4">
+      <name>Implement visual regression test framework</name>
+      <file>tests/test_figure_qa/test_visual_rendering.py</file>
+      <test_function>test_figure_matches_golden</test_function>
+      <implementation>
+        <![CDATA[
+import pytest
+from pathlib import Path
+
+GOLDEN_DIR = Path(__file__).parent.parent / 'golden_files' / 'figures'
+
+def test_figure_matches_golden(figure_path, golden_name, threshold=10):
+    """
+    Compare figure to golden reference using perceptual hash.
+
+    Args:
+        threshold: Max Hamming distance (0=identical, higher=different)
+    """
+    import imagehash
+    from PIL import Image
+
+    golden_path = GOLDEN_DIR / f"{golden_name}.png"
+
+    if not golden_path.exists():
+        pytest.skip(f"No golden file for {golden_name}. Run with --update-golden to create.")
+
+    gen_hash = imagehash.phash(Image.open(figure_path))
+    gold_hash = imagehash.phash(Image.open(golden_path))
+
+    distance = gen_hash - gold_hash
+    assert distance <= threshold, (
+        f"Figure differs from golden by {distance} (threshold: {threshold}). "
+        f"If this is intentional, update golden with --update-golden flag."
+    )
+        ]]>
+      </implementation>
+    </item>
+  </phase>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- PHASE 4: P2/P3 MEDIUM/LOW PRIORITY (Completeness)                       -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <phase id="4" name="P2-P3 Completeness" priority="MEDIUM">
+    <description>
+      Additional checks for full coverage. Implement after P0/P1 stable.
+    </description>
+
+    <item id="4.1" status="pending">
+      <name>Implement colorblind simulation test</name>
+      <file>tests/test_figure_qa/test_accessibility.py</file>
+      <note>Use colorspace R package via rpy2 or Python daltonize</note>
+    </item>
+
+    <item id="4.2" status="pending">
+      <name>Implement font embedding check for PDFs</name>
+      <file>tests/test_figure_qa/test_publication_standards.py</file>
+      <note>Use pdffonts or PyPDF2 to list fonts</note>
+    </item>
+
+    <item id="4.3" status="pending">
+      <name>Implement session info capture</name>
+      <file>scripts/capture_session_info.R</file>
+      <note>Save R sessionInfo() and Python sys.version to JSON</note>
+    </item>
+
+    <item id="4.4" status="pending">
+      <name>Create pytest fixtures for common test data</name>
+      <file>tests/test_figure_qa/conftest.py</file>
+      <implementation>
+        <![CDATA[
+import pytest
+from pathlib import Path
+
+@pytest.fixture
+def calibration_json_path():
+    return Path('outputs/r_data/calibration_data.json')
+
+@pytest.fixture
+def dca_json_path():
+    return Path('outputs/r_data/dca_data.json')
+
+@pytest.fixture
+def predictions_json_path():
+    return Path('outputs/r_data/predictions_top4.json')
+        ]]>
+      </implementation>
+    </item>
+
+    <item id="4.5" status="pending">
+      <name>Add Makefile target for figure QA</name>
+      <file>Makefile</file>
+      <action>
+        <![CDATA[
+.PHONY: test-figures
+test-figures:
+    pytest tests/test_figure_qa/ -v --tb=short
+        ]]>
+      </action>
+    </item>
+  </phase>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- QUICK START COMMANDS                                                    -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <quick-start>
+    <step order="1">
+      <command>mkdir -p tests/test_figure_qa tests/golden_files/figures</command>
+      <description>Create test directories</description>
+    </step>
+    <step order="2">
+      <command>uv pip install imagehash Pillow pytest</command>
+      <description>Install test dependencies</description>
+    </step>
+    <step order="3">
+      <command>touch tests/test_figure_qa/__init__.py tests/test_figure_qa/conftest.py</command>
+      <description>Initialize Python package</description>
+    </step>
+    <step order="4">
+      <command>pytest tests/test_figure_qa/ -v</command>
+      <description>Run all figure QA tests</description>
+    </step>
+  </quick-start>
+
+</tdd-execution-plan>

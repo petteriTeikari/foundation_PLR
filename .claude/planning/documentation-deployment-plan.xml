@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Documentation-as-Code Deployment Plan
+  Foundation PLR Project
+  Created: 2026-01-23
+  Reference: docs/research/documentation-as-code-analysis.md
+-->
+<deployment_plan>
+  <metadata>
+    <title>Documentation-as-Code Deployment Plan</title>
+    <version>1.0</version>
+    <created>2026-01-23</created>
+    <status>IN_PROGRESS</status>
+    <reference_doc>docs/research/documentation-as-code-analysis.md</reference_doc>
+  </metadata>
+
+  <executive_summary>
+    <recommendation>MkDocs + Material + mkdocstrings → Zensical (Oct 2026)</recommendation>
+    <hosting>GitHub Pages (FREE)</hosting>
+    <automation>Claude Code GitHub Actions</automation>
+    <total_cost>$0 (all components free/open source)</total_cost>
+  </executive_summary>
+
+  <phases>
+    <!-- PHASE 1: Foundation (COMPLETED) -->
+    <phase id="1" name="Foundation" status="COMPLETED">
+      <description>Set up MkDocs infrastructure</description>
+      <tasks>
+        <task id="1.1" status="DONE">
+          <name>Install MkDocs stack via UV</name>
+          <command>uv pip install mkdocs mkdocs-material mkdocstrings[python] mkdocs-mermaid2-plugin</command>
+        </task>
+        <task id="1.2" status="DONE">
+          <name>Create mkdocs.yml configuration</name>
+          <file>mkdocs.yml</file>
+        </task>
+        <task id="1.3" status="DONE">
+          <name>Create docs folder structure</name>
+          <folders>
+            <folder>docs/getting-started/</folder>
+            <folder>docs/user-guide/</folder>
+            <folder>docs/api-reference/</folder>
+            <folder>docs/tutorials/</folder>
+            <folder>docs/explanation/</folder>
+            <folder>docs/research/</folder>
+          </folders>
+        </task>
+        <task id="1.4" status="DONE">
+          <name>Create initial documentation pages</name>
+          <pages_created>25+</pages_created>
+        </task>
+        <task id="1.5" status="DONE">
+          <name>Test MkDocs build</name>
+          <result>SUCCESS (with mkdocstrings disabled)</result>
+        </task>
+      </tasks>
+    </phase>
+
+    <!-- PHASE 2: API Reference (TODO) -->
+    <phase id="2" name="API Reference Integration" status="TODO">
+      <description>Enable automatic docstring extraction</description>
+      <blocker>Complex module dependencies prevent direct import</blocker>
+      <tasks>
+        <task id="2.1" status="TODO" priority="HIGH">
+          <name>Fix module __init__.py files</name>
+          <description>Add missing __init__.py to subfolders (units/, catboost/, momentfm/, etc.)</description>
+          <affected_modules>
+            <module>src/anomaly_detection/units/</module>
+            <module>src/anomaly_detection/momentfm_outlier/</module>
+            <module>src/classification/catboost/</module>
+            <module>src/classification/tabm/</module>
+            <module>src/imputation/momentfm/</module>
+          </affected_modules>
+        </task>
+        <task id="2.2" status="TODO" priority="HIGH">
+          <name>Resolve optional import dependencies</name>
+          <description>Ensure modules can be imported without all optional deps</description>
+        </task>
+        <task id="2.3" status="TODO" priority="MEDIUM">
+          <name>Enable mkdocstrings in build</name>
+          <description>Set ENABLE_MKDOCSTRINGS=true once imports work</description>
+        </task>
+        <task id="2.4" status="TODO" priority="MEDIUM">
+          <name>Verify all 600+ docstrings render correctly</name>
+        </task>
+      </tasks>
+    </phase>
+
+    <!-- PHASE 3: CI/CD Setup (TODO) -->
+    <phase id="3" name="CI/CD Pipeline" status="TODO">
+      <description>Set up automated documentation workflows</description>
+      <tasks>
+        <task id="3.1" status="TODO" priority="HIGH">
+          <name>Create .github/workflows/docs.yml</name>
+          <description>Automated build and lint on PR</description>
+          <workflow_triggers>
+            <trigger>push to main</trigger>
+            <trigger>pull_request</trigger>
+          </workflow_triggers>
+          <steps>
+            <step>Checkout code</step>
+            <step>Setup Python with UV</step>
+            <step>Install MkDocs dependencies</step>
+            <step>Run markdownlint</step>
+            <step>Run lychee link checker</step>
+            <step>Build MkDocs (strict mode)</step>
+          </steps>
+        </task>
+        <task id="3.2" status="TODO" priority="LOW">
+          <name>Add Vale prose linter (optional)</name>
+          <description>Scientific writing style enforcement</description>
+        </task>
+        <task id="3.3" status="TODO" priority="MEDIUM">
+          <name>Create markdownlint configuration</name>
+          <file>.markdownlint.yaml</file>
+        </task>
+      </tasks>
+    </phase>
+
+    <!-- PHASE 4: GitHub Pages Deployment (TODO - FINAL STEP) -->
+    <phase id="4" name="GitHub Pages Deployment" status="TODO">
+      <description>Deploy documentation to GitHub Pages</description>
+      <prerequisite>User confirms repo is ready for publication</prerequisite>
+      <tasks>
+        <task id="4.1" status="TODO" priority="HIGH">
+          <name>Enable GitHub Pages in repo settings</name>
+          <steps>
+            <step>Go to repo Settings → Pages</step>
+            <step>Select "GitHub Actions" as source</step>
+          </steps>
+        </task>
+        <task id="4.2" status="TODO" priority="HIGH">
+          <name>Create deployment workflow</name>
+          <file>.github/workflows/deploy-docs.yml</file>
+          <trigger>push to main (manual approval)</trigger>
+        </task>
+        <task id="4.3" status="TODO" priority="MEDIUM">
+          <name>Update mkdocs.yml with correct URLs</name>
+          <description>Replace placeholder username with actual GitHub username</description>
+        </task>
+        <task id="4.4" status="TODO" priority="LOW">
+          <name>Configure custom domain (optional)</name>
+        </task>
+      </tasks>
+    </phase>
+
+    <!-- PHASE 5: Claude Code Automation (TODO) -->
+    <phase id="5" name="Claude Code Automation" status="TODO">
+      <description>Set up AI-assisted documentation maintenance</description>
+      <tasks>
+        <task id="5.1" status="TODO" priority="MEDIUM">
+          <name>Install Claude Code GitHub App</name>
+          <command>claude /install-github-app</command>
+        </task>
+        <task id="5.2" status="TODO" priority="MEDIUM">
+          <name>Create documentation update workflow</name>
+          <file>.github/workflows/claude-docs.yml</file>
+          <description>Trigger Claude to suggest doc updates on code changes</description>
+        </task>
+        <task id="5.3" status="TODO" priority="LOW">
+          <name>Configure monthly docs sync</name>
+          <description>Scheduled workflow to ensure docs alignment</description>
+        </task>
+      </tasks>
+    </phase>
+
+    <!-- PHASE 6: Future Migration (Oct 2026) -->
+    <phase id="6" name="Zensical Migration" status="FUTURE">
+      <description>Migrate from MkDocs to Zensical when stable</description>
+      <target_date>October 2026</target_date>
+      <rationale>Material for MkDocs enters end-of-life November 2026</rationale>
+      <tasks>
+        <task id="6.1" status="FUTURE">
+          <name>Monitor Zensical 1.0 release</name>
+        </task>
+        <task id="6.2" status="FUTURE">
+          <name>Test migration with existing content</name>
+          <description>Content is Markdown - should be compatible</description>
+        </task>
+        <task id="6.3" status="FUTURE">
+          <name>Update CI/CD for Zensical</name>
+        </task>
+      </tasks>
+    </phase>
+  </phases>
+
+  <progress_tracking>
+    <completed_tasks>5</completed_tasks>
+    <total_tasks>20</total_tasks>
+    <percentage>25%</percentage>
+    <last_updated>2026-01-23</last_updated>
+  </progress_tracking>
+
+  <cost_analysis>
+    <component name="MkDocs" license="BSD-2" cost="FREE"/>
+    <component name="Material for MkDocs" license="MIT" cost="FREE"/>
+    <component name="mkdocstrings" license="ISC" cost="FREE"/>
+    <component name="Zensical" license="MIT" cost="FREE"/>
+    <component name="GitHub Pages" license="N/A" cost="FREE (public repos)"/>
+    <component name="GitHub Actions" license="N/A" cost="FREE (2000 min/month)"/>
+    <component name="Lychee/Markdownlint/Vale" license="Various OSS" cost="FREE"/>
+    <total_cost>$0</total_cost>
+  </cost_analysis>
+
+  <key_decisions>
+    <decision id="1">
+      <question>Why MkDocs over Sphinx?</question>
+      <answer>Better DevEx (live reload), Markdown native (Claude compatible), simpler setup</answer>
+    </decision>
+    <decision id="2">
+      <question>Why not deploy immediately?</question>
+      <answer>User requested final deployment only when repo is publication-ready</answer>
+    </decision>
+    <decision id="3">
+      <question>How to handle MkDocs sunset?</question>
+      <answer>Plan migration to Zensical (same ecosystem, backwards compatible) by Oct 2026</answer>
+    </decision>
+  </key_decisions>
+
+  <references>
+    <reference>
+      <title>Documentation-as-Code Analysis</title>
+      <path>docs/research/documentation-as-code-analysis.md</path>
+      <description>Comprehensive research document with decision matrix</description>
+    </reference>
+    <reference>
+      <title>mkdocstrings Documentation</title>
+      <url>https://mkdocstrings.github.io/</url>
+    </reference>
+    <reference>
+      <title>Zensical Announcement</title>
+      <url>https://squidfunk.github.io/mkdocs-material/blog/2025/11/05/zensical/</url>
+    </reference>
+  </references>
+</deployment_plan>

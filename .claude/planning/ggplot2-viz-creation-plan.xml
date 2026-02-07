@@ -1,0 +1,835 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ggplot2 Visualization Creation Plan for Foundation PLR
+  Created: 2026-01-25
+  Status: DRAFT - Pending reviewer optimization
+
+  Goal: Convert all figures to publication-quality ggplot2 (R)
+  with JSON data artifacts for reproducibility
+-->
+<visualization-plan>
+  <metadata>
+    <title>Foundation PLR ggplot2 Visualization Migration</title>
+    <created>2026-01-25</created>
+    <author>Foundation PLR Team</author>
+    <status>DRAFT_FOR_REVIEW</status>
+    <source-documents>
+      <doc>suggested-visualizations.md (Nikola T Markov brainstorming)</doc>
+      <doc>figure-improvement-plan-with-ggplot2.md (execution plan)</doc>
+    </source-documents>
+  </metadata>
+
+  <!-- ================================================================== -->
+  <!-- DATA SOURCES ALREADY AVAILABLE -->
+  <!-- ================================================================== -->
+  <data-sources>
+    <source id="duckdb" status="READY">
+      <path>outputs/foundation_plr_results.db</path>
+      <description>328 configs with all metrics (AUROC, CI, preprocessing)</description>
+      <tables>essential_metrics, catboost_configs, top10_catboost</tables>
+    </source>
+
+    <source id="shap-summary" status="READY">
+      <path>outputs/shap_summary_top10.pkl</path>
+      <description>SHAP mean/std/CI for top-10 configs (0.2 MB)</description>
+    </source>
+
+    <source id="shap-full" status="READY">
+      <path>outputs/shap_values_top10.pkl</path>
+      <description>Full bootstrap SHAP values (38.7 MB)</description>
+    </source>
+
+    <source id="shap-json" status="READY">
+      <path>figures/generated/shap/shap_figures_data.json</path>
+      <description>JSON export of SHAP statistics for R consumption</description>
+    </source>
+
+    <source id="catboost-artifact" status="READY">
+      <path>outputs/top10_catboost_models.pkl</path>
+      <description>Top-10 models with 1000 bootstrap each (1.57 GB)</description>
+    </source>
+
+    <source id="mlflow-runs" status="READY">
+      <path>/home/petteri/mlruns/253031330985650090</path>
+      <description>Original MLflow experiment data (410 runs)</description>
+    </source>
+  </data-sources>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 1: DATA EXPORT TO R-FRIENDLY FORMAT -->
+  <!-- ================================================================== -->
+  <phase id="1" name="Data Export">
+    <description>Export all data to JSON/CSV for R consumption</description>
+
+    <task id="1.1" priority="HIGH" estimated-time="30min">
+      <name>Export DuckDB to CSV/JSON</name>
+      <input>outputs/foundation_plr_results.db</input>
+      <output>outputs/r_data/essential_metrics.csv</output>
+      <output>outputs/r_data/top10_configs.json</output>
+      <script>scripts/export_data_for_r.py</script>
+      <description>
+        Export all config metrics to CSV for easy R import.
+        Include: run_id, outlier_method, imputation_method, auroc, auroc_ci_lo, auroc_ci_hi
+      </description>
+    </task>
+
+    <task id="1.2" priority="HIGH" estimated-time="30min">
+      <name>Export SHAP to JSON for R</name>
+      <input>outputs/shap_summary_top10.pkl</input>
+      <output>outputs/r_data/shap_feature_importance.json</output>
+      <output>outputs/r_data/shap_per_sample.json</output>
+      <script>scripts/export_shap_for_r.py</script>
+      <description>
+        Convert SHAP pickle to JSON with:
+        - Per-feature importance (mean, std, ci_lo, ci_hi)
+        - Per-sample SHAP values for beeswarm plots
+        - Feature names and config metadata
+      </description>
+    </task>
+
+    <task id="1.3" priority="MEDIUM" estimated-time="20min">
+      <name>Compute VIF Analysis</name>
+      <input>outputs/top10_catboost_models.pkl</input>
+      <output>outputs/r_data/vif_analysis.json</output>
+      <script>scripts/compute_vif.py</script>
+      <description>
+        Compute Variance Inflation Factor for all features.
+        Use statsmodels variance_inflation_factor.
+        Export per-config and aggregate VIF scores.
+      </description>
+    </task>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 2: EXISTING FIGURES MIGRATION -->
+  <!-- ================================================================== -->
+  <phase id="2" name="Existing Figure Migration">
+    <description>Convert Python matplotlib figures to ggplot2</description>
+
+    <!-- Main manuscript figures -->
+    <task id="2.1" priority="HIGH" estimated-time="1h">
+      <name>Forest Plot - Outlier Methods (fig02)</name>
+      <python-source>src/viz/forest_plot.py</python-source>
+      <r-output>r/figures/fig02_forest_outlier.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig02_forest_outlier.pdf</figure-output>
+      <json-data>figures/generated/data/fig02_forest_outlier_data.json</json-data>
+      <ggplot2-elements>
+        <geom>geom_pointrange (point + CI whiskers)</geom>
+        <geom>geom_vline (reference line)</geom>
+        <facet>facet_wrap by method category</facet>
+        <theme>theme_minimal + custom publication theme</theme>
+      </ggplot2-elements>
+    </task>
+
+    <task id="2.2" priority="HIGH" estimated-time="1h">
+      <name>Forest Plot - Imputation Methods (fig03)</name>
+      <python-source>src/viz/forest_plot.py</python-source>
+      <r-output>r/figures/fig03_forest_imputation.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig03_forest_imputation.pdf</figure-output>
+      <json-data>figures/generated/data/fig03_forest_imputation_data.json</json-data>
+    </task>
+
+    <task id="2.3" priority="HIGH" estimated-time="1.5h">
+      <name>Calibration Plot (STRATOS-compliant)</name>
+      <python-source>src/viz/calibration_plot.py</python-source>
+      <r-output>r/figures/fig_calibration_stratos.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_calibration_stratos.pdf</figure-output>
+      <json-data>figures/generated/data/fig_calibration_data.json</json-data>
+      <ggplot2-elements>
+        <geom>geom_smooth (LOESS calibration curve)</geom>
+        <geom>geom_ribbon (confidence band)</geom>
+        <geom>geom_histogram (marginal density)</geom>
+        <geom>geom_rug (sample distribution)</geom>
+        <annotation>calibration slope, intercept, Brier</annotation>
+      </ggplot2-elements>
+    </task>
+
+    <task id="2.4" priority="HIGH" estimated-time="1h">
+      <name>Decision Curve Analysis (DCA)</name>
+      <python-source>src/viz/dca_plot.py</python-source>
+      <r-output>r/figures/fig_dca_stratos.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_dca_stratos.pdf</figure-output>
+      <json-data>figures/generated/data/fig_dca_data.json</json-data>
+      <ggplot2-elements>
+        <geom>geom_line (net benefit curves)</geom>
+        <geom>geom_hline (treat-all, treat-none)</geom>
+        <scale>scale_color_manual (preprocessing methods)</scale>
+      </ggplot2-elements>
+    </task>
+
+    <task id="2.5" priority="MEDIUM" estimated-time="45min">
+      <name>Factorial Design Matrix (fig_M3)</name>
+      <python-source>src/viz/factorial_matrix.py</python-source>
+      <r-output>r/figures/fig_M3_factorial_matrix.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_M3_factorial_matrix.pdf</figure-output>
+      <json-data>figures/generated/data/fig_M3_factorial_data.json</json-data>
+      <ggplot2-elements>
+        <geom>geom_tile (heatmap cells)</geom>
+        <geom>geom_text (cell labels)</geom>
+        <scale>scale_fill_viridis_c (color gradient)</scale>
+      </ggplot2-elements>
+    </task>
+
+    <task id="2.6" priority="MEDIUM" estimated-time="1h">
+      <name>Variance Decomposition (fig01)</name>
+      <python-source>src/viz/generate_all_figures.py</python-source>
+      <r-output>r/figures/fig01_variance_decomposition.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig01_variance_decomposition.pdf</figure-output>
+      <json-data>figures/generated/data/fig01_variance_data.json</json-data>
+      <ggplot2-elements>
+        <geom>geom_col (stacked bar for variance partition)</geom>
+        <scale>scale_fill_brewer (factor colors)</scale>
+      </ggplot2-elements>
+    </task>
+
+    <task id="2.7" priority="MEDIUM" estimated-time="1h">
+      <name>Featurization Comparison (fig_R7)</name>
+      <python-source>src/viz/featurization_comparison.py</python-source>
+      <r-output>r/figures/fig_R7_featurization_comparison.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_R7_featurization_comparison.pdf</figure-output>
+      <json-data>figures/generated/data/fig_R7_featurization_data.json</json-data>
+      <description>Shows 9pp gap: handcrafted (0.83) vs embeddings (0.74)</description>
+    </task>
+
+    <task id="2.8" priority="MEDIUM" estimated-time="1h">
+      <name>Foundation Model Dashboard (fig_R8)</name>
+      <python-source>src/viz/foundation_model_dashboard.py</python-source>
+      <r-output>r/figures/fig_R8_fm_dashboard.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_R8_fm_dashboard.pdf</figure-output>
+      <json-data>figures/generated/data/fig_R8_fm_dashboard_data.json</json-data>
+    </task>
+
+    <task id="2.9" priority="HIGH" estimated-time="1.5h">
+      <name>Specification Curve (fig06)</name>
+      <python-source>src/viz/generate_all_figures.py</python-source>
+      <r-output>r/figures/fig06_specification_curve.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig06_specification_curve.pdf</figure-output>
+      <json-data>figures/generated/data/fig06_specification_data.json</json-data>
+      <ggplot2-elements>
+        <geom>geom_point (328 config AUROCs)</geom>
+        <geom>geom_errorbar (95% CI)</geom>
+        <facet>Panel showing preprocessing choices</facet>
+      </ggplot2-elements>
+    </task>
+
+    <task id="2.10" priority="HIGH" estimated-time="1h">
+      <name>Critical Difference Diagram</name>
+      <python-source>src/viz/cd_diagram_preprocessing.py</python-source>
+      <r-output>r/figures/cd_preprocessing.R</r-output>
+      <figure-output>figures/generated/ggplot2/cd_preprocessing.pdf</figure-output>
+      <json-data>figures/generated/data/cd_preprocessing_data.json</json-data>
+      <description>Use scmamp R package for proper CD diagram</description>
+    </task>
+
+    <task id="2.11" priority="MEDIUM" estimated-time="45min">
+      <name>Heatmap Sensitivity (fig05)</name>
+      <python-source>src/viz/heatmap_sensitivity.py</python-source>
+      <r-output>r/figures/fig05_heatmap_catboost.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig05_heatmap_catboost.pdf</figure-output>
+      <json-data>figures/generated/data/fig05_heatmap_data.json</json-data>
+    </task>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 3: SHAP FIGURES IN GGPLOT2 -->
+  <!-- ================================================================== -->
+  <phase id="3" name="SHAP Visualization">
+    <description>Convert SHAP figures to ggplot2 with uncertainty</description>
+
+    <task id="3.1" priority="HIGH" estimated-time="1.5h">
+      <name>Feature Importance Bar Plot with Bootstrap CI</name>
+      <python-source>scripts/generate_shap_figures.py</python-source>
+      <r-output>r/figures/fig_shap_importance.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_shap_importance.pdf</figure-output>
+      <json-data>figures/generated/shap/shap_figures_data.json</json-data>
+      <ggplot2-elements>
+        <geom>geom_pointrange (mean + 95% CI)</geom>
+        <scale>scale_color_manual (Blue=469nm, Red=640nm)</scale>
+        <coord>coord_flip (horizontal bars)</coord>
+      </ggplot2-elements>
+      <description>
+        Forest-style plot showing:
+        - Mean |SHAP| per feature
+        - 95% CI from 1000 bootstrap models
+        - Color by wavelength (Blue/Red stimuli)
+      </description>
+    </task>
+
+    <task id="3.2" priority="HIGH" estimated-time="2h">
+      <name>SHAP Beeswarm Plot (ggplot2 version)</name>
+      <python-source>scripts/generate_shap_figures.py</python-source>
+      <r-output>r/figures/fig_shap_beeswarm.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_shap_beeswarm.pdf</figure-output>
+      <json-data>outputs/r_data/shap_per_sample.json</json-data>
+      <ggplot2-elements>
+        <geom>geom_jitter (sample points)</geom>
+        <scale>scale_color_gradient2 (feature value low-high)</scale>
+        <annotation>Vertical line at SHAP=0</annotation>
+      </ggplot2-elements>
+      <description>
+        Beeswarm showing per-sample SHAP values.
+        Color = feature value (normalized).
+        Sorted by mean |SHAP| importance.
+      </description>
+    </task>
+
+    <task id="3.3" priority="HIGH" estimated-time="1.5h">
+      <name>Ground Truth vs Ensemble Comparison</name>
+      <python-source>scripts/generate_shap_figures.py</python-source>
+      <r-output>r/figures/fig_shap_gt_vs_ensemble.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_shap_gt_vs_ensemble.pdf</figure-output>
+      <json-data>figures/generated/shap/shap_figures_data.json</json-data>
+      <ggplot2-elements>
+        <facet>facet_grid (GT | Ensemble side-by-side)</facet>
+        <geom>geom_segment + geom_point (lollipop chart)</geom>
+        <annotation>Correlation coefficient annotation</annotation>
+      </ggplot2-elements>
+      <description>
+        Side-by-side comparison:
+        - Left: Ground truth (pupil-gt + pupil-gt)
+        - Right: Best ensemble config
+        - Shows feature importance stability
+      </description>
+    </task>
+
+    <task id="3.4" priority="MEDIUM" estimated-time="1h">
+      <name>Feature Importance Heatmap Across Configs</name>
+      <python-source>scripts/generate_shap_figures.py</python-source>
+      <r-output>r/figures/fig_shap_heatmap.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_shap_heatmap.pdf</figure-output>
+      <json-data>figures/generated/shap/shap_figures_data.json</json-data>
+      <ggplot2-elements>
+        <geom>geom_tile (heatmap)</geom>
+        <scale>scale_fill_viridis_c (importance scale)</scale>
+        <annotation>AUROC annotations on right margin</annotation>
+      </ggplot2-elements>
+    </task>
+
+    <task id="3.5" priority="MEDIUM" estimated-time="1h">
+      <name>Ensemble Top-10 Aggregated Importance</name>
+      <r-output>r/figures/fig_shap_ensemble_importance.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_shap_ensemble_importance.pdf</figure-output>
+      <json-data>outputs/r_data/shap_ensemble_aggregated.json</json-data>
+      <description>
+        Aggregate SHAP across all 10 configs:
+        - Equal-weighted mean + propagated uncertainty
+        - AUROC-weighted mean as comparison
+        - Shows "consensus" feature importance
+      </description>
+    </task>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 4: NEW VISUALIZATIONS FROM SUGGESTIONS -->
+  <!-- ================================================================== -->
+  <phase id="4" name="New Visualizations">
+    <description>Implement high-priority suggestions from brainstorming</description>
+
+    <task id="4.1" priority="HIGH" estimated-time="1.5h">
+      <name>VIF Bar Chart</name>
+      <r-output>r/figures/fig_vif_analysis.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_vif_analysis.pdf</figure-output>
+      <json-data>outputs/r_data/vif_analysis.json</json-data>
+      <ggplot2-elements>
+        <geom>geom_col (VIF bars)</geom>
+        <geom>geom_vline (threshold at VIF=5, VIF=10)</geom>
+        <scale>scale_fill_manual (concern levels)</scale>
+        <annotation>Threshold annotations</annotation>
+      </ggplot2-elements>
+      <description>
+        Bar chart with collinearity thresholds:
+        - VIF > 5: Moderate concern (orange)
+        - VIF > 10: High concern (red)
+        - VIF < 5: OK (blue)
+      </description>
+    </task>
+
+    <task id="4.2" priority="HIGH" estimated-time="2h">
+      <name>Raincloud Plot for AUROC Distributions</name>
+      <r-output>r/figures/fig_raincloud_auroc.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_raincloud_auroc.pdf</figure-output>
+      <json-data>outputs/r_data/bootstrap_auroc_distributions.json</json-data>
+      <ggplot2-elements>
+        <package>ggdist (half-violin + dots)</package>
+        <geom>stat_halfeye (density)</geom>
+        <geom>stat_dots (jittered points)</geom>
+        <geom>geom_boxplot (median, IQR)</geom>
+      </ggplot2-elements>
+      <description>
+        Nature-style raincloud plots showing:
+        - Half-violin: bootstrap AUROC density
+        - Box: median + IQR
+        - Dots: actual bootstrap samples
+        - Compare top-10 preprocessing configs
+      </description>
+    </task>
+
+    <task id="4.3" priority="MEDIUM" estimated-time="1.5h">
+      <name>Alluvial/Sankey for Pipeline Flow</name>
+      <r-output>r/figures/fig_alluvial_pipeline.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_alluvial_pipeline.pdf</figure-output>
+      <json-data>outputs/r_data/pipeline_flow_data.json</json-data>
+      <ggplot2-elements>
+        <package>ggalluvial</package>
+        <geom>geom_alluvium (flow ribbons)</geom>
+        <geom>geom_stratum (stage nodes)</geom>
+        <scale>scale_fill_viridis_d (AUROC gradient)</scale>
+      </ggplot2-elements>
+      <description>
+        Flow diagram: Outlier -> Imputation -> Featurization -> AUROC
+        Width = number of configs, Color = AUROC
+      </description>
+    </task>
+
+    <task id="4.4" priority="MEDIUM" estimated-time="1h">
+      <name>Dot-and-Whisker Coefficient Plot</name>
+      <r-output>r/figures/fig_coefficient_plot.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_coefficient_plot.pdf</figure-output>
+      <json-data>outputs/r_data/anova_coefficients.json</json-data>
+      <ggplot2-elements>
+        <package>dotwhisker</package>
+        <geom>geom_pointrange (coefficient + CI)</geom>
+        <geom>geom_vline (zero reference)</geom>
+      </ggplot2-elements>
+      <description>
+        ANOVA effect sizes for preprocessing factors.
+        Shows which factors have significant effects on AUROC.
+      </description>
+    </task>
+
+    <task id="4.5" priority="LOW" estimated-time="2h">
+      <name>Partial Dependence Plots</name>
+      <r-output>r/figures/fig_pdp.R</r-output>
+      <figure-output>figures/generated/ggplot2/fig_pdp.pdf</figure-output>
+      <json-data>outputs/r_data/pdp_data.json</json-data>
+      <description>
+        Marginal effect of each handcrafted feature.
+        Requires computing PDP from CatBoost models.
+        Nice-to-have for interpretation section.
+      </description>
+    </task>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 5: R INFRASTRUCTURE -->
+  <!-- ================================================================== -->
+  <phase id="5" name="R Infrastructure">
+    <description>Setup R environment and shared utilities</description>
+
+    <task id="5.1" priority="HIGH" estimated-time="30min">
+      <name>Create R Project Structure</name>
+      <outputs>
+        <dir>r/</dir>
+        <file>r/setup.R (package installation)</file>
+        <file>r/theme_foundation_plr.R (custom theme)</file>
+        <file>r/color_palettes.R (consistent colors)</file>
+        <file>r/load_data.R (data loading utilities)</file>
+      </outputs>
+    </task>
+
+    <task id="5.2" priority="HIGH" estimated-time="20min">
+      <name>Define Publication Theme</name>
+      <r-output>r/theme_foundation_plr.R</r-output>
+      <description>
+        Custom ggplot2 theme matching journal requirements:
+        - Font: Arial/Helvetica
+        - Size: Appropriate for single/double column
+        - Colors: Colorblind-safe palette
+        - Grid: Minimal, light gray
+      </description>
+    </task>
+
+    <task id="5.3" priority="HIGH" estimated-time="15min">
+      <name>Color Palette Definition</name>
+      <r-output>r/color_palettes.R</r-output>
+      <description>
+        Consistent colors across all figures:
+        - Blue wavelength (469nm): #1f77b4
+        - Red wavelength (640nm): #d62728
+        - Ground truth: gold
+        - Ensemble methods: steelblue
+        - Traditional methods: gray
+      </description>
+    </task>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- EXECUTION SCHEDULE -->
+  <!-- ================================================================== -->
+  <execution-schedule>
+    <priority-order>
+      <!-- Phase 5 first - infrastructure -->
+      <step>5.1, 5.2, 5.3 (R infrastructure - 1h total)</step>
+      <!-- Phase 1 - data export -->
+      <step>1.1, 1.2, 1.3 (Data export - 1.5h total)</step>
+      <!-- Phase 3 - SHAP figures (highest scientific value) -->
+      <step>3.1, 3.2, 3.3 (Core SHAP - 5h total)</step>
+      <!-- Phase 4 - new visualizations -->
+      <step>4.1, 4.2 (VIF + Raincloud - 3.5h total)</step>
+      <!-- Phase 2 - existing figure migration -->
+      <step>2.1-2.11 (Migration - 10h total)</step>
+      <!-- Phase 4 remaining -->
+      <step>4.3, 4.4, 4.5 (Additional viz - 4.5h total)</step>
+    </priority-order>
+
+    <estimated-total-time>25.5 hours</estimated-total-time>
+
+    <parallelization>
+      <note>Phase 2 tasks are independent - can be parallelized</note>
+      <note>Phase 3.1-3.4 depend on 1.2 completion</note>
+      <note>Phase 4.1 depends on 1.3 completion</note>
+    </parallelization>
+  </execution-schedule>
+
+  <!-- ================================================================== -->
+  <!-- REVIEWER OPTIMIZATION SECTION -->
+  <!-- ================================================================== -->
+  <reviewer-agents>
+    <reviewer id="statistical-rigor">
+      <name>Statistical Rigor Reviewer</name>
+      <concerns>
+        <concern priority="HIGH">
+          Propagating bootstrap uncertainty to ensemble-aggregated SHAP requires
+          proper hierarchical variance decomposition. Use within-config +
+          across-config variance components.
+        </concern>
+        <concern priority="MEDIUM">
+          VIF interpretation: Features from same physiological source (e.g.,
+          Blue_SUSTAINED, Blue_PHASIC) may have expected collinearity.
+          Document but don't over-interpret.
+        </concern>
+      </concerns>
+      <recommendations>
+        <rec>Add variance decomposition: Var_total = Var_within + Var_between</rec>
+        <rec>Report effective sample size for aggregated estimates</rec>
+        <rec>Include sensitivity analysis with/without correlated features</rec>
+      </recommendations>
+    </reviewer>
+
+    <reviewer id="reproducibility">
+      <name>Reproducibility Reviewer</name>
+      <concerns>
+        <concern priority="HIGH">
+          R package versions must be locked. Use renv for environment management.
+        </concern>
+        <concern priority="MEDIUM">
+          JSON data exports must include complete metadata for figure recreation.
+        </concern>
+      </concerns>
+      <recommendations>
+        <rec>Add renv.lock file with pinned package versions</rec>
+        <rec>Include figure recreation commands in JSON metadata</rec>
+        <rec>Create master script: r/generate_all_figures.R</rec>
+      </recommendations>
+    </reviewer>
+
+    <reviewer id="visualization-quality">
+      <name>Visualization Quality Reviewer</name>
+      <concerns>
+        <concern priority="HIGH">
+          Beeswarm plots with many points can be cluttered. Consider
+          alpha transparency and point size optimization.
+        </concern>
+        <concern priority="MEDIUM">
+          Raincloud plots need careful spacing to avoid overlap.
+          Use ggdist default spacing parameters.
+        </concern>
+        <concern priority="LOW">
+          Color palette must be colorblind-safe. Test with
+          viridis or other CVD-friendly palettes.
+        </concern>
+      </concerns>
+      <recommendations>
+        <rec>Use alpha=0.6 for beeswarm points</rec>
+        <rec>Test all figures with colorblind simulator</rec>
+        <rec>Ensure PDF exports are vector (not rasterized)</rec>
+        <rec>Match axis ranges across related figures</rec>
+      </recommendations>
+    </reviewer>
+
+    <reviewer id="stratos-compliance">
+      <name>STRATOS Compliance Reviewer</name>
+      <concerns>
+        <concern priority="HIGH">
+          Calibration plots must include: smoothed curve with CI,
+          histogram of predictions, slope/intercept/O:E annotations.
+        </concern>
+        <concern priority="HIGH">
+          DCA must show treat-all and treat-none reference lines.
+          Include threshold range relevant to clinical practice.
+        </concern>
+      </concerns>
+      <recommendations>
+        <rec>Follow Van Calster 2024 Figure 3 layout for calibration</rec>
+        <rec>DCA threshold range: 5%-40% for screening context</rec>
+        <rec>Add Net Benefit numeric values at key thresholds</rec>
+      </recommendations>
+    </reviewer>
+  </reviewer-agents>
+
+  <!-- ================================================================== -->
+  <!-- DEPENDENCIES -->
+  <!-- ================================================================== -->
+  <r-dependencies>
+    <cran-packages>
+      <package>ggplot2</package>
+      <package>ggdist</package>
+      <package>ggalluvial</package>
+      <package>dotwhisker</package>
+      <package>viridis</package>
+      <package>cowplot</package>
+      <package>patchwork</package>
+      <package>jsonlite</package>
+      <package>dplyr</package>
+      <package>tidyr</package>
+      <package>readr</package>
+      <package>scmamp (for CD diagrams)</package>
+      <package>renv (for environment)</package>
+    </cran-packages>
+
+    <python-dependencies>
+      <package>shap (already installed)</package>
+      <package>statsmodels (for VIF)</package>
+      <package>duckdb</package>
+      <package>pandas</package>
+      <package>numpy</package>
+    </python-dependencies>
+  </r-dependencies>
+
+  <!-- ================================================================== -->
+  <!-- REVIEWER OPTIMIZATION RESULTS (2026-01-25) -->
+  <!-- ================================================================== -->
+  <reviewer-optimization date="2026-01-25">
+    <summary>
+      Four reviewer agents analyzed the plan. Key optimizations identified:
+      - Statistical rigor: 3 HIGH priority fixes
+      - Reproducibility: 3 HIGH priority gaps
+      - Visualization quality: 4 HIGH priority concerns
+      - STRATOS compliance: 3 HIGH priority gaps
+    </summary>
+
+    <!-- Critical additions based on reviewer feedback -->
+    <critical-additions>
+
+      <!-- From Statistical Rigor Reviewer -->
+      <addition id="OPT-1" priority="CRITICAL" source="statistical-rigor">
+        <name>Hierarchical Variance Decomposition for Ensemble SHAP</name>
+        <applies-to>Task 3.5</applies-to>
+        <description>
+          Current plan only computes within-config variance. Must add:
+          Var_total = Var_within (pooled within-config) + Var_between (across 10 configs)
+          Report effective sample size using Kish's formula.
+        </description>
+        <r-code><![CDATA[
+compute_ensemble_shap <- function(shap_list) {
+  K <- length(shap_list)  # 10 configs
+  config_means <- sapply(shap_list, function(x) colMeans(abs(x)))
+  var_between <- apply(config_means, 1, var)
+  var_within <- sapply(1:nrow(config_means), function(feat) {
+    mean(sapply(shap_list, function(cfg) var(abs(cfg[, feat]))))
+  })
+  var_total <- var_between + var_within
+  list(mean = rowMeans(config_means), sd = sqrt(var_total),
+       var_within = var_within, var_between = var_between)
+}
+        ]]></r-code>
+      </addition>
+
+      <!-- From Reproducibility Reviewer -->
+      <addition id="OPT-2" priority="CRITICAL" source="reproducibility">
+        <name>R Environment Management (renv)</name>
+        <applies-to>Task 5.1</applies-to>
+        <new-task>
+          <id>5.4</id>
+          <name>Initialize renv and Snapshot</name>
+          <commands>
+            Rscript -e "renv::init()"
+            Rscript -e "renv::snapshot()"
+          </commands>
+          <outputs>renv.lock, .Rprofile, renv/activate.R</outputs>
+        </new-task>
+      </addition>
+
+      <addition id="OPT-3" priority="CRITICAL" source="reproducibility">
+        <name>JSON Metadata Wrapper</name>
+        <applies-to>All JSON exports (Tasks 1.1, 1.2, 2.x, 3.x)</applies-to>
+        <schema><![CDATA[
+{
+  "metadata": {
+    "created": "2026-01-25T14:30:00Z",
+    "schema_version": "1.0",
+    "generator": "script_name.py",
+    "r_script": "r/figures/figure_name.R",
+    "data_source": {
+      "database": "outputs/foundation_plr_results.db",
+      "db_hash": "a1b2c3d4...",
+      "mlflow_experiment": "253031330985650090"
+    }
+  },
+  "data": { ... }
+}
+        ]]></schema>
+      </addition>
+
+      <addition id="OPT-4" priority="CRITICAL" source="reproducibility">
+        <name>Data Version Manifest</name>
+        <new-task>
+          <id>1.4</id>
+          <name>Create Data Version Manifest</name>
+          <output>outputs/r_data/DATA_MANIFEST.yaml</output>
+          <content>Database hash, export timestamp, subject counts</content>
+          <estimated-time>15min</estimated-time>
+        </new-task>
+      </addition>
+
+      <!-- From Visualization Quality Reviewer -->
+      <addition id="OPT-5" priority="CRITICAL" source="viz-quality">
+        <name>Use ggbeeswarm for Beeswarm Plots</name>
+        <applies-to>Task 3.2</applies-to>
+        <change>
+          Replace geom_jitter with ggbeeswarm::geom_quasirandom
+          Parameters: alpha=0.6, size=1.5, method="pseudorandom"
+        </change>
+        <package>ggbeeswarm</package>
+      </addition>
+
+      <addition id="OPT-6" priority="CRITICAL" source="viz-quality">
+        <name>Raincloud Plot Binning Strategy</name>
+        <applies-to>Task 4.2</applies-to>
+        <change>
+          Use stat_dots(quantiles=100) NOT raw 1000 bootstrap points.
+          Add: alpha=0.4, binwidth=0.002 for AUROC range.
+        </change>
+      </addition>
+
+      <addition id="OPT-7" priority="CRITICAL" source="viz-quality">
+        <name>Color Palette Standardization</name>
+        <applies-to>All figures</applies-to>
+        <decision>Use Paul Tol palette exclusively for categorical colors.
+          Use viridis ONLY for continuous heatmap gradients.
+          Blue wavelength: #1f77b4, Red wavelength: #d62728
+          Ground truth: #FFD700 (gold), Ensemble: #4682B4 (steelblue)
+        </decision>
+      </addition>
+
+      <addition id="OPT-8" priority="CRITICAL" source="viz-quality">
+        <name>Calibration Plot Layout with patchwork</name>
+        <applies-to>Task 2.3</applies-to>
+        <r-code><![CDATA[
+library(patchwork)
+p_cal <- ggplot(cal_data, aes(x = predicted, y = observed)) + ...
+p_hist <- ggplot(cal_data, aes(x = predicted)) + geom_histogram() + theme_void()
+p_cal + p_hist + plot_layout(ncol = 1, heights = c(4, 1))
+        ]]></r-code>
+      </addition>
+
+      <!-- From STRATOS Compliance Reviewer -->
+      <addition id="OPT-9" priority="CRITICAL" source="stratos">
+        <name>Add O:E Ratio to Calibration Annotations</name>
+        <applies-to>Task 2.3</applies-to>
+        <change>
+          Update annotation element:
+          FROM: calibration slope, intercept, Brier
+          TO: calibration slope, intercept, O:E ratio, Brier
+        </change>
+      </addition>
+
+      <addition id="OPT-10" priority="CRITICAL" source="stratos">
+        <name>DCA Reference Strategy Computation</name>
+        <applies-to>Task 2.4</applies-to>
+        <formulas>
+          NB_treat_all = prevalence - (1 - prevalence) * (pt / (1 - pt))
+          NB_treat_none = 0 (horizontal line)
+          Threshold range: 1%-30% for glaucoma screening
+        </formulas>
+      </addition>
+
+      <addition id="OPT-11" priority="HIGH" source="stratos">
+        <name>Net Benefit Summary Table</name>
+        <new-task>
+          <id>2.4b</id>
+          <name>Net Benefit at Key Thresholds Table</name>
+          <output>figures/generated/ggplot2/table_net_benefit.pdf</output>
+          <description>
+            Table showing NB at 5%, 10%, 15%, 20% thresholds
+            for top-4 preprocessing pipelines vs treat-all vs treat-none.
+          </description>
+          <estimated-time>30min</estimated-time>
+        </new-task>
+      </addition>
+
+      <addition id="OPT-12" priority="MEDIUM" source="stratos">
+        <name>Probability Distribution by Outcome</name>
+        <new-task>
+          <id>2.12</id>
+          <name>Probability Distribution Plot</name>
+          <output>figures/generated/ggplot2/fig_prob_dist_by_outcome.pdf</output>
+          <ggplot2-elements>
+            geom_density (Y=0 vs Y=1 curves)
+            geom_rug (sample markers)
+          </ggplot2-elements>
+          <estimated-time>45min</estimated-time>
+        </new-task>
+      </addition>
+
+      <!-- From Statistical Rigor Reviewer -->
+      <addition id="OPT-13" priority="MEDIUM" source="statistical-rigor">
+        <name>VIF Physiological Context</name>
+        <applies-to>Task 4.1</applies-to>
+        <change>
+          Stratify VIF thresholds by feature type:
+          - Temporal window features (same stimulus): VIF > 20 = High, > 10 = Moderate
+          - Cross-stimulus features: VIF > 5 = High, > 3 = Moderate
+          Add footnote: "Blue stimulus features show expected correlation due to shared pupillary dynamics"
+        </change>
+      </addition>
+
+    </critical-additions>
+
+    <!-- Additional R packages needed -->
+    <additional-packages>
+      <package>ggbeeswarm (for beeswarm plots)</package>
+      <package>ggExtra (for marginal histograms)</package>
+      <package>colorblindr (for accessibility testing)</package>
+      <package>ragg (for high-quality PDF rendering)</package>
+    </additional-packages>
+
+    <!-- Updated time estimate -->
+    <revised-time-estimate>
+      <original>25.5 hours</original>
+      <revised>32-35 hours</revised>
+      <reason>
+        Additional tasks from reviewer feedback:
+        +3h for renv setup and testing
+        +2h for metadata wrapper implementation
+        +2h for beeswarm/raincloud density debugging
+        +1.5h for additional STRATOS tasks (2.4b, 2.12)
+      </reason>
+    </revised-time-estimate>
+
+    <!-- Validation checklist -->
+    <pre-implementation-checklist>
+      <item>[ ] renv initialized with all packages pinned</item>
+      <item>[ ] JSON metadata wrapper function created</item>
+      <item>[ ] DATA_MANIFEST.yaml with database hash exists</item>
+      <item>[ ] Paul Tol color palette defined in r/color_palettes.R</item>
+      <item>[ ] Hierarchical variance function tested</item>
+    </pre-implementation-checklist>
+  </reviewer-optimization>
+
+  <!-- ================================================================== -->
+  <!-- SUCCESS CRITERIA (Updated with reviewer requirements) -->
+  <!-- ================================================================== -->
+  <success-criteria>
+    <criterion>All figures render as PDF without errors</criterion>
+    <criterion>JSON data files include full metadata (created, hash, recreate command)</criterion>
+    <criterion>Color palette consistent: Paul Tol categorical, viridis continuous only</criterion>
+    <criterion>STRATOS-required: calibration with O:E ratio, DCA with treat-all/treat-none</criterion>
+    <criterion>Bootstrap uncertainty with hierarchical variance (within + between)</criterion>
+    <criterion>VIF analysis with physiological context stratification</criterion>
+    <criterion>R environment reproducible via renv.lock</criterion>
+    <criterion>All figures pass colorblindr::cvd_grid() accessibility test</criterion>
+    <criterion>Data manifest exists with database hash for provenance</criterion>
+    <criterion>Net Benefit reported at 5%, 10%, 15%, 20% thresholds</criterion>
+  </success-criteria>
+</visualization-plan>
