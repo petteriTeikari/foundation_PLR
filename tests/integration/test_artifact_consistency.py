@@ -37,7 +37,8 @@ def manuscript_root() -> Path:
     path = Path(
         "/home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR"
     )
-    assert path.exists(), f"Manuscript directory not found: {path}"
+    if not path.exists():
+        pytest.skip(f"Manuscript directory not found (expected on CI): {path}")
     return path
 
 
