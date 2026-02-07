@@ -1,0 +1,52 @@
+# .renvignore - Directories to ignore during renv dependency scanning
+#
+# This reduces the time renv takes to scan for R dependencies.
+# Only R source files in src/r/ and scripts/ are relevant.
+#
+# Created: 2026-02-01
+# Ref: https://rstudio.github.io/renv/reference/dependencies.html
+
+# Python virtual environment (contains embedded R packages from prophet)
+.venv/
+
+# Node modules (apps/visualization)
+node_modules/
+
+# Git history
+.git/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Data directories (no R code)
+data/
+outputs/
+figures/generated/
+
+# MLflow artifacts
+mlruns/
+mlartifacts/
+
+# Jupyter notebooks (Python-only)
+notebooks/
+
+# Documentation (no executable R)
+docs/
+.claude/
+
+# Test outputs
+.pytest_cache/
+htmlcov/
+
+# IDE/editor
+.idea/
+.vscode/
+
+# OS files
+.DS_Store

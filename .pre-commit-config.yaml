@@ -2,11 +2,88 @@ default_language_version:
   python: python3.11
 repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.6.5
+  rev: v0.9.1  # Updated from v0.6.5
   hooks:
-    # Run the linter.
     - id: ruff
-      args: [ --verbose, --fix, --config=pyproject.toml ]
-    # Run the formatter.
+      args: [--fix, --config=pyproject.toml]
+      types: [python]
     - id: ruff-format
+      types: [python]
+
+# Registry validation - CRITICAL quality gate
+# These tests enforce that method counts are EXACTLY 11/8/5
+# Hooks only run when registry-related files change (not on every commit)
+- repo: local
+  hooks:
+    # ANTI-CHEAT: Verify all sources agree (canary, registry, module, tests)
+    - id: registry-integrity
+      name: Registry Integrity Check (anti-cheat verification)
+      entry: uv run python scripts/validation/verify_registry_integrity.py
+      language: system
+      pass_filenames: false
+      stages: [pre-commit]
+      # NOTE: Removed always_run:true - it was overriding files: pattern (BUG)
+      files: (configs/mlflow_registry/|configs/registry_canary\.yaml|src/data_io/registry\.py|tests/test_registry\.py)
+
+    # Run registry tests after integrity check passes
+    - id: registry-validation
+      name: Registry Validation (11 outliers, 8 imputations, 5 classifiers)
+      entry: uv run python -m pytest tests/test_registry.py -v --tb=short
+      language: system
+      pass_filenames: false
+      stages: [pre-commit]
+      files: (configs/mlflow_registry/|configs/registry_canary\.yaml|src/data_io/registry\.py|tests/test_registry\.py)
+
+    # R HARDCODING CHECK - CRITICAL-FAILURE-004 prevention
+    # Prevents hardcoded hex colors, ggsave(), custom themes in R figure scripts
+    - id: r-hardcoding-check
+      name: R Hardcoding Check (no hex colors, use figure system)
+      entry: uv run python scripts/validation/check_r_hardcoding.py
+      language: system
+      types: [r]
+      pass_filenames: true
+      stages: [pre-commit]
+
+    # COMPUTATION DECOUPLING - CRITICAL-FAILURE-003 prevention
+    # Ensures viz code reads from DuckDB, does NOT compute metrics
+    - id: computation-decoupling
+      name: Computation Decoupling Check (viz code must not compute metrics)
+      entry: uv run python scripts/validation/check_computation_decoupling.py
+      language: system
+      types: [python]
+      pass_filenames: true
+      stages: [pre-commit]
+      files: src/viz/
+
+    # RENV SYNC CHECK - R4R-inspired reproducibility
+    # Verifies renv.lock is in sync with R dependencies when R files change
+    # Does NOT auto-update lockfile - warns if manual snapshot needed
+    # Ref: manuscripts/foundationPLR/planning/r-code-reproducibility-analysis.md
+    - id: renv-sync-check
+      name: renv Sync Check (R reproducibility)
+      entry: Rscript scripts/infra/check_renv_sync.R
+      language: system
+      pass_filenames: false
+      stages: [pre-commit]
+      files: (\.R$|renv\.lock$|src/r/)
+
+    # SYNTHETIC DATA ISOLATION - 4-gate architecture
+    # Ensures synthetic data never contaminates production artifacts
+    # See: src/utils/data_mode.py and docs/planning/synthetic-data-isolation-plan.md
+    - id: extraction-isolation-check
+      name: Extraction Isolation (no synthetic in production)
+      entry: uv run python scripts/validation/check_extraction_isolation.py
+      language: system
+      pass_filenames: false
+      stages: [pre-commit]
+      # Run when extraction scripts or data_mode utilities change
+      files: (scripts/extraction/extract.*\.py|src/utils/data_mode\.py|configs/data_isolation\.yaml)
+
+    - id: figure-isolation-check
+      name: Figure Isolation (no synthetic in generated/)
+      entry: uv run python scripts/validation/check_figure_isolation.py
+      language: system
+      pass_filenames: false
+      stages: [pre-commit]
+      # Run when viz code, figures, or isolation config changes
+      files: (src/viz/|figures/|configs/data_isolation\.yaml)

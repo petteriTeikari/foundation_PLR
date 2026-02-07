@@ -1,9 +1,9 @@
 # See https://docs.prefect.io/3.0/get-started/quickstart#deploy-and-schedule-your-flow
 # and https://docs.prefect.io/3.0/deploy/infrastructure-examples/docker#store-your-code-in-git-based-cloud-storage
-from prefect import flow
-from prefect.runner.storage import GitRepository
-from prefect.blocks.system import Secret
 import hydra
+from prefect import flow
+from prefect.blocks.system import Secret
+from prefect.runner.storage import GitRepository
 
 from src.orchestration.prefect_utils import pre_check_workpool
 

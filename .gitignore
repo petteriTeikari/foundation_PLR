@@ -3,19 +3,14 @@
 /outputs/*
 .idea/*
 output/*
-/docs/*
+# Old docs ignores - now we have MkDocs documentation
+# /docs/*
 /data/*.csv
 /data/*.zip
 /data/*.xlsx
 /data/archived/*
-/artifacts/hydra/*
 /src/mlruns/*
-/artifacts/mlflow/.hydra/*
-/artifacts/pypots/*
-/artifacts/mlflow/*
-/artifacts/mlflow/mlruns/*
 /data/SERI_PLR_GLAUCOMA.db
-/artifacts/*
 /archived_code/feature_OLD.py
 /archived_code/archived_unsorted.py
 /src/models/timegpt/*
@@ -30,5 +25,99 @@ output/*
 /src/log_helpers/mlflow_tools/mlruns/*
 /data/*.ts
 /data/*
+# Exception: Synthetic data is safe to commit (no PII)
+!/data/synthetic/
+!/data/synthetic/**
 /src/catboost_info/*
+catboost_info/
+
+# Redundant output dirs (canonical: outputs/latex/)
+artifacts/
+
+# Database files in scripts/ (development leftovers)
+scripts/*.duckdb
 /src/classification/tabpfn_v1/models_diff/prior_diff_real_checkpoint_n_0_epoch_42.cpkt
+
+# Patient privacy: Exclude JSON files with individual PLR traces/subject data
+# These are generated locally but cannot be shared publicly due to SERI data rights
+**/subject_traces*.json
+**/individual_*.json
+**/plr_trace*.json
+**/per_subject*.json
+
+# Additional privacy rules for figure data containing subject identifiers
+# JSON files that contain subject codes (PLRxxxx) or individual traces
+**/fig_subject_*.json
+**/demo_subject_*.json
+**/data/subject_*.json
+**/data/*_per_subject.json
+**/data/*_individual.json
+**/data/*_PLR*.json
+
+# Figure generation checkpoints (local tracking)
+.figure_generation_checkpoints.log
+
+# Node.js
+**/node_modules
+apps/visualization/node_modules/*
+
+# MkDocs build output — regenerate with: mkdocs build
+# This directory can safely be deleted; it will be rebuilt automatically.
+site/
+
+# Private data directory (contains subject lookup tables and raw traces)
+data/private/
+
+# Re-identification lookup tables (even if outside data/private/)
+**/subject_lookup.yaml
+**/subject_lookup.json
+**/*_lookup_table.*
+logs/
+
+# Root directory protection - prevent output clutter in root
+/*.png
+/*.jpg
+/*.pdf
+/*.json
+!/pyproject.json
+/*.tex
+/*.csv
+
+# renv - R package management
+# Include renv.lock for reproducibility, exclude local library
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
+.Rhistory
+.RData
+*.Rproj.user
+
+# Large github repo figure files 
+# (the originals for the converted JPEGs/PNGs)
+docs/repo-figures/generated/*
+
+# Default mlruns dir
+mlruns/*
+
+# =============================================================================
+# SYNTHETIC DATA ISOLATION
+# =============================================================================
+# Part of 4-gate isolation architecture. Synthetic data must NEVER be committed.
+# See: src/utils/data_mode.py and docs/planning/synthetic-data-isolation-plan.md
+
+# Synthetic output directories (computed from synthetic data)
+outputs/synthetic/
+figures/synthetic/
+
+# Synthetic database files (anywhere in tree)
+**/synthetic_*.db
+**/SYNTH_*.db
+
+# Synthetic JSON figure data (anywhere in tree)
+**/synthetic_*.json
+figures/generated/fig_decomposition_grid_TEST.png
+figures/generated/data/fig_decomposition_grid_TEST.json
