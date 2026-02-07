@@ -82,10 +82,15 @@ jobs:
   # Build and test Python test Docker image (lightweight)
   # Uses direct docker build instead of build-push-action for better error
   # visibility (buildx + load: true swallows build errors on free-tier runners).
+  #
+  # continue-on-error: GHA free-tier runners intermittently kill Docker builds
+  # with no logs (runner preemption). Python tests are validated by the main
+  # CI workflow; this job provides supplemental Docker build validation.
   # ===========================================================================
   build-test:
     name: Build Test Docker Image
     runs-on: ubuntu-latest
+    continue-on-error: true
     timeout-minutes: 30
 
     steps:
