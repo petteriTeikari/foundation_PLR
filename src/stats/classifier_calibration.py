@@ -1,9 +1,34 @@
-from omegaconf import DictConfig
+"""
+Post-training classifier calibration methods.
+
+Provides wrappers for sklearn calibration methods (isotonic, Platt scaling).
+"""
+
 from loguru import logger
+from omegaconf import DictConfig
 from sklearn.calibration import CalibratedClassifierCV
 
 
 def isotonic_calibration(i, model, cls_model_cfg: DictConfig, dict_arrays_iter: dict):
+    """
+    Apply isotonic calibration to a pre-fitted classifier.
+
+    Parameters
+    ----------
+    i : int
+        Bootstrap iteration index (for logging on first iter).
+    model : object
+        Pre-fitted sklearn-compatible classifier.
+    cls_model_cfg : DictConfig
+        Classifier configuration.
+    dict_arrays_iter : dict
+        Dictionary with 'x_val' and 'y_val' for calibration.
+
+    Returns
+    -------
+    object
+        Calibrated classifier wrapper.
+    """
     if i == 0:
         logger.info("Calibrating classifier with isotonic calibration")
     model = CalibratedClassifierCV(model, method="isotonic", cv="prefit")
