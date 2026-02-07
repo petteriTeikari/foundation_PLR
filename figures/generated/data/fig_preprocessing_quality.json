@@ -1,0 +1,240 @@
+{
+  "metadata": {
+    "created": "2026-01-29 19:03:32",
+    "generator": "src/r/figures/fig_preprocessing_quality.R",
+    "description": "Preprocessing quality comparison figures"
+  },
+  "outlier_detection": [
+    {
+      "outlier_method": "ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune",
+      "auroc": 0.9078,
+      "auroc_ci_lo": 0.8542,
+      "auroc_ci_hi": 0.9322,
+      "n_configs": 5,
+      "category": "Ensemble",
+      "method_short": "Ensemble (thresh)"
+    },
+    {
+      "outlier_method": "pupil-gt",
+      "auroc": 0.9072,
+      "auroc_ci_lo": 0.8581,
+      "auroc_ci_hi": 0.9322,
+      "n_configs": 7,
+      "category": "Ground Truth",
+      "method_short": "Ground Truth"
+    },
+    {
+      "outlier_method": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+      "auroc": 0.9051,
+      "auroc_ci_lo": 0.8274,
+      "auroc_ci_hi": 0.9297,
+      "n_configs": 5,
+      "category": "Ensemble",
+      "method_short": "Ensemble (all)"
+    },
+    {
+      "outlier_method": "MOMENT-gt-finetune",
+      "auroc": 0.8922,
+      "auroc_ci_lo": 0.7787,
+      "auroc_ci_hi": 0.9207,
+      "n_configs": 5,
+      "category": "Foundation Model",
+      "method_short": "MOMENT (ft)"
+    },
+    {
+      "outlier_method": "UniTS-gt-finetune",
+      "auroc": 0.8884,
+      "auroc_ci_lo": 0.7954,
+      "auroc_ci_hi": 0.9182,
+      "n_configs": 5,
+      "category": "Foundation Model",
+      "method_short": "UniTS (ft)"
+    },
+    {
+      "outlier_method": "TimesNet-gt",
+      "auroc": 0.8865,
+      "auroc_ci_lo": 0.8427,
+      "auroc_ci_hi": 0.9143,
+      "n_configs": 5,
+      "category": "Foundation Model",
+      "method_short": "TimesNet"
+    },
+    {
+      "outlier_method": "MOMENT-gt-zeroshot",
+      "auroc": 0.8746,
+      "auroc_ci_lo": 0.7724,
+      "auroc_ci_hi": 0.9066,
+      "n_configs": 5,
+      "category": "Foundation Model",
+      "method_short": "MOMENT (zs)"
+    },
+    {
+      "outlier_method": "PROPHET",
+      "auroc": 0.8742,
+      "auroc_ci_lo": 0.7928,
+      "auroc_ci_hi": 0.9169,
+      "n_configs": 5,
+      "category": "Traditional",
+      "method_short": "PROPHET"
+    },
+    {
+      "outlier_method": "LOF",
+      "auroc": 0.8539,
+      "auroc_ci_lo": 0.7724,
+      "auroc_ci_hi": 0.9118,
+      "n_configs": 5,
+      "category": "Traditional",
+      "method_short": "LOF"
+    },
+    {
+      "outlier_method": "OneClassSVM",
+      "auroc": 0.8498,
+      "auroc_ci_lo": 0.7621,
+      "auroc_ci_hi": 0.9041,
+      "n_configs": 5,
+      "category": "Traditional",
+      "method_short": "OneClass SVM"
+    },
+    {
+      "outlier_method": "SubPCA",
+      "auroc": 0.8473,
+      "auroc_ci_lo": 0.7621,
+      "auroc_ci_hi": 0.9016,
+      "n_configs": 5,
+      "category": "Traditional",
+      "method_short": "SubPCA"
+    }
+  ],
+  "imputation": [
+    {
+      "imputation_method": "pupil-gt",
+      "auroc": 0.911,
+      "auroc_ci_lo": 0.9028,
+      "auroc_ci_hi": 0.9182,
+      "n_configs": 1,
+      "category": "Ground Truth",
+      "method_short": "Ground Truth"
+    },
+    {
+      "imputation_method": "ensemble-CSDI-MOMENT-SAITS",
+      "auroc": 0.911,
+      "auroc_ci_lo": 0.9028,
+      "auroc_ci_hi": 0.9182,
+      "n_configs": 1,
+      "category": "Ensemble",
+      "method_short": "Ensemble"
+    },
+    {
+      "imputation_method": "MOMENT-zeroshot",
+      "auroc": 0.8867,
+      "auroc_ci_lo": 0.7787,
+      "auroc_ci_hi": 0.9207,
+      "n_configs": 15,
+      "category": "Deep Learning",
+      "method_short": "MOMENT (zs)"
+    },
+    {
+      "imputation_method": "TimesNet",
+      "auroc": 0.8861,
+      "auroc_ci_lo": 0.7506,
+      "auroc_ci_hi": 0.9207,
+      "n_configs": 15,
+      "category": "Deep Learning",
+      "method_short": "TimesNet"
+    },
+    {
+      "imputation_method": "SAITS",
+      "auroc": 0.883,
+      "auroc_ci_lo": 0.7647,
+      "auroc_ci_hi": 0.9207,
+      "n_configs": 15,
+      "category": "Deep Learning",
+      "method_short": "SAITS"
+    },
+    {
+      "imputation_method": "ensemble-CSDI-MOMENT-SAITS-TimesNet",
+      "auroc": 0.8812,
+      "auroc_ci_lo": 0.7877,
+      "auroc_ci_hi": 0.9194,
+      "n_configs": 2,
+      "category": "Ensemble",
+      "method_short": "Ensemble"
+    },
+    {
+      "imputation_method": "CSDI",
+      "auroc": 0.8754,
+      "auroc_ci_lo": 0.7646,
+      "auroc_ci_hi": 0.9194,
+      "n_configs": 15,
+      "category": "Deep Learning",
+      "method_short": "CSDI"
+    },
+    {
+      "imputation_method": "MOMENT-finetune",
+      "auroc": 0.8699,
+      "auroc_ci_lo": 0.7621,
+      "auroc_ci_hi": 0.9322,
+      "n_configs": 15,
+      "category": "Deep Learning",
+      "method_short": "MOMENT (ft)"
+    }
+  ],
+  "category_summary": [
+    {
+      "category": "Ensemble",
+      "mean_auroc": 0.9065,
+      "min_auroc": 0.9051,
+      "max_auroc": 0.9078,
+      "n": 2,
+      "stage": "Outlier Detection"
+    },
+    {
+      "category": "Foundation Model",
+      "mean_auroc": 0.8855,
+      "min_auroc": 0.8746,
+      "max_auroc": 0.8922,
+      "n": 4,
+      "stage": "Outlier Detection"
+    },
+    {
+      "category": "Ground Truth",
+      "mean_auroc": 0.9072,
+      "min_auroc": 0.9072,
+      "max_auroc": 0.9072,
+      "n": 1,
+      "stage": "Outlier Detection"
+    },
+    {
+      "category": "Traditional",
+      "mean_auroc": 0.8563,
+      "min_auroc": 0.8473,
+      "max_auroc": 0.8742,
+      "n": 4,
+      "stage": "Outlier Detection"
+    },
+    {
+      "category": "Deep Learning",
+      "mean_auroc": 0.8802,
+      "min_auroc": 0.8699,
+      "max_auroc": 0.8867,
+      "n": 5,
+      "stage": "Imputation"
+    },
+    {
+      "category": "Ensemble",
+      "mean_auroc": 0.8961,
+      "min_auroc": 0.8812,
+      "max_auroc": 0.911,
+      "n": 2,
+      "stage": "Imputation"
+    },
+    {
+      "category": "Ground Truth",
+      "mean_auroc": 0.911,
+      "min_auroc": 0.911,
+      "max_auroc": 0.911,
+      "n": 1,
+      "stage": "Imputation"
+    }
+  ]
+}
