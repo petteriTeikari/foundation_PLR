@@ -1,25 +1,23 @@
 import argparse
 import os
 import sys
-import hydra
 
-from loguru import logger
-from omegaconf import DictConfig
+import hydra
 
 # Import environment variables
 from dotenv import load_dotenv
+from loguru import logger
+from omegaconf import DictConfig
 
 from src.anomaly_detection.flow_anomaly_detection import flow_anomaly_detection
 from src.classification.flow_classification import (
     flow_classification,
 )
-
 from src.data_io.flow_data import flow_import_data
-from src.deploy.flow_deployment import flow_deployment
 from src.featurization.flow_featurization import flow_featurization
 from src.imputation.flow_imputation import flow_imputation
 from src.log_helpers.hydra_utils import add_hydra_cli_args
-from src.log_helpers.log_utils import setup_loguru, log_loguru_log_to_prefect
+from src.log_helpers.log_utils import setup_loguru
 from src.log_helpers.mlflow_utils import init_mlflow
 from src.orchestration.prefect_utils import (
     pre_flow_prefect_checks,
@@ -95,8 +93,7 @@ def flowMain_PLR_experiment(cfg: DictConfig) -> None:
     if prefect_flows["SUMMARIZATION"]:
         flow_summarization(cfg=cfg)
 
-    if prefect_flows["DEPLOYMENT"]:
-        flow_deployment(cfg=cfg)
+    # Deployment placeholder removed (src/deploy/ was dead code)
 
     # Log everything to Prefect
     # log_loguru_log_to_prefect(filepath=LOG_FILE_PATH, description="PLR Pipeline log")

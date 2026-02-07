@@ -1,0 +1,25 @@
+#!/bin/bash
+# pre-commit hook for Foundation PLR
+#
+# Runs compliance checks on staged files before commit.
+# Install with: make install-hooks
+#
+# Checks:
+# - No hardcoded combo names in viz scripts
+# - No PRIVATE JSON files staged
+# - ground_truth present in comparison figures
+
+echo "Running Foundation PLR pre-commit checks..."
+
+# Run compliance check on staged files
+python scripts/check-compliance.py --staged
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "Commit blocked by compliance check."
+    echo "Fix the issues above or use --no-verify to skip (not recommended)."
+    exit 1
+fi
+
+echo "Pre-commit checks passed."
+exit 0
