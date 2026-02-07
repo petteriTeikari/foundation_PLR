@@ -1,32 +1,35 @@
-from loguru import logger
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
-from omegaconf import DictConfig
 import polars as pl
 import seaborn as sns
+from loguru import logger
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from omegaconf import DictConfig
 
-from src.viz.viz_styling_utils import style_timeseries_ax, style_distribution_plot
+from src.viz.viz_styling_utils import style_distribution_plot, style_timeseries_ax
 from src.viz.viz_utils import (
     clean_feature_name_for_title,
-    get_font_scaler,
     compute_stats_for_shaded_lineseries,
+    get_font_scaler,
 )
 
 
 def feature_subplot(
-    fig,
-    r,
-    c,
-    ax_in,
-    viz_cfg,
-    df_to_plot,
-    model,
-    split,
-    split_key,
-    feature_name,
-    hue="metadata_class_label",
-    y_stat="value",
-):
+    fig: Figure,
+    r: int,
+    c: int,
+    ax_in: Axes,
+    viz_cfg: DictConfig,
+    df_to_plot: pl.DataFrame,
+    model: str,
+    split: str,
+    split_key: str,
+    feature_name: str,
+    hue: str = "metadata_class_label",
+    y_stat: str = "value",
+) -> None:
     """
     Plot a single feature on a subplot
     """
@@ -79,27 +82,27 @@ def feature_subplot(
 
 
 def viz_timeseries_subplot(
-    fig: plt.Figure,
+    fig: Figure,
     r: int,
     c: int,
     linear_idx: int,  # Use for coloring each model differently
-    ax_in: plt.Axes,
+    ax_in: Axes,
     viz_cfg: DictConfig,
     cfg: DictConfig,
     df_to_plot: pl.DataFrame,
     y_col: str = "mean",
     y_gt: str = "gt",
-    title_str: str = None,
-    hue: str = None,
-    split: str = None,
-    x_col: str = "time",
+    title_str: Optional[str] = None,
+    hue: Optional[str] = None,
+    split: Optional[str] = None,
+    _x_col: str = "time",
     plot_gt_with_imputations: bool = True,
     use_class_labels: bool = False,
     original_data: bool = False,
-    unique_subjects: list = None,
-    metrics_dict: dict = None,
-    y_lims: tuple = (-80, 20),
-):
+    unique_subjects: Optional[List[str]] = None,
+    metrics_dict: Optional[Dict[str, Any]] = None,
+    y_lims: Tuple[float, float] = (-80, 20),
+) -> None:
     font_scaler = get_font_scaler(viz_cfg)
 
     if use_class_labels:
@@ -168,8 +171,14 @@ def viz_timeseries_subplot(
 
 
 def viz_input_subplot(
-    ax, x, y, col_name, title_prefix, viz_cfg, y_lims: tuple = (-80, 20)
-):
+    ax: Axes,
+    x: Any,
+    y: Any,
+    col_name: str,
+    title_prefix: str,
+    viz_cfg: DictConfig,
+    y_lims: Tuple[float, float] = (-80, 20),
+) -> None:
     ax.plot(x, y, label=col_name)
     title_str = f"{title_prefix} | {col_name}"
     # TODO! Add light timing
@@ -180,8 +189,14 @@ def viz_input_subplot(
 
 
 def viz_individual_metric_distribution_subplot(
-    ax_in, df_to_plot, metric_name, title_str, split, split_key, viz_cfg
-):
+    ax_in: Axes,
+    df_to_plot: pl.DataFrame,
+    metric_name: str,
+    title_str: str,
+    split: str,
+    split_key: str,
+    viz_cfg: DictConfig,
+) -> None:
     try:
         sns.histplot(df_to_plot, x=metric_name, bins=20, ax=ax_in)
         style_distribution_plot(ax_in, title_str, viz_cfg)
