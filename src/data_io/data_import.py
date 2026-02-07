@@ -1,13 +1,11 @@
-import glob
+from pathlib import Path
 
-from loguru import logger
-import os
-
-from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import polars as pl
+from loguru import logger
 from omegaconf import DictConfig
+from tqdm import tqdm
 
 from src.data_io.data_imputation import (
     impute_orig_for_training,
@@ -15,15 +13,15 @@ from src.data_io.data_imputation import (
 )
 from src.data_io.data_outliers import granularize_outlier_labels
 from src.data_io.data_utils import (
-    define_split_csv_paths,
-    import_duckdb_as_dataframes,
     check_data_import,
-    export_dataframes_to_duckdb,
-    combine_metadata_with_df_splits,
-    prepare_dataframe_for_imputation,
-    check_time_vector_quality,
     check_for_unique_timepoints,
+    check_time_vector_quality,
+    combine_metadata_with_df_splits,
+    define_split_csv_paths,
+    export_dataframes_to_duckdb,
     fix_for_orphaned_nans,
+    import_duckdb_as_dataframes,
+    prepare_dataframe_for_imputation,
 )
 from src.data_io.metadata_from_xlsx import metadata_wrapper
 from src.data_io.stratification_utils import stratify_splits
@@ -38,6 +36,24 @@ from src.utils import get_repo_root
 #     "or from some remote storage (S3, Huggung Face, etc.)",
 # )
 def import_PLR_data_wrapper(cfg: DictConfig, data_dir: str = None):
+    """Import and preprocess PLR data from individual CSV files.
+
+    Main import wrapper that handles the complete data loading pipeline:
+    importing raw data, combining with metadata, preparing for imputation,
+    granularizing outlier labels, and stratifying splits.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary containing DATA and METADATA settings.
+    data_dir : str, optional
+        Directory for data files, by default None.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (df_train, df_test) as Polars dataframes.
+    """
     # Import data
     df_raw = import_data(cfg, data_dir)
 
@@ -78,10 +94,24 @@ def import_PLR_data_wrapper(cfg: DictConfig, data_dir: str = None):
 
 
 def import_data(cfg: DictConfig, data_dir: str = None) -> pl.DataFrame:
+    """Import raw PLR data from individual subject CSV files.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary containing DATA settings.
+    data_dir : str, optional
+        Directory for output data files, by default None.
+
+    Returns
+    -------
+    pl.DataFrame
+        Polars dataframe containing all imported subject data.
+    """
     # if you have access to the raw files, you can import them here (otherwise import the DuckDB)
-    dir_in = os.path.join(get_repo_root(), cfg["DATA"]["individual_subjects_path"])
+    dir_in = get_repo_root() / cfg["DATA"]["individual_subjects_path"]
     df_raw = create_csvs_from_individual_subjects(
-        individual_subjects_dir=dir_in, data_dir=data_dir, cfg=cfg
+        individual_subjects_dir=str(dir_in), data_dir=data_dir, cfg=cfg
     )
     return pl.from_pandas(df_raw)
 
@@ -92,7 +122,31 @@ def create_csvs_from_individual_subjects(
     no_of_timepoints: int = 1981,
     cfg: DictConfig = None,
 ) -> pd.DataFrame:
-    if not os.path.exists(individual_subjects_dir):
+    """Create a combined dataframe from individual subject CSV files.
+
+    Parameters
+    ----------
+    individual_subjects_dir : str
+        Directory containing individual subject CSV files.
+    data_dir : str
+        Directory for output data files.
+    no_of_timepoints : int, optional
+        Expected number of timepoints per subject, by default 1981.
+    cfg : DictConfig, optional
+        Configuration dictionary, by default None.
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined pandas dataframe with all subjects.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the individual subjects directory does not exist.
+    """
+    individual_subjects_path = Path(individual_subjects_dir)
+    if not individual_subjects_path.exists():
         logger.error(
             "Individual subjects directory does not exist: {}".format(
                 individual_subjects_dir
@@ -106,7 +160,7 @@ def create_csvs_from_individual_subjects(
             )
         )
 
-    files = glob.glob(os.path.join(individual_subjects_dir, "*.csv"))
+    files = list(individual_subjects_path.glob("*.csv"))
     logger.info("Found {} files".format(len(files)))  # Found 507 files
 
     list_of_dfs, outliers, subject_codes = [], [], []
@@ -133,6 +187,22 @@ def create_csvs_from_individual_subjects(
 
 
 def convert_list_of_dfs_to_df(list_of_dfs, outliers, subject_codes):
+    """Convert a list of subject dataframes into a single combined dataframe.
+
+    Parameters
+    ----------
+    list_of_dfs : list
+        List of pandas dataframes, one per subject.
+    outliers : list
+        List of outlier counts per subject.
+    subject_codes : list
+        List of subject code identifiers.
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined dataframe with subject_code and no_outliers columns added.
+    """
     df_out = pd.DataFrame()
     for i, (df, no_outliers, code) in enumerate(
         tqdm(
@@ -155,9 +225,21 @@ def convert_list_of_dfs_to_df(list_of_dfs, outliers, subject_codes):
 def export_split_dataframes(
     df_train: pd.DataFrame, df_val: pd.DataFrame, data_dir: str
 ):
-    if not os.path.exists(data_dir):
+    """Export train and validation dataframes to CSV files.
+
+    Parameters
+    ----------
+    df_train : pd.DataFrame
+        Training data dataframe.
+    df_val : pd.DataFrame
+        Validation data dataframe.
+    data_dir : str
+        Directory to save the CSV files.
+    """
+    data_path = Path(data_dir)
+    if not data_path.exists():
         logger.info("Create output directory: {}".format(data_dir))
-        os.makedirs(data_dir)
+        data_path.mkdir(parents=True, exist_ok=True)
 
     train_path, val_path = define_split_csv_paths(data_dir=data_dir)
 
@@ -175,6 +257,26 @@ def define_split(
     split: str,
     drop_raw_pupil_values: bool = False,
 ):
+    """Create a combined dataframe for a specific train/test split.
+
+    Parameters
+    ----------
+    subject_codes : list
+        List of all subject code identifiers.
+    csv_subsets : list
+        List of dataframes for all subjects.
+    indices : list
+        Indices of subjects to include in this split.
+    split : str
+        Name of the split ("train" or "test").
+    drop_raw_pupil_values : bool, optional
+        Whether to drop rows with NaN pupil values, by default False.
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined dataframe for the split.
+    """
     codes = np.array(subject_codes)[indices]
     list_of_df = [csv_subsets[i] for i in indices]
     assert len(codes) == len(list_of_df)
@@ -209,7 +311,26 @@ def define_split(
 
 
 def import_master_csv(i: int, csv_path: str, cfg: DictConfig):
-    subject_code = os.path.basename(csv_path).split(".")[0].split("_")[0]
+    """Import and preprocess a single subject's CSV file.
+
+    Performs column selection, time vector quality checks, column renaming,
+    and linear interpolation of color channels.
+
+    Parameters
+    ----------
+    i : int
+        Subject index (for first-subject logging).
+    csv_path : str
+        Path to the subject's CSV file.
+    cfg : DictConfig
+        Configuration dictionary with DATA settings.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (no_outliers, csv_subset, subject_code).
+    """
+    subject_code = Path(csv_path).name.split(".")[0].split("_")[0]
     csv_raw = pd.read_csv(csv_path)  # e.g. (1981, 94) # TODO! direct Polars import
     csv_subset = csv_raw[cfg["DATA"]["COLUMNS_TO_KEEP"]]
     if i == 0:
@@ -267,14 +388,47 @@ def import_master_csv(i: int, csv_path: str, cfg: DictConfig):
 
 
 def linear_interpolation_of_col(column: pd.Series):
+    """Apply linear interpolation to fill NaN values in a pandas Series.
+
+    Parameters
+    ----------
+    column : pd.Series
+        Series with potential NaN values.
+
+    Returns
+    -------
+    pd.Series
+        Series with NaN values linearly interpolated.
+    """
     return column.interpolate()
 
 
-def import_data_from_duckdb(data_cfg: DictConfig,
-                            data_dir: str,
-                            use_demo_data: bool = False):
-    db_path = get_duckdb_file(data_cfg, use_demo_data)
-    if not os.path.exists(db_path):
+def import_data_from_duckdb(
+    data_cfg: DictConfig, data_dir: str, use_demo_data: bool = False
+):
+    """Import PLR data from a DuckDB database file.
+
+    Parameters
+    ----------
+    data_cfg : DictConfig
+        Data configuration dictionary with filename_DuckDB setting.
+    data_dir : str
+        Directory containing the DuckDB file.
+    use_demo_data : bool, optional
+        Whether to use demo data instead of full dataset, by default False.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (df_train, df_val) as Polars dataframes.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the DuckDB file does not exist.
+    """
+    db_path = Path(get_duckdb_file(data_cfg, use_demo_data))
+    if not db_path.exists():
         logger.error("DuckDB file not found: {}".format(db_path))
         logger.error("Typo with the filename, or you simply do not have this .db file?")
         logger.error(
@@ -288,7 +442,7 @@ def import_data_from_duckdb(data_cfg: DictConfig,
             )
         )
 
-    df_train, df_val = import_duckdb_as_dataframes(db_path)
+    df_train, df_val = import_duckdb_as_dataframes(str(db_path))
     check_data_import(df_train, df_val)
 
     return df_train, df_val

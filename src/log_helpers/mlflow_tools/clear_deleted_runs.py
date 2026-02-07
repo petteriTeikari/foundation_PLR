@@ -1,11 +1,15 @@
-import os
 import shutil
+import sys
+from pathlib import Path
 
 import mlflow
 from loguru import logger
 from mlflow.entities import ViewType
 
-MLRUNS_DIR = "/home/petteri/Dropbox/manuscriptDrafts/foundationPLR/repo_PLR/src/mlruns"
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from src.utils.paths import get_mlruns_dir
+
+MLRUNS_DIR = str(get_mlruns_dir())
 
 
 def get_runs_per_experiment(e):
@@ -42,7 +46,8 @@ def permanently_delete_deleted_runs(deleted_runs, mlruns_dir, dry_run: bool = Tr
         shutil.rmtree(run_dir)  # , ignore_errors=True)
 
     def fix_path(run_dir, mlruns_dir):
-        if not os.path.exists(mlruns_dir):
+        mlruns_path = Path(mlruns_dir)
+        if not mlruns_path.exists():
             logger.error(f"MLflow directory {mlruns_dir} does not exist")
             raise FileNotFoundError(f"MLflow directory {mlruns_dir} does not exist")
 
@@ -50,19 +55,19 @@ def permanently_delete_deleted_runs(deleted_runs, mlruns_dir, dry_run: bool = Tr
         path_after_mlruns = run_dir.split("mlruns")[1][1:]
         experiment_id, run_id = path_after_mlruns.split("/")
 
-        experiment_dir = os.path.join(mlruns_dir, experiment_id)
-        if not os.path.exists(experiment_dir):
+        experiment_dir = mlruns_path / experiment_id
+        if not experiment_dir.exists():
             logger.error(f"Experiment directory {experiment_dir} does not exist")
             raise FileNotFoundError(
                 f"Experiment directory {experiment_dir} does not exist"
             )
 
-        run_dir = os.path.join(experiment_dir, run_id)
-        if not os.path.exists(run_dir):
+        run_dir = experiment_dir / run_id
+        if not run_dir.exists():
             logger.error(f"Run directory {run_dir} does not exist")
             raise FileNotFoundError(f"Run directory {run_dir} does not exist")
 
-        return run_dir
+        return str(run_dir)
 
     # iterate through the Pandas Dataframe rows
     filesize = 0
@@ -70,7 +75,7 @@ def permanently_delete_deleted_runs(deleted_runs, mlruns_dir, dry_run: bool = Tr
         run = run[1]
         run_dir = get_run_dir(run.artifact_uri)
         fixed_run_dir = fix_path(run_dir, mlruns_dir)
-        if os.path.exists(fixed_run_dir):
+        if Path(fixed_run_dir).exists():
             # did not work the file size calculation
             nbytes = 0  # sum(d.stat().st_size for d in os.scandir(fixed_run_dir) if d.is_file())
             filesize += nbytes

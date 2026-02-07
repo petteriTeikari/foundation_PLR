@@ -1,20 +1,36 @@
-import numpy as np
-from loguru import logger
-import os
-import pandas as pd
-from omegaconf import DictConfig
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import mlflow
+import numpy as np
+import pandas as pd
+from loguru import logger
+from mlflow.entities import FileInfo
 from mlflow.tracking import MlflowClient
+from omegaconf import DictConfig
 
 from src.ensemble.ensemble_logging import get_ensemble_pickle_name
-from src.imputation.imputation_log_artifacts import get_imputation_pickle_name
 from src.log_helpers.local_artifacts import load_results_dict
+from src.log_helpers.log_naming_uris_and_dirs import get_imputation_pickle_name
 from src.utils import get_artifacts_dir
 
 
-def get_mlflow_run_ids_from_imputation_artifacts(imputation_artifacts):
-    run_ids = {}
+def get_mlflow_run_ids_from_imputation_artifacts(
+    imputation_artifacts: Dict[str, Any],
+) -> Dict[str, str]:
+    """Extract MLflow run IDs from imputation artifacts dictionary.
+
+    Parameters
+    ----------
+    imputation_artifacts : dict
+        Dictionary containing 'artifacts' key with model-specific MLflow info.
+
+    Returns
+    -------
+    dict
+        Mapping of model names to their MLflow run IDs.
+    """
+    run_ids: Dict[str, str] = {}
     for model_name in imputation_artifacts["artifacts"].keys():
         mlflow_info = imputation_artifacts["artifacts"][model_name]["mlflow"]
         run_ids[model_name] = mlflow_info["run_info"]["run_id"]
@@ -22,8 +38,41 @@ def get_mlflow_run_ids_from_imputation_artifacts(imputation_artifacts):
 
 
 def get_mlflow_metric_params(
-    metrics: dict, cfg: DictConfig, splitkey="gt", metrictype="global", metricname="mae"
-):
+    metrics: Dict[str, Any],
+    cfg: DictConfig,
+    splitkey: str = "gt",
+    metrictype: str = "global",
+    metricname: str = "mae",
+) -> Dict[str, Any]:
+    """Extract specific metric parameters from nested metrics dictionary for MLflow logging.
+
+    Filters metrics by split key, metric type, and metric name to keep the
+    MLflow dashboard clean while still allowing programmatic access to all metrics.
+
+    Parameters
+    ----------
+    metrics : dict
+        Nested metrics dictionary with structure:
+        {model_name: {split: {split_key: {metric_type: {metric: value}}}}}.
+    cfg : DictConfig
+        Configuration object (currently unused).
+    splitkey : str, default "gt"
+        Split key to filter (e.g., 'gt' for ground truth).
+    metrictype : str, default "global"
+        Metric type to filter (e.g., 'global', 'per_subject').
+    metricname : str, default "mae"
+        Specific metric name to extract.
+
+    Returns
+    -------
+    dict
+        Dictionary with model name and filtered metrics suitable for MLflow logging.
+
+    Raises
+    ------
+    ValueError
+        If more than one model is found in the metrics dictionary.
+    """
     # You could obviously just get all, but taking the main metric to keep the Dashboard clean
     # you can always get all the metrics programatically from the MLflow API
     for i, model_name in enumerate(metrics.keys()):
@@ -54,7 +103,23 @@ def get_mlflow_metric_params(
     return metric_params
 
 
-def get_mlflow_params(mlflow_info):
+def get_mlflow_params(mlflow_info: Dict[str, Any]) -> Tuple[str, str]:
+    """Extract and set MLflow experiment and run ID from info dictionary.
+
+    Parameters
+    ----------
+    mlflow_info : dict
+        Dictionary containing 'experiment' and 'run_info' keys with MLflow metadata.
+
+    Returns
+    -------
+    tuple of str
+        Tuple of (experiment_id, run_id).
+
+    Notes
+    -----
+    Also sets the MLflow experiment as a side effect.
+    """
     # Get the MLflow experiment and run ID that was used during the training
     experiment_id = mlflow_info["experiment"]["name"]
     run_id = mlflow_info["run_info"]["run_id"]
@@ -62,7 +127,24 @@ def get_mlflow_params(mlflow_info):
     return experiment_id, run_id
 
 
-def get_mlflow_info_from_model_dict(model_dict):
+def get_mlflow_info_from_model_dict(model_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract MLflow info dictionary from model artifacts dictionary.
+
+    Parameters
+    ----------
+    model_dict : dict
+        Model artifacts dictionary containing 'mlflow' key with run/experiment info.
+
+    Returns
+    -------
+    dict
+        MLflow info dictionary with run_info, experiment, and artifact_uri.
+
+    Raises
+    ------
+    Exception
+        If 'mlflow' key is missing from model_dict.
+    """
     # If everything went ok, you should have the MLflow run/experiment/artifact_uri/etc. info saved here
     try:
         mlflow_info = model_dict["mlflow"]
@@ -79,6 +161,27 @@ def get_mlflow_info_from_model_dict(model_dict):
 def get_duckdb_from_mlflow(
     artifact_uri: str, dir_name: str = "data", wildcard: str = ".db"
 ) -> str:
+    """Download and locate DuckDB file from MLflow artifacts.
+
+    Parameters
+    ----------
+    artifact_uri : str
+        MLflow artifact URI to search.
+    dir_name : str, default "data"
+        Directory name within artifacts containing the database.
+    wildcard : str, default ".db"
+        File extension to match.
+
+    Returns
+    -------
+    str
+        Local path to downloaded DuckDB file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no DuckDB artifact is found.
+    """
     db_path = None
     artifacts = mlflow.artifacts.list_artifacts(artifact_uri=artifact_uri)
     if len(artifacts) == 0:
@@ -96,12 +199,12 @@ def get_duckdb_from_mlflow(
     for artifact in artifacts:
         if dir_name in artifact.path:
             folder = mlflow.artifacts.download_artifacts(
-                artifact_uri=os.path.join(artifact_uri, dir_name)
+                artifact_uri=f"{artifact_uri}/{dir_name}"
             )
-            for root, dirs, files in os.walk(folder):
+            for root, dirs, files in Path(folder).walk():
                 for file in files:
                     if wildcard in file:
-                        db_path = os.path.join(root, file)
+                        db_path = str(root / file)
     if db_path is None:
         logger.error("Could not find the DuckDB file from the MLflow artifacts")
         raise FileNotFoundError(
@@ -110,7 +213,22 @@ def get_duckdb_from_mlflow(
     return db_path
 
 
-def write_new_col_to_mlflow(model_best_runs, col_name, col_name_init):
+def write_new_col_to_mlflow(
+    model_best_runs: pd.DataFrame, col_name: str, col_name_init: str
+) -> None:
+    """Write a new metric column to MLflow runs.
+
+    Used for harmonizing column names by writing values under a new metric name.
+
+    Parameters
+    ----------
+    model_best_runs : pd.DataFrame
+        DataFrame containing run_id and the column to write.
+    col_name : str
+        Source column name in the DataFrame.
+    col_name_init : str
+        Target metric name for MLflow (will have 'metrics.' prefix stripped).
+    """
     no_of_runs = model_best_runs.shape[0]
     for i in range(no_of_runs):
         run_id = model_best_runs.iloc[i]["run_id"]
@@ -124,7 +242,26 @@ def write_new_col_to_mlflow(model_best_runs, col_name, col_name_init):
 
 def get_col_for_for_best_anomaly_detection_metric(
     best_metric_cfg: DictConfig, task: str
-):
+) -> str:
+    """Get DataFrame column name for best metric based on task type.
+
+    Parameters
+    ----------
+    best_metric_cfg : DictConfig
+        Configuration with 'string' (metric name) and 'split' keys.
+    task : str
+        Task type: 'anomaly_detection', 'outlier_detection', or 'imputation'.
+
+    Returns
+    -------
+    str
+        Column name in format 'metrics.{split}/{metric}' or direct string.
+
+    Raises
+    ------
+    ValueError
+        If task type is not recognized.
+    """
     if task == "anomaly_detection" or task == "outlier_detection":
         # use only one name eventually
         best_metric_name = best_metric_cfg["string"]
@@ -140,7 +277,38 @@ def get_col_for_for_best_anomaly_detection_metric(
     return col_name
 
 
-def harmonize_anomaly_col_name(col_name, model_best_runs, best_metric_cfg, model):
+def harmonize_anomaly_col_name(
+    col_name: str,
+    model_best_runs: pd.DataFrame,
+    best_metric_cfg: DictConfig,
+    model: str,
+) -> str:
+    """Harmonize metric column name if not found in DataFrame.
+
+    Falls back to 'test' split if the specified column is missing, and writes
+    the harmonized values back to MLflow.
+
+    Parameters
+    ----------
+    col_name : str
+        Expected column name.
+    model_best_runs : pd.DataFrame
+        DataFrame with MLflow run data.
+    best_metric_cfg : DictConfig
+        Best metric configuration.
+    model : str
+        Model name for logging.
+
+    Returns
+    -------
+    str
+        Harmonized column name that exists in the DataFrame.
+
+    Raises
+    ------
+    ValueError
+        If harmonized column contains only NaN values.
+    """
     if col_name not in model_best_runs.columns:
         col_name_init = col_name
         col_name = f"metrics.test/{best_metric_cfg['string']}"
@@ -162,8 +330,26 @@ def harmonize_anomaly_col_name(col_name, model_best_runs, best_metric_cfg, model
 
 
 def threshold_filter_run(
-    best_run: pd.Series, col_name: str, best_metric_cfg: DictConfig
-):
+    best_run: Union[pd.Series, pd.DataFrame], col_name: str, best_metric_cfg: DictConfig
+) -> Optional[Union[pd.Series, pd.DataFrame]]:
+    """Filter run based on ensemble quality threshold.
+
+    Returns None if the run's metric does not meet the threshold requirement.
+
+    Parameters
+    ----------
+    best_run : pd.Series or pd.DataFrame
+        Run data to filter.
+    col_name : str
+        Column name containing the metric to check.
+    best_metric_cfg : DictConfig
+        Configuration with 'ensemble_quality_threshold' and 'direction' keys.
+
+    Returns
+    -------
+    pd.Series, pd.DataFrame, or None
+        Original run data if threshold is met, None otherwise.
+    """
     input_was_df = False
     if isinstance(best_run, pd.DataFrame):
         input_was_df = True
@@ -195,13 +381,36 @@ def threshold_filter_run(
 
 
 def get_best_run_of_pd_dataframe(
-    model_best_runs,
-    cfg,
-    best_metric_cfg,
+    model_best_runs: pd.DataFrame,
+    cfg: DictConfig,
+    best_metric_cfg: DictConfig,
     task: str,
     model: str,
     include_all_variants: bool = False,
-):
+) -> Tuple[Optional[Union[pd.Series, pd.DataFrame]], Optional[float]]:
+    """Find the best MLflow run from a DataFrame based on metric configuration.
+
+    Parameters
+    ----------
+    model_best_runs : pd.DataFrame
+        DataFrame containing MLflow runs for the model.
+    cfg : DictConfig
+        Full configuration object.
+    best_metric_cfg : DictConfig
+        Configuration specifying best metric, direction, and threshold.
+    task : str
+        Task type for determining column name format.
+    model : str
+        Model name for logging.
+    include_all_variants : bool, default False
+        If True, return all runs sorted; if False, return only the best run.
+
+    Returns
+    -------
+    tuple
+        Tuple of (best_run, best_metric) where best_run is a Series/DataFrame
+        and best_metric is the metric value (or None if all variants returned).
+    """
     col_name = get_col_for_for_best_anomaly_detection_metric(best_metric_cfg, task)
     col_name = harmonize_anomaly_col_name(
         col_name, model_best_runs, best_metric_cfg, model
@@ -242,7 +451,30 @@ def get_imputation_results_from_mlflow(
     model_name: str,
     cfg: DictConfig,
     dir_name: str = "imputation",
-):
+) -> Dict[str, Any]:
+    """Download imputation results from MLflow artifact store.
+
+    Parameters
+    ----------
+    mlflow_run : pd.Series
+        MLflow run data containing run_id and tags.
+    model_name : str
+        Name of the imputation model.
+    cfg : DictConfig
+        Configuration object (currently unused).
+    dir_name : str, default "imputation"
+        Artifact subdirectory name.
+
+    Returns
+    -------
+    dict
+        Loaded imputation results dictionary with 'mlflow_run' key added.
+
+    Raises
+    ------
+    FileNotFoundError
+        If imputation results cannot be found or downloaded.
+    """
     if "ensemble" in mlflow_run["tags.mlflow.runName"]:
         fname = get_ensemble_pickle_name(ensemble_name=model_name)
         logger.debug(f"Ensemble model found, loading the ensemble pickle: {fname}")
@@ -276,7 +508,19 @@ def get_imputation_results_from_mlflow(
     return dict_out
 
 
-def get_mlflow_artifact_uri_from_run(best_run):
+def get_mlflow_artifact_uri_from_run(best_run: Union[Dict[str, Any], pd.Series]) -> str:
+    """Get artifact URI from MLflow run.
+
+    Parameters
+    ----------
+    best_run : dict or pd.Series
+        Run data containing 'run_id'.
+
+    Returns
+    -------
+    str
+        Artifact URI for the run.
+    """
     artifact_uri: str = mlflow.get_run(best_run["run_id"]).info.artifact_uri
     return artifact_uri
 
@@ -284,6 +528,22 @@ def get_mlflow_artifact_uri_from_run(best_run):
 def get_best_metric_from_current_run(
     metrics_model: dict, split_key: str, metric_string: str
 ) -> float:
+    """Extract specific metric value from current run's metrics dictionary.
+
+    Parameters
+    ----------
+    metrics_model : dict
+        Metrics dictionary with structure {split_key: {global: {metric: value}}}.
+    split_key : str
+        Data split key (e.g., 'test', 'val').
+    metric_string : str
+        Name of the metric to extract.
+
+    Returns
+    -------
+    float
+        The metric value.
+    """
     logger.info(
         f"Getting the best metric from the current run, metric = {metric_string}, "
         f"split = {split_key}"
@@ -291,7 +551,23 @@ def get_best_metric_from_current_run(
     return metrics_model[split_key]["global"][metric_string]
 
 
-def get_best_previous_mlflow_logged_model(model_dict: dict, cfg: DictConfig) -> dict:
+def get_best_previous_mlflow_logged_model(
+    model_dict: Dict[str, Any], cfg: DictConfig
+) -> Optional[Dict[str, Any]]:
+    """Find the best previously logged MLflow model matching current configuration.
+
+    Parameters
+    ----------
+    model_dict : dict
+        Model artifacts dictionary containing MLflow info.
+    cfg : DictConfig
+        Configuration for determining search parameters.
+
+    Returns
+    -------
+    dict
+        Best previous run data, or None if no matching runs found.
+    """
     mlflow_info = get_mlflow_info_from_model_dict(model_dict)
     experiment_id, run_id = get_mlflow_params(mlflow_info)
     current_experiment, metric_string, split_key, metric_direction = (
@@ -312,12 +588,37 @@ def get_best_previous_mlflow_logged_model(model_dict: dict, cfg: DictConfig) -> 
 
 
 def iterate_through_mlflow_run_artifacts(
-    run_artifacts: list,
+    run_artifacts: List[FileInfo],
     fname: str,
     run_id: str,
     dir_download: str,
     artifacts_string: str = "imputation",
-):
+) -> Optional[Dict[str, Any]]:
+    """Iterate through MLflow artifacts to find and download a specific file.
+
+    Parameters
+    ----------
+    run_artifacts : list
+        List of MLflow artifact objects.
+    fname : str
+        Filename to find and download.
+    run_id : str
+        MLflow run ID.
+    dir_download : str
+        Local directory for downloads (currently unused).
+    artifacts_string : str, default "imputation"
+        Artifact path to match.
+
+    Returns
+    -------
+    dict or None
+        Loaded results dictionary, or None if not found.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the specified artifact cannot be found.
+    """
     dict_out = None
     for artifact in run_artifacts:
         if artifact.path == artifacts_string:
@@ -334,19 +635,58 @@ def iterate_through_mlflow_run_artifacts(
     return dict_out
 
 
-def download_mlflow_artifacts(run_id: str, fname: str, run_artifacts: list) -> dict:
+def download_mlflow_artifacts(
+    run_id: str, fname: str, run_artifacts: List[FileInfo]
+) -> Optional[Dict[str, Any]]:
+    """Download MLflow artifacts for a specific run.
+
+    Parameters
+    ----------
+    run_id : str
+        MLflow run ID.
+    fname : str
+        Filename to download.
+    run_artifacts : list
+        List of available artifacts.
+
+    Returns
+    -------
+    dict
+        Loaded artifacts dictionary.
+    """
     dir_download = get_artifacts_dir("mlflow")
-    os.makedirs(dir_download, exist_ok=True)
+    dir_download.mkdir(parents=True, exist_ok=True)
     imputer_artifacts = iterate_through_mlflow_run_artifacts(
-        run_artifacts, fname, run_id, dir_download
+        run_artifacts, fname, run_id, str(dir_download)
     )
 
     return imputer_artifacts
 
 
 def retrieve_mlflow_artifacts_from_best_run(
-    best_run: dict, cfg: DictConfig, model_name: str
-):
+    best_run: Dict[str, Any], cfg: DictConfig, model_name: str
+) -> Tuple[Dict[str, Any], List[FileInfo]]:
+    """Retrieve imputation artifacts from the best MLflow run.
+
+    Parameters
+    ----------
+    best_run : dict
+        Best run data containing 'run_id'.
+    cfg : DictConfig
+        Configuration object (currently unused).
+    model_name : str
+        Name of the model for filename generation.
+
+    Returns
+    -------
+    tuple
+        Tuple of (imputer_artifacts, run_artifacts).
+
+    Raises
+    ------
+    FileNotFoundError
+        If no results are found in the best run.
+    """
     fnames = {"imputation": get_imputation_pickle_name(model_name)}
     # NOT DONE ATM 'model': f"model_{model_name}.pickle"}
 
@@ -369,7 +709,23 @@ def retrieve_mlflow_artifacts_from_best_run(
     return imputer_artifacts, run_artifacts
 
 
-def get_mlflow_artifact_from_run_name(run_name: str, filter_for_finished: bool = True):
+def get_mlflow_artifact_from_run_name(
+    run_name: str, filter_for_finished: bool = True
+) -> Optional[Dict[str, str]]:
+    """Find MLflow artifact info by run name across all experiments.
+
+    Parameters
+    ----------
+    run_name : str
+        Name of the run to find.
+    filter_for_finished : bool, default True
+        If True, only search finished runs.
+
+    Returns
+    -------
+    dict or None
+        Dictionary with run_id, experiment_id, and artifact_uri if found.
+    """
     all_runs = mlflow.search_runs(search_all_experiments=True)
     if filter_for_finished:
         # Filter for only "FINISHED" jobs
@@ -397,13 +753,37 @@ def get_mlflow_artifact_from_run_name(run_name: str, filter_for_finished: bool =
 
 
 def return_best_mlflow_run(
-    current_experiment,
-    metric_string,
-    split_key,
-    metric_direction,
+    current_experiment: Dict[str, Any],
+    metric_string: str,
+    split_key: str,
+    metric_direction: str,
     run_name: str,
-) -> dict:
-    def drop_nan_rows(df_runs: pd.DataFrame, metric_col: str) -> pd.DataFrame:
+) -> Optional[Dict[str, Any]]:
+    """Find the best MLflow run matching the given criteria.
+
+    Searches for runs with the specified name, filters out NaN metrics,
+    and returns the best run based on metric direction.
+
+    Parameters
+    ----------
+    current_experiment : dict
+        Experiment dictionary with 'experiment_id'.
+    metric_string : str
+        Metric name to optimize.
+    split_key : str
+        Data split for the metric.
+    metric_direction : str
+        'ASC' for minimization, 'DESC' for maximization.
+    run_name : str
+        Exact run name to match.
+
+    Returns
+    -------
+    dict or None
+        Best run as dictionary, or None if no valid runs found.
+    """
+
+    def drop_nan_rows(df_runs: pd.DataFrame, metric_col: str) -> Optional[pd.DataFrame]:
         if metric_col in df_runs.columns:
             try:
                 df_runs = df_runs.dropna(subset=[metric_col])
@@ -429,7 +809,7 @@ def return_best_mlflow_run(
 
     def sort_runs_based_on_metric(
         df_runs: pd.DataFrame, metric_col: str, metric_direction: str
-    ) -> dict:
+    ) -> Optional[Dict[str, Any]]:
         # Sort just to be sure (glitch while devving, should not be needed)
         if metric_direction == "ASC":
             df_runs = df_runs.sort_values(by=[best_metric_col], ascending=True)
@@ -484,7 +864,26 @@ def return_best_mlflow_run(
     return df_runs
 
 
-def what_to_search_from_mlflow(run_name: str, cfg: DictConfig, model_type: str = None):
+def what_to_search_from_mlflow(
+    run_name: str, cfg: DictConfig, model_type: Optional[str] = None
+) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[str], Optional[str]]:
+    """Determine MLflow search parameters from run name and configuration.
+
+    Parameters
+    ----------
+    run_name : str
+        Name of the MLflow run.
+    cfg : DictConfig
+        Configuration containing IMPUTATION_METRICS settings.
+    model_type : str, optional
+        Model type (currently unused).
+
+    Returns
+    -------
+    tuple
+        Tuple of (current_experiment, metric_string, split_key, metric_direction),
+        or (None, None, None, None) if run not found.
+    """
     mlflow_artifacts = get_mlflow_artifact_from_run_name(run_name=run_name)
 
     if mlflow_artifacts is not None:
@@ -505,7 +904,21 @@ def what_to_search_from_mlflow(run_name: str, cfg: DictConfig, model_type: str =
         return None, None, None, None
 
 
-def check_if_run_exists(experiment_name, run_name):
+def check_if_run_exists(experiment_name: str, run_name: str) -> bool:
+    """Check if an MLflow run with the given name exists in the experiment.
+
+    Parameters
+    ----------
+    experiment_name : str
+        Name of the MLflow experiment.
+    run_name : str
+        Run name to search for.
+
+    Returns
+    -------
+    bool
+        True if run exists, False otherwise.
+    """
     runs = mlflow.search_runs(experiment_names=[experiment_name])
     if runs.shape[0] > 0:
         run_names = runs["tags.mlflow.runName"].values

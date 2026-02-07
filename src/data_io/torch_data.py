@@ -1,22 +1,52 @@
 import numpy as np
 import torch
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
 from torch.utils.data import TensorDataset
 
 from src.classification.xgboost_cls.xgboost_utils import encode_labels_to_integers
 from src.data_io.data_utils import transform_data_for_momentfm
-
 
 # See for a Class example:
 # https://github.com/moment-timeseries-foundation-model/moment/blob/main/momentfm/data/anomaly_detection_dataset.py
 
 
 def trim_data(x):
+    """Trim PLR data to remove edge artifacts.
+
+    Removes the first 3 and last 2 timepoints from PLR recordings
+    to get a clean 1976-sample signal.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Input array with shape (n_subjects, n_timepoints).
+
+    Returns
+    -------
+    np.ndarray
+        Trimmed array with shape (n_subjects, 1976).
+    """
     return x[:, 3:1979]  # 1976
 
 
 def nan_padding(x, n: int = 1981):
+    """Pad trimmed data back to original length with NaN values.
+
+    Inverse operation of trim_data, fills edge positions with NaN.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Trimmed input array with shape (n_subjects, 1976).
+    n : int, optional
+        Target output length, by default 1981.
+
+    Returns
+    -------
+    np.ndarray
+        Padded array with shape (n_subjects, n) with NaN at edges.
+    """
     x_out = np.zeros((x.shape[0], n))
     x_out[:, :] = np.nan
     x_out[:, 3:1979] = x
@@ -24,6 +54,29 @@ def nan_padding(x, n: int = 1981):
 
 
 def get_outlier_data(data_dict, split):
+    """Extract outlier detection data and masks from data dictionary.
+
+    Retrieves the imputed original pupil data and corresponding outlier
+    mask for evaluating outlier detection algorithms.
+
+    Parameters
+    ----------
+    data_dict : dict
+        Hierarchical data dictionary with split keys.
+    split : str
+        Data split to extract ("train" or "test").
+
+    Returns
+    -------
+    tuple of np.ndarray
+        X: pupil data array (n_subjects, n_timepoints)
+        mask: outlier mask array where 1=outlier, 0=normal
+
+    Raises
+    ------
+    AssertionError
+        If no outliers are labeled in the mask.
+    """
     # I.e. you use this to evaluate whether your network can remove outliers
     X = data_dict[split]["data"]["pupil_orig_imputed"]
     # Mask gives 1 for outliers, 0 for normal values
@@ -37,6 +90,31 @@ def get_outlier_data(data_dict, split):
 
 
 def pick_pupil_data_col(train_on, data_dict, split):
+    """Select appropriate pupil data column based on training configuration.
+
+    Retrieves the correct data column (ground truth, raw imputed, or original
+    imputed) and corresponding mask based on the train_on parameter.
+
+    Parameters
+    ----------
+    train_on : str
+        Data column to use: "pupil_gt", "pupil_raw_imputed", or "pupil_orig_imputed".
+    data_dict : dict
+        Hierarchical data dictionary with split keys.
+    split : str
+        Data split to extract ("train" or "test").
+
+    Returns
+    -------
+    tuple of np.ndarray
+        X: pupil data array (n_subjects, n_timepoints)
+        mask: corresponding mask array (zeros for gt/raw, outlier_mask for orig)
+
+    Raises
+    ------
+    ValueError
+        If train_on parameter is not recognized.
+    """
     if train_on == "pupil_gt":
         # This is the denoised (clean signal)
         X = data_dict[split]["data"]["pupil_gt"]
@@ -63,6 +141,36 @@ def pick_pupil_data_col(train_on, data_dict, split):
 def dataset_outlier_detection_selector(
     detection_type: str, train_on: str, split: str, split_data: str, data_dict: dict
 ):
+    """Select data for outlier detection based on detection type and split.
+
+    Routes data selection based on whether fine-tuning or zero-shot detection
+    is used, and whether outlier-specific splits are requested.
+
+    Parameters
+    ----------
+    detection_type : str
+        Detection approach: "fine-tune" or "zero-shot".
+    train_on : str
+        Data column to use for training.
+    split : str
+        Data split ("train" or "test").
+    split_data : str
+        Specific split type (e.g., "outlier_train", "outlier_test").
+    data_dict : dict
+        Hierarchical data dictionary.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        X: data array and mask: outlier mask array.
+
+    Raises
+    ------
+    ValueError
+        If detection_type is not recognized.
+    AssertionError
+        If outlier split requested but mask has no outliers.
+    """
     if detection_type == "fine-tune":
         if "outlier" in split_data:
             # You only need the outlier split for outlier detection. When doing imputation training,
@@ -89,6 +197,35 @@ def dataset_outlier_detection_selector(
 def dataset_ts_cls_selector(
     detection_type: str, train_on: str, split: str, data_dict: dict
 ):
+    """Select data for time series classification task.
+
+    Extracts features and class labels for binary classification,
+    encoding string labels to integers.
+
+    Parameters
+    ----------
+    detection_type : str
+        Detection approach: "fine-tune" or "full-finetune".
+    train_on : str
+        Data column to use (not used directly, for interface consistency).
+    split : str
+        Data split ("train" or "test").
+    data_dict : dict
+        Hierarchical data dictionary.
+
+    Returns
+    -------
+    tuple
+        X: feature array (n_subjects, n_features)
+        labels: integer class labels (n_subjects,)
+
+    Raises
+    ------
+    ValueError
+        If detection_type is not recognized.
+    AssertionError
+        If number of unique classes is not 2, or if label count mismatches X.
+    """
     if detection_type == "fine-tune" or detection_type == "full-finetune":
         X = data_dict[split]["data"]["X"]
         labels = data_dict[split]["labels"]["class_label"][:, 0]
@@ -109,6 +246,36 @@ def dataset_ts_cls_selector(
 def dataset_imputation_selector(
     detection_type: str, train_on: str, split: str, data_dict: dict
 ):
+    """Select data for imputation task.
+
+    Extracts data and missingness mask for training imputation models
+    to reconstruct missing values.
+
+    Parameters
+    ----------
+    detection_type : str
+        Detection approach: "fine-tune" or "zero-shot".
+    train_on : str
+        Data column: "pupil_gt" or "pupil_raw_imputed".
+    split : str
+        Data split ("train" or "test").
+    data_dict : dict
+        Hierarchical data dictionary.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        X: data array and mask: missingness mask.
+
+    Raises
+    ------
+    ValueError
+        If detection_type or train_on is not recognized.
+    NotImplementedError
+        If train_on is "pupil_raw_imputed" (not yet implemented).
+    AssertionError
+        If mask has no missing points.
+    """
     if detection_type == "fine-tune":
         if train_on == "pupil_gt":
             # This is the denoised (clean signal)
@@ -148,6 +315,36 @@ def dataset_data_array_selector(
     detection_type: str = "zero-shot",
     train_on: str = "gt",
 ):
+    """Main dispatcher for selecting data arrays based on task and split.
+
+    Routes data extraction to appropriate task-specific selector based on
+    the task type (outlier detection, imputation, or classification).
+
+    Parameters
+    ----------
+    split_data : str
+        Split specification: "train", "test", "outlier_train", "outlier_test".
+    task : str
+        Task type: "outlier_detection", "imputation", or "ts_cls".
+    data_dict : dict
+        Hierarchical data dictionary.
+    detection_type : str, optional
+        Detection approach, by default "zero-shot".
+    train_on : str, optional
+        Data column to use, by default "gt".
+
+    Returns
+    -------
+    tuple of np.ndarray
+        X: data array and mask/label array depending on task.
+
+    Raises
+    ------
+    ValueError
+        If split_data or task is not recognized.
+    AssertionError
+        If X contains NaN values or shape mismatch with mask.
+    """
     if split_data == "outlier_test":
         # "outlier" is a "virtual split" that takes data from different processing level,
         # but we want to use the "test" or "val" split now as it is not used for training directly
@@ -208,10 +405,31 @@ def dataset_data_array_selector(
 
 
 def pick_splits_from_data_dict_to_ts(data_dict_df, model_cfg, train_on):
-    """
-    Use now the "pupil_orig_imputed" as the training data, and the "outlier_mask" as the labels
-    Compare this for example to the PSM dataset
-    https://github.com/eBay/RANSynCoders/blob/main/example.ipynb
+    """Extract train/test splits from data dictionary for time series export.
+
+    Organizes data into split-specific dictionaries with X (data), y (outlier mask),
+    and time arrays for downstream processing.
+
+    Parameters
+    ----------
+    data_dict_df : dict
+        Hierarchical data dictionary with split keys containing data arrays.
+    model_cfg : DictConfig
+        Model configuration (not currently used but kept for interface).
+    train_on : str
+        Data column to extract (e.g., "pupil_orig_imputed").
+
+    Returns
+    -------
+    dict
+        Dictionary with "train" and "test" keys, each containing:
+        - X: data array
+        - y: outlier mask
+        - time: time vector
+
+    References
+    ----------
+    - https://github.com/eBay/RANSynCoders/blob/main/example.ipynb
     """
     data_splits = {}
     # train_on = "pupil_orig_imputed"  # model_cfg["MODEL"]["train_on"]
@@ -232,6 +450,31 @@ def create_dataset_from_numpy(
     task: str = "imputation",
     model_name: str = None,
 ):
+    """Create a PyTorch TensorDataset from numpy arrays.
+
+    Converts data dictionary arrays to PyTorch tensors and optionally
+    applies trimming for foundation model compatibility.
+
+    Parameters
+    ----------
+    data_dict_df : dict
+        Hierarchical data dictionary containing numpy arrays.
+    dataset_cfg : DictConfig
+        Dataset configuration with trim_to_size and other settings.
+    model_cfg : DictConfig
+        Model configuration with MODEL settings (detection_type, train_on).
+    split : str
+        Data split to use ("train", "test", "outlier_train", "outlier_test").
+    task : str, optional
+        Task type for data selection, by default "imputation".
+    model_name : str, optional
+        Model name for trim configuration, by default None.
+
+    Returns
+    -------
+    TensorDataset
+        PyTorch dataset with (X, mask, input_mask) tensors.
+    """
     # Pick the needed arrays from the model artifacts dictionary
     X, mask = dataset_data_array_selector(
         split_data=split,

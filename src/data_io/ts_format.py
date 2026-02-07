@@ -1,8 +1,8 @@
-import os
+from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from loguru import logger
-import numpy as np
 
 from src.data_io.data_utils import transform_data_for_momentfm
 from src.data_io.data_wrangler import convert_df_to_dict
@@ -11,10 +11,27 @@ from src.utils import get_data_dir
 
 
 def concatenate_subjects(X, y):
-    """
-    Check out a bit the documentation for this, can you provide an array of targets
-    https://github.com/aeon-toolkit/aeon/discussions/2328
-    https://github.com/aeon-toolkit/aeon-tutorials/blob/main/ECML-2024/Notebooks/part6_anomaly_detection.ipynb
+    """Concatenate all subjects into a single time series for anomaly detection.
+
+    Flattens multi-subject data into a single continuous time series for use with
+    aeon toolkit anomaly detection methods that expect (n_cases, n_channels, n_timepoints).
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Input data array with shape (n_subjects, n_timepoints).
+    y : np.ndarray
+        Labels array with shape (n_subjects, n_timepoints).
+
+    Returns
+    -------
+    tuple of np.ndarray
+        X reshaped to (1, 1, total_timepoints) and y flattened to 1D.
+
+    References
+    ----------
+    - https://github.com/aeon-toolkit/aeon/discussions/2328
+    - https://github.com/aeon-toolkit/aeon-tutorials/blob/main/ECML-2024/Notebooks/part6_anomaly_detection.ipynb
     """
     X = X.flatten()[np.newaxis, np.newaxis, :]  # (n_cases, n_channels, n_timepoints)
     y = y.flatten()
@@ -24,8 +41,35 @@ def concatenate_subjects(X, y):
 def write_as_numpy_for_vanilla_dataloader(
     X, y, split, data_dir, data_name, dataset_cfg, train_on: str
 ):
-    subdir = os.path.join(data_dir, data_name)
-    os.makedirs(subdir, exist_ok=True)
+    """Write data as CSV files for vanilla PyTorch dataloader.
+
+    Exports PLR data and labels to CSV files for use with standard PyTorch
+    data loading pipelines. Optionally applies trimming for foundation models.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Input data array with shape (n_subjects, n_timepoints).
+    y : np.ndarray
+        Labels array with shape (n_subjects, n_timepoints).
+    split : str
+        Dataset split name ("train" or "test").
+    data_dir : str
+        Base directory for data output.
+    data_name : str
+        Name of the dataset subdirectory.
+    dataset_cfg : DictConfig
+        Dataset configuration with trim_to_size setting.
+    train_on : str
+        Data column used for training ("pupil_gt" adds "-gt" suffix).
+
+    Returns
+    -------
+    None
+        Files are written to disk.
+    """
+    subdir = Path(data_dir) / data_name
+    subdir.mkdir(parents=True, exist_ok=True)
 
     if dataset_cfg["trim_to_size"] is not None:
         # This takes fixed windows, the Class-based sliding window sampler might be better in the future
@@ -41,16 +85,39 @@ def write_as_numpy_for_vanilla_dataloader(
         suffix = ""
     logger.info(f"Writing {split} data to {subdir}")
     logger.info(f"X shape = {df.shape}")  # X shape = (355, 1981) or (152,1981)
-    df.to_csv(os.path.join(subdir, f"{split}{suffix}.csv"), index=False)
+    df.to_csv(subdir / f"{split}{suffix}.csv", index=False)
     logger.info(
         f"Labels shape = {df_labels.shape}"
     )  # Labels shape = (355, 1981) or (152,1981)
-    df_labels.to_csv(os.path.join(subdir, f"{split}{suffix}_label.csv"), index=False)
+    df_labels.to_csv(subdir / f"{split}{suffix}_label.csv", index=False)
 
 
 def write_as_PLR(X, y, split, data_dir, data_name):
-    subdir = os.path.join(data_dir, data_name)
-    os.makedirs(subdir, exist_ok=True)
+    """Write data in PLR-specific CSV format.
+
+    Exports PLR data with the first timepoint removed for clean sequence
+    length division. Creates CSV files for data and labels.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Input data array with shape (n_subjects, n_timepoints).
+    y : np.ndarray
+        Labels array with shape (n_subjects, n_timepoints).
+    split : str
+        Dataset split name ("train" or "test").
+    data_dir : str
+        Base directory for data output.
+    data_name : str
+        Name of the dataset subdirectory.
+
+    Returns
+    -------
+    None
+        Files are written to disk.
+    """
+    subdir = Path(data_dir) / data_name
+    subdir.mkdir(parents=True, exist_ok=True)
 
     # kick out first sample to have some nice integer division to seq_len
     X = X[:, 1:]
@@ -63,16 +130,39 @@ def write_as_PLR(X, y, split, data_dir, data_name):
     # Test split shape: (301112, 16), unique subjects = 152 (9.67% outliers)
     logger.info(f"Writing {split} data to {subdir}")
     logger.info(f"X shape = {df.shape}")  # X shape = (355, 1981) or (152,1981)
-    df.to_csv(os.path.join(subdir, f"{split}.csv"), index=False)
+    df.to_csv(subdir / f"{split}.csv", index=False)
     logger.info(
         f"Labels shape = {df_labels.shape}"
     )  # Labels shape = (355, 1981) or (152,1981)
-    df_labels.to_csv(os.path.join(subdir, f"{split}_label.csv"), index=False)
+    df_labels.to_csv(subdir / f"{split}_label.csv", index=False)
 
 
 def write_as_psm(X, y, split, data_dir, data_name):
-    subdir = os.path.join(data_dir, data_name)
-    os.makedirs(subdir, exist_ok=True)
+    """Write data in PSM (Pool Server Machine) dataset format.
+
+    Creates CSV files with time column and data/labels for compatibility
+    with UniTS and similar time series models.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Input data array (will be squeezed to 1D).
+    y : np.ndarray
+        Labels array.
+    split : str
+        Dataset split name ("train" or "test").
+    data_dir : str
+        Base directory for data output.
+    data_name : str
+        Name of the dataset subdirectory.
+
+    Returns
+    -------
+    None
+        Files are written to disk.
+    """
+    subdir = Path(data_dir) / data_name
+    subdir.mkdir(parents=True, exist_ok=True)
 
     linear_time = np.linspace(1, len(y), len(y))
     dict = {"time": linear_time, "pupil": np.squeeze(X)}
@@ -80,18 +170,45 @@ def write_as_psm(X, y, split, data_dir, data_name):
     df_labels: pd.DataFrame = pd.DataFrame({"time": linear_time, "label": y})
 
     logger.info(f"Writing {split} data to {subdir}")
-    df.to_csv(os.path.join(subdir, f"{split}.csv"), index=False)
-    df_labels.to_csv(os.path.join(subdir, f"{split}_label.csv"), index=False)
+    df.to_csv(subdir / f"{split}.csv", index=False)
+    df_labels.to_csv(subdir / f"{split}_label.csv", index=False)
 
 
 def export_df_to_ts_format(
     df, cfg, model_cfg, task: str = "outlier_detection", write_as: str = "numpy"
 ):
-    """
-    https://github.com/mims-harvard/UniTS/blob/main/Tutorial.md
-    https://www.aeon-toolkit.org/en/latest/examples/datasets/data_loading.html
+    """Export dataframe to various time series file formats.
 
-    The dataset should contain newdata_TRAIN.ts and newdata_TEST.ts files.
+    Converts a Polars dataframe to formats compatible with different
+    time series libraries (aeon, UniTS, custom formats).
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input Polars dataframe with PLR data.
+    cfg : DictConfig
+        Main configuration dictionary.
+    model_cfg : DictConfig
+        Model-specific configuration with MODEL and TORCH settings.
+    task : str, optional
+        Task type ("outlier_detection"), by default "outlier_detection".
+    write_as : str, optional
+        Output format, one of "numpy", "PSM", "PLR", ".ts", by default "numpy".
+
+    Returns
+    -------
+    None
+        Files are written to disk in the specified format.
+
+    Raises
+    ------
+    Exception
+        If aeon library is not installed when using ".ts" format.
+
+    References
+    ----------
+    - https://github.com/mims-harvard/UniTS/blob/main/Tutorial.md
+    - https://www.aeon-toolkit.org/en/latest/examples/datasets/data_loading.html
     """
     data_dict = convert_df_to_dict(data_df=df, cfg=cfg)
     train_on = model_cfg["MODEL"]["train_on"]
@@ -104,7 +221,7 @@ def export_df_to_ts_format(
     filenames = {"train": f"{data_name}_TRAIN.ts", "test": f"{data_name}_TEST.ts"}
 
     for split, data in data_splits.items():
-        path_out = os.path.join(data_dir, filenames[split])
+        path_out = data_dir / filenames[split]
         X = data["X"]
         y = data["y"].astype(int)
         y_sum = np.sum(y)

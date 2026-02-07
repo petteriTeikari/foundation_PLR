@@ -1,11 +1,29 @@
-from loguru import logger
 import polars as pl
+from loguru import logger
 from omegaconf import DictConfig
 
 from src.data_io.data_utils import get_unique_polars_rows
 
 
 def add_task_target_masks(df_raw, cfg, null_mask: pl.Series, mask_name: str):
+    """Add a target mask column to the dataframe for task evaluation.
+
+    Parameters
+    ----------
+    df_raw : pl.DataFrame
+        Raw data dataframe.
+    cfg : DictConfig
+        Configuration dictionary.
+    null_mask : pl.Series
+        Boolean series indicating missing values.
+    mask_name : str
+        Name for the new mask column.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with added mask column.
+    """
     # You can obviosuly same some disk space without adding these, but maybe more intuitive
     # if you want to re-analyze the dataframe (duckDB) without the code years or months from now,
     # most likely by a person who is not familiar with the code at all, and don't necessarily want/need to get familiar
@@ -23,6 +41,36 @@ def impute_from_gt(
     new_col_name: str,
     cfg: DictConfig,
 ):
+    """Impute missing values using ground truth column values.
+
+    Creates a new column with missing values filled from ground truth.
+    Also adds appropriate task mask columns (outlier_mask or imputation_mask).
+
+    Parameters
+    ----------
+    df_raw : pl.DataFrame
+        Raw data dataframe.
+    col_with_missing : str
+        Name of column with missing values.
+    col_gt : str
+        Name of ground truth column to use for imputation.
+    new_col_name : str
+        Name for the new imputed column.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with new imputed column and mask columns.
+
+    Raises
+    ------
+    AssertionError
+        If ground truth column has missing values or imputation fails.
+    NotImplementedError
+        If new_col_name doesn't contain expected suffix.
+    """
     # Impute the missing values in the col_with_missing with the col_gt
     # This is a simple imputation method, where the missing values are replaced with the ground truth
     # This is useful for some outlier detection algorithms that might need non-NaN vectors
@@ -68,6 +116,25 @@ def impute_from_gt(
 
 
 def update_number_of_outliers(df_raw, cfg):
+    """Update the no_outliers column based on outlier_mask for each subject.
+
+    Parameters
+    ----------
+    df_raw : pl.DataFrame
+        Raw data dataframe with outlier_mask column.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with updated no_outliers column.
+
+    Raises
+    ------
+    AssertionError
+        If outlier sums were not updated correctly.
+    """
     # Get the number of outliers per subject, from "outlier_mask" column
     unique_codes = list(get_unique_polars_rows(df_raw, "subject_code")["subject_code"])
     outlier_sums = []
@@ -90,6 +157,23 @@ def update_number_of_outliers(df_raw, cfg):
 
 
 def fix_outlier_mask(df_raw, cfg):
+    """Fix outlier mask to account for imputation mask overlap.
+
+    Adjusts outlier_mask to properly reflect which values were originally
+    outliers vs which were just missing due to pupillometer rejection.
+
+    Parameters
+    ----------
+    df_raw : pl.DataFrame
+        Raw data dataframe with outlier_mask and imputation_mask columns.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with corrected outlier_mask column.
+    """
     outlier_mask_sum = df_raw["outlier_mask"].sum()
     outlier_perc_in = outlier_mask_sum / len(df_raw) * 100
     # imputation_mask_sum = df_raw["imputation_mask"].sum()
@@ -121,6 +205,29 @@ def fix_outlier_mask(df_raw, cfg):
 
 
 def impute_orig_for_training(df_raw: pl.DataFrame, cfg: DictConfig):
+    """Impute missing values in orig and raw columns for training.
+
+    Some outlier detection algorithms require non-NaN vectors. This function
+    creates imputed versions of pupil_orig and pupil_raw columns using
+    ground truth values.
+
+    Parameters
+    ----------
+    df_raw : pl.DataFrame
+        Raw data dataframe with pupil_orig, pupil_raw, and pupil_gt columns.
+    cfg : DictConfig
+        Configuration dictionary with DATA settings.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with pupil_orig_imputed and pupil_raw_imputed columns.
+
+    Raises
+    ------
+    NotImplementedError
+        If imputation method is not "gt".
+    """
     # Some outlier detection algorithms might need non-NaN vectors,
     # https://github.com/moment-timeseries-foundation-model/moment/blob/main/tutorials/anomaly_detection.ipynb
     # Featurization (e.g. AUC) from raw data with missing value might benefit from imputed gt
