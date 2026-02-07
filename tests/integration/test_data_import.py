@@ -71,9 +71,9 @@ class TestDuckDBImport:
         test_subjects = set(df_test["subject_code"].unique())
 
         overlap = train_subjects.intersection(test_subjects)
-        assert (
-            len(overlap) == 0
-        ), f"Found {len(overlap)} overlapping subjects between train and test: {overlap}"
+        assert len(overlap) == 0, (
+            f"Found {len(overlap)} overlapping subjects between train and test: {overlap}"
+        )
 
     @pytest.mark.integration
     def test_time_vector_consistency(self, demo_db_path):

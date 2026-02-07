@@ -74,8 +74,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
-      - run: uvx ruff check src/ tests/ scripts/
-      - run: uvx ruff format --check src/ tests/ scripts/
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --dev --frozen
+      # Uses ruff version from uv.lock (single source of truth)
+      - run: uv run ruff check src/ tests/ scripts/
+      - run: uv run ruff format --check src/ tests/ scripts/
 
   # ===========================================================================
   # Tier 1: Fast tests — unit + guardrail (~2-3 min with cache)

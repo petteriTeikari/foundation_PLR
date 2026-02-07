@@ -104,9 +104,9 @@ class TestRSyntax:
     @pytest.mark.parametrize(
         "r_file",
         list(TOOLS_DIR.rglob("*.R")) if TOOLS_DIR.exists() else [],
-        ids=lambda p: str(p.relative_to(PROJECT_ROOT))
-        if TOOLS_DIR.exists()
-        else str(p),
+        ids=lambda p: (
+            str(p.relative_to(PROJECT_ROOT)) if TOOLS_DIR.exists() else str(p)
+        ),
     )
     def test_individual_file_syntax(self, r_available, r_file: Path):
         """Test each R file parses without syntax errors."""

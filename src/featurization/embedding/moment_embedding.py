@@ -310,9 +310,9 @@ def get_embeddings_per_split(
         # x = torch.randn(16, 1, 1981)
         outputs = model(x_enc=x.to(cfg["DEVICE"]["device"]))
         embeddings = outputs.embeddings.detach().cpu().numpy()
-        assert (
-            embeddings is not None
-        ), "Embeddings are None, problem with initalizing the model?"
+        assert embeddings is not None, (
+            "Embeddings are None, problem with initalizing the model?"
+        )
         if embeddings_out is None:
             embeddings_out = embeddings
         else:

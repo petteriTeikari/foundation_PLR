@@ -68,9 +68,9 @@ def momentfm_forward_pass(
     """
     # The data is expected to be 3D (batch_sz, no_channels, no_timesteps)
     batch_x = add_empty_channel(batch_x.to(device).float())
-    assert (
-        len(batch_x.shape) == 3
-    ), "Input must be 3D (batch_sz, no_channels, no_timesteps)"
+    assert len(batch_x.shape) == 3, (
+        "Input must be 3D (batch_sz, no_channels, no_timesteps)"
+    )
 
     # If you for example generate the masks on the fly. DOne on the imputation tutorial
     if labels is not None:

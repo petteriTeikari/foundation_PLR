@@ -59,19 +59,19 @@ def prepare_for_bootstrap(dict_arrays: dict, method_cfg: DictConfig):
         # y = np.concatenate((y_train, y_test), axis=0)
         # X_test, y_test, codes_test = None, None, None
     else:
-        assert (
-            dict_arrays["x_test"].shape[0] == dict_arrays["y_test"].shape[0]
-        ), "X_test and y_test must have the same number of rows"
+        assert dict_arrays["x_test"].shape[0] == dict_arrays["y_test"].shape[0], (
+            "X_test and y_test must have the same number of rows"
+        )
         assert (
             dict_arrays["x_test"].shape[0] == dict_arrays["subject_codes_test"].shape[0]
         ), "X_test and subject_codes_test must have the same number of rows"
 
-    assert (
-        dict_arrays["x_train"].shape[0] == dict_arrays["y_train"].shape[0]
-    ), "X and y must have the same number of rows"
-    assert (
-        dict_arrays["x_train"].shape[0] == dict_arrays["X_idxs"].shape[0]
-    ), "X and X_idxs must have the same number of rows"
+    assert dict_arrays["x_train"].shape[0] == dict_arrays["y_train"].shape[0], (
+        "X and y must have the same number of rows"
+    )
+    assert dict_arrays["x_train"].shape[0] == dict_arrays["X_idxs"].shape[0], (
+        "X and X_idxs must have the same number of rows"
+    )
     assert (
         dict_arrays["x_train"].shape[0] == dict_arrays["subject_codes_train"].shape[0]
     ), "X and subject_codes_train must have the same number of rows"
@@ -220,21 +220,21 @@ def check_bootstrap_iteration_quality(metrics_iter, dict_arrays_iter, dict_array
     )
     # in the bootstrap scenario, after all the iterations, both splits should have had all the codes used
     # from the original train split
-    assert len(train_codes_used) == len(
-        val_codes_used
-    ), "Train and val codes must have the same length"
-    assert (
-        len(train_codes_used) == dict_arrays["subject_codes_train"].shape[0]
-    ), "All codes must have been used"
+    assert len(train_codes_used) == len(val_codes_used), (
+        "Train and val codes must have the same length"
+    )
+    assert len(train_codes_used) == dict_arrays["subject_codes_train"].shape[0], (
+        "All codes must have been used"
+    )
 
     # this has a different structure, as test samples are always the same across the bootstrapping
     # so we can just aggregate predictions to a np.ndarray
     no_test_samples_used = metrics_iter["test"]["preds"]["arrays"]["predictions"][
         "y_pred_proba"
     ].shape[0]
-    assert (
-        no_test_samples_used == dict_arrays["x_test"].shape[0]
-    ), "All test samples must have been used"
+    assert no_test_samples_used == dict_arrays["x_test"].shape[0], (
+        "All test samples must have been used"
+    )
 
 
 def get_ensemble_stats(

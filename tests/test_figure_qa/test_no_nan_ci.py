@@ -44,9 +44,9 @@ class TestNoNaNCIValues:
         These are excluded from the filtered CSV export. Here we verify
         that no non-degenerate model has NaN CIs.
         """
-        assert (
-            self.DB_PATH.exists()
-        ), f"Database missing: {self.DB_PATH}. Run: make extract"
+        assert self.DB_PATH.exists(), (
+            f"Database missing: {self.DB_PATH}. Run: make extract"
+        )
 
         conn = duckdb.connect(str(self.DB_PATH), read_only=True)
         nan_rows = conn.execute("""
@@ -66,9 +66,9 @@ class TestNoNaNCIValues:
 
     def test_catboost_no_nan_ci_in_database(self):
         """CatBoost data (used for main figures) must have no NaN CIs."""
-        assert (
-            self.DB_PATH.exists()
-        ), f"Database missing: {self.DB_PATH}. Run: make extract"
+        assert self.DB_PATH.exists(), (
+            f"Database missing: {self.DB_PATH}. Run: make extract"
+        )
 
         conn = duckdb.connect(str(self.DB_PATH), read_only=True)
         nan_count = conn.execute("""
@@ -86,9 +86,9 @@ class TestNoNaNCIValues:
 
     def test_catboost_no_nan_ci_in_csv(self):
         """CatBoost data in CSV export must have no NaN CIs."""
-        assert (
-            self.CSV_PATH.exists()
-        ), f"CSV missing: {self.CSV_PATH}. Run: make analyze"
+        assert self.CSV_PATH.exists(), (
+            f"CSV missing: {self.CSV_PATH}. Run: make analyze"
+        )
 
         df = pd.read_csv(self.CSV_PATH)
         catboost = df[df["classifier"].str.upper() == "CATBOOST"]
@@ -96,21 +96,21 @@ class TestNoNaNCIValues:
         nan_ci_lo = catboost["auroc_ci_lo"].isna().sum()
         nan_ci_hi = catboost["auroc_ci_hi"].isna().sum()
 
-        assert (
-            nan_ci_lo == 0
-        ), f"CRITICAL: {nan_ci_lo} CatBoost rows have NaN auroc_ci_lo in CSV!"
-        assert (
-            nan_ci_hi == 0
-        ), f"CRITICAL: {nan_ci_hi} CatBoost rows have NaN auroc_ci_hi in CSV!"
+        assert nan_ci_lo == 0, (
+            f"CRITICAL: {nan_ci_lo} CatBoost rows have NaN auroc_ci_lo in CSV!"
+        )
+        assert nan_ci_hi == 0, (
+            f"CRITICAL: {nan_ci_hi} CatBoost rows have NaN auroc_ci_hi in CSV!"
+        )
 
     def test_no_nan_ci_in_csv_any_classifier(self):
         """ALL data in CSV must have valid (non-NaN) CIs.
 
         NaN CIs indicate failed experiments that should be filtered during extraction.
         """
-        assert (
-            self.CSV_PATH.exists()
-        ), f"CSV missing: {self.CSV_PATH}. Run: make analyze"
+        assert self.CSV_PATH.exists(), (
+            f"CSV missing: {self.CSV_PATH}. Run: make analyze"
+        )
 
         df = pd.read_csv(self.CSV_PATH)
 
@@ -126,9 +126,9 @@ class TestNoNaNCIValues:
 
     def test_forest_plot_data_no_nan(self):
         """Forest plot aggregated data must have no NaN after min/max aggregation."""
-        assert (
-            self.CSV_PATH.exists()
-        ), f"CSV missing: {self.CSV_PATH}. Run: make analyze"
+        assert self.CSV_PATH.exists(), (
+            f"CSV missing: {self.CSV_PATH}. Run: make analyze"
+        )
 
         df = pd.read_csv(self.CSV_PATH)
         catboost = df[df["classifier"].str.upper() == "CATBOOST"]
@@ -155,9 +155,9 @@ class TestNoNaNCIValues:
 
     def test_ci_bounds_valid_for_catboost(self):
         """CatBoost CI bounds must satisfy: ci_lo <= auroc <= ci_hi."""
-        assert (
-            self.CSV_PATH.exists()
-        ), f"CSV missing: {self.CSV_PATH}. Run: make analyze"
+        assert self.CSV_PATH.exists(), (
+            f"CSV missing: {self.CSV_PATH}. Run: make analyze"
+        )
 
         df = pd.read_csv(self.CSV_PATH)
         catboost = df[df["classifier"].str.upper() == "CATBOOST"]
@@ -185,9 +185,9 @@ class TestFigureJSONDataQuality:
 
     def test_forest_json_no_nan_if_exists(self):
         """Forest plot JSON must have no NaN values."""
-        assert (
-            self.FOREST_JSON.exists()
-        ), f"Forest plot JSON not found: {self.FOREST_JSON}. Run: make analyze"
+        assert self.FOREST_JSON.exists(), (
+            f"Forest plot JSON not found: {self.FOREST_JSON}. Run: make analyze"
+        )
 
         import json
 
@@ -198,6 +198,6 @@ class TestFigureJSONDataQuality:
         json_str = json.dumps(data)
 
         assert "NaN" not in json_str, "CRITICAL: Forest plot JSON contains NaN values!"
-        assert (
-            "null" not in json_str.lower() or '"null"' in json_str.lower()
-        ), "Warning: Forest plot JSON may contain null values"
+        assert "null" not in json_str.lower() or '"null"' in json_str.lower(), (
+            "Warning: Forest plot JSON may contain null values"
+        )

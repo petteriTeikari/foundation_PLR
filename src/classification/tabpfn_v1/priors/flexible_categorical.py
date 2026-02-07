@@ -379,12 +379,12 @@ def get_batch(
 ):
     batch_size_per_gp_sample = batch_size_per_gp_sample or (min(32, batch_size))
     num_models = batch_size // batch_size_per_gp_sample
-    assert (
-        num_models > 0
-    ), f"Batch size ({batch_size}) is too small for batch_size_per_gp_sample ({batch_size_per_gp_sample})"
-    assert (
-        num_models * batch_size_per_gp_sample == batch_size
-    ), f"Batch size ({batch_size}) not divisible by batch_size_per_gp_sample ({batch_size_per_gp_sample})"
+    assert num_models > 0, (
+        f"Batch size ({batch_size}) is too small for batch_size_per_gp_sample ({batch_size_per_gp_sample})"
+    )
+    assert num_models * batch_size_per_gp_sample == batch_size, (
+        f"Batch size ({batch_size}) not divisible by batch_size_per_gp_sample ({batch_size_per_gp_sample})"
+    )
 
     # Sample one seq_len for entire batch
     seq_len = (

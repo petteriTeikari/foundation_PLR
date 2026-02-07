@@ -124,8 +124,8 @@ class DifferentiableHyperparameter(nn.Module):
                     }
 
                 def make_gamma(alpha, scale):
-                    return (
-                        lambda alpha=alpha, scale=scale: self.lower_bound
+                    return lambda alpha=alpha, scale=scale: (
+                        self.lower_bound
                         + round(
                             gamma_sampler_f(math.exp(alpha), scale / math.exp(alpha))()
                         )
@@ -164,21 +164,25 @@ class DifferentiableHyperparameter(nn.Module):
                 def make_trunc_norm(log_mean, log_std):
                     return (
                         (
-                            lambda: self.lower_bound
-                            + round(
-                                trunc_norm_sampler_f(
-                                    math.exp(log_mean),
-                                    math.exp(log_mean) * math.exp(log_std),
-                                )()
+                            lambda: (
+                                self.lower_bound
+                                + round(
+                                    trunc_norm_sampler_f(
+                                        math.exp(log_mean),
+                                        math.exp(log_mean) * math.exp(log_std),
+                                    )()
+                                )
                             )
                         )
                         if self.round
                         else (
-                            lambda: self.lower_bound
-                            + trunc_norm_sampler_f(
-                                math.exp(log_mean),
-                                math.exp(log_mean) * math.exp(log_std),
-                            )()
+                            lambda: (
+                                self.lower_bound
+                                + trunc_norm_sampler_f(
+                                    math.exp(log_mean),
+                                    math.exp(log_mean) * math.exp(log_std),
+                                )()
+                            )
                         )
                     )
 
@@ -206,13 +210,16 @@ class DifferentiableHyperparameter(nn.Module):
                 def make_trunc_norm(mean, std):
                     return (
                         (
-                            lambda: self.lower_bound
-                            + round(trunc_norm_sampler_f(mean, std)())
+                            lambda: (
+                                self.lower_bound
+                                + round(trunc_norm_sampler_f(mean, std)())
+                            )
                         )
                         if self.round
                         else (
-                            lambda make_trunc_norm=make_trunc_norm: self.lower_bound
-                            + trunc_norm_sampler_f(mean, std)()
+                            lambda make_trunc_norm=make_trunc_norm: (
+                                self.lower_bound + trunc_norm_sampler_f(mean, std)()
+                            )
                         )
                     )
 
@@ -422,9 +429,9 @@ def get_batch(
 ):
     batch_size_per_gp_sample = batch_size_per_gp_sample or (min(64, batch_size))
     num_models = batch_size // batch_size_per_gp_sample
-    assert (
-        num_models * batch_size_per_gp_sample == batch_size
-    ), f"Batch size ({batch_size}) not divisible by batch_size_per_gp_sample ({batch_size_per_gp_sample})"
+    assert num_models * batch_size_per_gp_sample == batch_size, (
+        f"Batch size ({batch_size}) not divisible by batch_size_per_gp_sample ({batch_size_per_gp_sample})"
+    )
 
     args = {
         "device": device,
@@ -457,7 +464,9 @@ def get_batch(
             all([hp is None for hp in hp_]) or all([hp is not None for hp in hp_])
             for hp_ in transposed_hyperparameter_matrix
         ]
-    ), "it should always be the case that when a hyper-parameter is None, once it is always None"
+    ), (
+        "it should always be the case that when a hyper-parameter is None, once it is always None"
+    )
     # we remove columns that are only None (i.e. not sampled)
     hyperparameter_matrix = [
         [hp for hp in hp_ if hp is not None] for hp_ in hyperparameter_matrix

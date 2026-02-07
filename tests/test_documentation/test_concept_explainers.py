@@ -48,9 +48,9 @@ class TestRequiredConcepts:
     )
     def test_concept_explained(self, concepts_content, concept):
         """Each concept should be explained."""
-        assert (
-            concept.lower() in concepts_content.lower()
-        ), f"{concept} should be explained"
+        assert concept.lower() in concepts_content.lower(), (
+            f"{concept} should be explained"
+        )
 
     def test_has_eli5_explanations(self, concepts_content):
         """Should have simple explanations."""

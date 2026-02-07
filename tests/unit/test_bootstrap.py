@@ -236,9 +236,9 @@ class TestBootstrapCICoverage:
 
         coverage = coverage_count / n_simulations
         # Allow tolerance for Monte Carlo variance
-        assert (
-            0.85 <= coverage <= 1.0
-        ), f"Coverage {coverage:.2f} outside expected range"
+        assert 0.85 <= coverage <= 1.0, (
+            f"Coverage {coverage:.2f} outside expected range"
+        )
 
     @pytest.mark.slow
     def test_percentile_coverage_for_mean(self):

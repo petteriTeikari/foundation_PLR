@@ -482,10 +482,10 @@ def print_out_missingness_ratios(dataloaders):
         # you should have non-zero mask percentage
         logger.info(f'Split = "{split}": {mask_percentage:.2f}% are missing from mask')
         if "outlier" in split:
-            assert (
-                mask_percentage > 0
-            ), "You should have some points masked for the outlier split = {}".format(
-                split
+            assert mask_percentage > 0, (
+                "You should have some points masked for the outlier split = {}".format(
+                    split
+                )
             )
 
 
@@ -697,9 +697,9 @@ def check_reshape_of_moment_arrays(results_out):
     """
     no_samples_flat = len(results_out["split_results"]["arrays_flat"]["trues_valid"])
     no_samples_2d_array = results_out["split_results"]["arrays"]["trues"].size
-    assert (
-        no_samples_flat == no_samples_2d_array
-    ), "Shape mismatch between flat and reshaped 2d arrays"
+    assert no_samples_flat == no_samples_2d_array, (
+        "Shape mismatch between flat and reshaped 2d arrays"
+    )
 
 
 def reshape_np_array_windows(array_dict, cfg, outlier_model_cfg):
@@ -733,9 +733,9 @@ def reshape_np_array_windows(array_dict, cfg, outlier_model_cfg):
             array_out = reshape_array_to_original_shape(
                 array_2D, cfg, outlier_model_cfg
             )
-            assert (
-                array_out.shape[1] == cfg["DATA"]["PLR_length"]
-            ), "Shape mismatch ({})".format(array_out.shape)
+            assert array_out.shape[1] == cfg["DATA"]["PLR_length"], (
+                "Shape mismatch ({})".format(array_out.shape)
+            )
         else:
             return array
         return array_out

@@ -58,9 +58,9 @@ class TestDatabaseValues:
 
         assert result is not None, "Ground truth config not found"
         gt_auroc = result[0]
-        assert (
-            abs(gt_auroc - EXPECTED["gt_auroc"]) < 0.001
-        ), f"GT AUROC {gt_auroc:.4f} != expected {EXPECTED['gt_auroc']:.4f}"
+        assert abs(gt_auroc - EXPECTED["gt_auroc"]) < 0.001, (
+            f"GT AUROC {gt_auroc:.4f} != expected {EXPECTED['gt_auroc']:.4f}"
+        )
 
     def test_best_auroc_in_expected_range(self, conn):
         """Best AUROC matches expected value."""
@@ -74,9 +74,9 @@ class TestDatabaseValues:
 
         assert result is not None, "No CatBoost configs found"
         best_auroc = result[0]
-        assert (
-            abs(best_auroc - EXPECTED["best_auroc"]) < 0.001
-        ), f"Best AUROC {best_auroc:.4f} != expected {EXPECTED['best_auroc']:.4f}"
+        assert abs(best_auroc - EXPECTED["best_auroc"]) < 0.001, (
+            f"Best AUROC {best_auroc:.4f} != expected {EXPECTED['best_auroc']:.4f}"
+        )
 
     def test_handcrafted_mean_in_expected_range(self, conn):
         """Handcrafted features mean AUROC matches expected value."""
@@ -89,9 +89,9 @@ class TestDatabaseValues:
 
         assert result is not None
         mean_auroc = result[0]
-        assert (
-            abs(mean_auroc - EXPECTED["handcrafted_mean"]) < 0.01
-        ), f"Handcrafted mean {mean_auroc:.4f} != expected {EXPECTED['handcrafted_mean']:.4f}"
+        assert abs(mean_auroc - EXPECTED["handcrafted_mean"]) < 0.01, (
+            f"Handcrafted mean {mean_auroc:.4f} != expected {EXPECTED['handcrafted_mean']:.4f}"
+        )
 
     def test_embedding_mean_in_expected_range(self, conn):
         """MOMENT embedding mean AUROC matches expected value."""
@@ -104,9 +104,9 @@ class TestDatabaseValues:
 
         assert result is not None
         mean_auroc = result[0]
-        assert (
-            abs(mean_auroc - EXPECTED["embedding_mean"]) < 0.01
-        ), f"Embedding mean {mean_auroc:.4f} != expected {EXPECTED['embedding_mean']:.4f}"
+        assert abs(mean_auroc - EXPECTED["embedding_mean"]) < 0.01, (
+            f"Embedding mean {mean_auroc:.4f} != expected {EXPECTED['embedding_mean']:.4f}"
+        )
 
 
 class TestEPVCalculation:
@@ -115,9 +115,9 @@ class TestEPVCalculation:
     def test_epv_calculation_correct(self):
         """EPV = n_events / n_features = 56 / 8 = 7.0."""
         epv = EXPECTED["n_events"] / EXPECTED["n_features"]
-        assert (
-            abs(epv - EXPECTED["epv_handcrafted"]) < 0.01
-        ), f"EPV {epv:.1f} != expected {EXPECTED['epv_handcrafted']:.1f}"
+        assert abs(epv - EXPECTED["epv_handcrafted"]) < 0.01, (
+            f"EPV {epv:.1f} != expected {EXPECTED['epv_handcrafted']:.1f}"
+        )
 
     def test_epv_uses_exact_features_not_range(self):
         """EPV should be exactly 7.0, not a range like 4.7-14."""

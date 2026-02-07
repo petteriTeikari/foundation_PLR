@@ -78,9 +78,9 @@ class TestDecompositionGridFigureGeneration:
         assert "columns" in data, "JSON missing 'columns' metadata"
 
         assert len(data["rows"]) == 5, f"Expected 5 rows, got {len(data['rows'])}"
-        assert (
-            len(data["columns"]) == 5
-        ), f"Expected 5 columns, got {len(data['columns'])}"
+        assert len(data["columns"]) == 5, (
+            f"Expected 5 columns, got {len(data['columns'])}"
+        )
 
     def test_json_marks_synthetic_data(self):
         """Test JSON correctly marks test data as synthetic."""
@@ -164,9 +164,9 @@ class TestDecompositionGridPublicationStandards:
             std_per_channel = [
                 img_array[:, :, i].std() for i in range(img_array.shape[2])
             ]
-            assert (
-                max(std_per_channel) > 10
-            ), "Figure appears to be blank (low variance)"
+            assert max(std_per_channel) > 10, (
+                "Figure appears to be blank (low variance)"
+            )
         else:
             # Grayscale
             assert img_array.std() > 10, "Figure appears to be blank (low variance)"
@@ -179,9 +179,9 @@ class TestDecompositionGridPublicationStandards:
         for cell_key, cell_data in data["data"].items():
             assert "components" in cell_data, f"Cell {cell_key} missing 'components'"
             assert "time_vector" in cell_data, f"Cell {cell_key} missing 'time_vector'"
-            assert (
-                "mean_waveform" in cell_data
-            ), f"Cell {cell_key} missing 'mean_waveform'"
+            assert "mean_waveform" in cell_data, (
+                f"Cell {cell_key} missing 'mean_waveform'"
+            )
 
             # Check components have proper structure
             for comp in cell_data["components"]:
@@ -191,9 +191,9 @@ class TestDecompositionGridPublicationStandards:
                 assert "ci_upper" in comp, f"Component in {cell_key} missing 'ci_upper'"
 
                 # Verify arrays have reasonable length
-                assert (
-                    len(comp["mean"]) > 50
-                ), f"Component {comp['name']} in {cell_key} has too few points"
+                assert len(comp["mean"]) > 50, (
+                    f"Component {comp['name']} in {cell_key} has too few points"
+                )
 
 
 class TestDecompositionGridDataProvenance:
@@ -257,11 +257,20 @@ class TestProductionDecompositionGrid:
     PROD_FIGURE = FIGURES_DIR / "fig_decomposition_grid.png"
     PROD_JSON = FIGURES_DIR / "data" / "fig_decomposition_grid.json"
 
+    @pytest.fixture(autouse=True)
+    def _require_production_data(self):
+        """Skip all tests in this class if production data is not available."""
+        if not self.PROD_FIGURE.exists():
+            pytest.skip(
+                f"Production data not found: {self.PROD_FIGURE}. Run: make analyze"
+            )
+
     def test_production_json_not_synthetic(self):
         """Production JSON should NOT have synthetic marker."""
-        assert (
-            self.PROD_JSON.exists()
-        ), f"Production JSON missing: {self.PROD_JSON}. Run: make analyze"
+        if not self.PROD_JSON.exists():
+            pytest.skip(
+                f"Production data not found: {self.PROD_JSON}. Run: make analyze"
+            )
 
         with open(self.PROD_JSON) as f:
             data = json.load(f)
@@ -273,9 +282,6 @@ class TestProductionDecompositionGrid:
 
     def test_production_figure_meets_dpi_requirements(self):
         """Production figure should have DPI >= 300."""
-        assert (
-            self.PROD_FIGURE.exists()
-        ), f"Production figure missing: {self.PROD_FIGURE}. Run: make analyze"
 
         img = Image.open(self.PROD_FIGURE)
         dpi = img.info.get("dpi", (72, 72))

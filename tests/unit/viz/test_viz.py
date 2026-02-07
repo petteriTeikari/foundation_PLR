@@ -46,7 +46,8 @@ def db_connection():
         / "public"
         / "foundation_plr_results.db"
     )
-    assert db_path.exists(), f"DuckDB database not found: {db_path}. Run: make extract"
+    if not db_path.exists():
+        pytest.skip(f"DuckDB database not found: {db_path}. Run: make extract")
     conn = duckdb.connect(str(db_path), read_only=True)
     yield conn
     conn.close()
@@ -91,9 +92,9 @@ class TestPlotConfig:
 
         for color_name in required_colors:
             assert color_name in COLORS, f"Missing color: {color_name}"
-            assert COLORS[color_name].startswith(
-                "#"
-            ), f"Invalid color format: {color_name}"
+            assert COLORS[color_name].startswith("#"), (
+                f"Invalid color format: {color_name}"
+            )
 
     def test_key_stats_defined(self):
         """Verify key statistics are defined.
@@ -115,18 +116,18 @@ class TestPlotConfig:
         ]
 
         for stat in required_stats:
-            assert (
-                stat in stats
-            ), f"Missing stat: {stat}. Available: {list(stats.keys())}"
+            assert stat in stats, (
+                f"Missing stat: {stat}. Available: {list(stats.keys())}"
+            )
 
     def test_best_auroc_correct_value(self):
         """Verify best ensemble AUROC is the corrected value (0.913)."""
         from src.viz.plot_config import get_key_stats
 
         stats = get_key_stats()
-        assert (
-            stats["best_ensemble_auroc"] == 0.913
-        ), f"Best ensemble AUROC should be 0.913, got {stats['best_ensemble_auroc']}"
+        assert stats["best_ensemble_auroc"] == 0.913, (
+            f"Best ensemble AUROC should be 0.913, got {stats['best_ensemble_auroc']}"
+        )
 
     def test_setup_style_runs(self):
         """Verify setup_style doesn't raise exceptions."""
@@ -148,9 +149,9 @@ class TestPlotConfig:
         tables = db_connection.execute("SHOW TABLES").fetchall()
         table_names = [t[0] for t in tables]
 
-        assert (
-            "essential_metrics" in table_names
-        ), f"essential_metrics table not found. Tables: {table_names}"
+        assert "essential_metrics" in table_names, (
+            f"essential_metrics table not found. Tables: {table_names}"
+        )
 
     def test_save_figure(self, temp_output_dir):
         """Verify save_figure creates files correctly."""
@@ -227,9 +228,9 @@ class TestDataAvailability:
         assert len(classifiers) >= 3, f"Expected 3+ classifiers, got {classifiers}"
         # DB may store as "CATBOOST" or "CatBoost" - check case-insensitively
         classifiers_lower = [c.lower() for c in classifiers]
-        assert (
-            "catboost" in classifiers_lower
-        ), f"CatBoost not found in classifiers (case-insensitive): {classifiers}"
+        assert "catboost" in classifiers_lower, (
+            f"CatBoost not found in classifiers (case-insensitive): {classifiers}"
+        )
 
     def test_best_auroc_exists_in_db(self, db_connection):
         """Verify the best AUROC (0.913) exists in database."""
@@ -253,9 +254,9 @@ class TestDataAvailability:
         """).fetchone()
 
         assert result is not None
-        assert (
-            result[0].lower() == "catboost"
-        ), f"Best individual classifier should be CatBoost, got {result[0]}"
+        assert result[0].lower() == "catboost", (
+            f"Best individual classifier should be CatBoost, got {result[0]}"
+        )
 
 
 # ============================================================================
@@ -296,15 +297,15 @@ class TestFeaturizationComparison:
             handcrafted_auroc = handcrafted_row["mean_auroc"].values[0]
             embeddings_auroc = embeddings_row["mean_auroc"].values[0]
 
-            assert (
-                handcrafted_auroc > embeddings_auroc
-            ), f"Handcrafted ({handcrafted_auroc}) should outperform embeddings ({embeddings_auroc})"
+            assert handcrafted_auroc > embeddings_auroc, (
+                f"Handcrafted ({handcrafted_auroc}) should outperform embeddings ({embeddings_auroc})"
+            )
 
             # Gap should be approximately 9 percentage points
             gap = handcrafted_auroc - embeddings_auroc
-            assert (
-                gap >= 0.05
-            ), f"Gap should be substantial (>=5pp), got {gap * 100:.1f}pp"
+            assert gap >= 0.05, (
+                f"Gap should be substantial (>=5pp), got {gap * 100:.1f}pp"
+            )
 
     def test_create_figure_runs(self, db_connection):
         """Verify figure creation doesn't raise exceptions."""
@@ -477,9 +478,9 @@ class TestUtilityMatrix:
         # Verify the gap for featurization is substantial
         feat_data = data["Featurization"]
         gap = feat_data["baseline_performance"] - feat_data["fm_performance"]
-        assert (
-            gap >= 0.05
-        ), f"Featurization gap should be substantial, got {gap * 100:.1f}pp"
+        assert gap >= 0.05, (
+            f"Featurization gap should be substantial, got {gap * 100:.1f}pp"
+        )
 
     def test_create_figure_runs(self, db_connection):
         """Verify utility matrix figure creation doesn't raise exceptions."""
@@ -542,9 +543,9 @@ class TestIntegration:
             except (IndexError, KeyError):
                 pass  # Known issue: FIXED_CLASSIFIER vs DB classifier name mismatch
 
-            assert (
-                len(figures) >= 3
-            ), f"Should create at least 3 figures, got {len(figures)}"
+            assert len(figures) >= 3, (
+                f"Should create at least 3 figures, got {len(figures)}"
+            )
         finally:
             for name, fig in figures:
                 plt.close(fig)

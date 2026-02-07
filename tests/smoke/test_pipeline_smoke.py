@@ -98,9 +98,9 @@ class TestDemoDataPipeline:
         self, demo_data_path, demo_data_available, minimal_cfg
     ):
         """Test loading and validating demo data."""
-        assert (
-            demo_data_available
-        ), f"Demo data not available: {demo_data_path}. Run: make synthetic"
+        assert demo_data_available, (
+            f"Demo data not available: {demo_data_path}. Run: make synthetic"
+        )
 
         from src.data_io.data_utils import (
             import_duckdb_as_dataframes,
@@ -124,9 +124,9 @@ class TestDemoDataPipeline:
     @pytest.mark.slow
     def test_demo_data_to_numpy_conversion(self, demo_data_path, demo_data_available):
         """Test converting demo data to numpy arrays."""
-        assert (
-            demo_data_available
-        ), f"Demo data not available: {demo_data_path}. Run: make synthetic"
+        assert demo_data_available, (
+            f"Demo data not available: {demo_data_path}. Run: make synthetic"
+        )
 
         from src.data_io.data_utils import import_duckdb_as_dataframes
 

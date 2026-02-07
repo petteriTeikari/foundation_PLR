@@ -73,9 +73,9 @@ def normalize_data(
     """
     # TODO(eddiebergman): I feel like this function is easier to just do what you need
     # where you need it, rather than supporting all these variations
-    assert (mean is None) == (
-        std is None
-    ), "Either both or none of mean and std must be given"
+    assert (mean is None) == (std is None), (
+        "Either both or none of mean and std must be given"
+    )
     if mean is None:
         if normalize_positions is not None and normalize_positions > 0:
             mean = torch_nanmean(data[:normalize_positions], axis=0)  # type: ignore
@@ -759,9 +759,9 @@ class InputNormalizationEncoderStep(SeqEncStep):
             x = to_ranking_low_mem(x)  # noqa F821
 
         if self.remove_outliers:
-            assert (
-                self.remove_outliers_sigma > 1.0
-            ), "remove_outliers_sigma must be > 1.0"
+            assert self.remove_outliers_sigma > 1.0, (
+                "remove_outliers_sigma must be > 1.0"
+            )
 
             x, _ = remove_outliers(
                 x,
@@ -965,9 +965,9 @@ class MulticlassClassificationTargetEncoder(SeqEncStep):
 
     def _transform(self, y: torch.Tensor, single_eval_pos: int | None = None):
         assert len(y.shape) == 3 and (y.shape[-1] == 1), "y must be of shape (T, B, 1)"
-        assert not (
-            y.isnan().any() and self.training
-        ), "NaNs are not allowed in the target at this point during training (set to model.eval() if not in training)"
+        assert not (y.isnan().any() and self.training), (
+            "NaNs are not allowed in the target at this point during training (set to model.eval() if not in training)"
+        )
         y_new = y.clone()
         for B in range(y.shape[1]):
             y_new[:, B, :] = self.flatten_targets(y[:, B, :], self.unique_ys_[B])

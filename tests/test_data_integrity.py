@@ -53,7 +53,9 @@ class TestGroundTruthAUROC:
             self.EXPECTED_AUROC - self.TOLERANCE
             <= auroc
             <= self.EXPECTED_AUROC + self.TOLERANCE
-        ), f"Ground Truth AUROC {auroc:.4f} not in expected range [{self.EXPECTED_AUROC - self.TOLERANCE}, {self.EXPECTED_AUROC + self.TOLERANCE}]"
+        ), (
+            f"Ground Truth AUROC {auroc:.4f} not in expected range [{self.EXPECTED_AUROC - self.TOLERANCE}, {self.EXPECTED_AUROC + self.TOLERANCE}]"
+        )
 
     def test_ground_truth_in_roc_rc_json(self):
         """Verify roc_rc_data.json has correct Ground Truth AUROC."""
@@ -73,9 +75,9 @@ class TestGroundTruthAUROC:
                 gt_config = config
                 break
 
-        assert (
-            gt_config is not None
-        ), "Ground Truth config not found in roc_rc_data.json"
+        assert gt_config is not None, (
+            "Ground Truth config not found in roc_rc_data.json"
+        )
 
         # Check AUROC - may be at top level or nested in 'roc'
         auroc = None
@@ -89,7 +91,9 @@ class TestGroundTruthAUROC:
             self.EXPECTED_AUROC - self.TOLERANCE
             <= auroc
             <= self.EXPECTED_AUROC + self.TOLERANCE
-        ), f"Ground Truth AUROC {auroc:.4f} in roc_rc_data.json not in expected range [{self.EXPECTED_AUROC - self.TOLERANCE}, {self.EXPECTED_AUROC + self.TOLERANCE}]"
+        ), (
+            f"Ground Truth AUROC {auroc:.4f} in roc_rc_data.json not in expected range [{self.EXPECTED_AUROC - self.TOLERANCE}, {self.EXPECTED_AUROC + self.TOLERANCE}]"
+        )
 
     def test_ground_truth_computed_from_predictions(self):
         """Compute AUROC from predictions and verify it matches expected."""
@@ -151,9 +155,9 @@ class TestPredictionCounts:
 
         # Must have predictions (fold-0 should have ~63 subjects)
         assert n_total > 0, "No predictions found for Ground Truth"
-        assert (
-            n_total >= 50
-        ), f"Too few predictions ({n_total}), expected at least one fold (~63)"
+        assert n_total >= 50, (
+            f"Too few predictions ({n_total}), expected at least one fold (~63)"
+        )
 
         # Class balance should match overall ratio
         glaucoma_ratio = n_pos / n_total
@@ -182,9 +186,9 @@ class TestFeaturizationFilter:
         with open(yaml_path) as f:
             config = yaml.safe_load(f)
 
-        assert (
-            config["defaults"]["featurization"] == "simple1.0"
-        ), "Default featurization should be 'simple1.0' (handcrafted features)"
+        assert config["defaults"]["featurization"] == "simple1.0", (
+            "Default featurization should be 'simple1.0' (handcrafted features)"
+        )
 
     def test_no_mixed_featurization_in_exports(self):
         """Verify JSON exports don't have mixed featurization data."""

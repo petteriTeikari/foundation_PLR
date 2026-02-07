@@ -1329,9 +1329,9 @@ def ensemble_the_imputation_output_dicts(
                 ]["mean"] = output_array
 
             elif len(output_array.shape) == 4:
-                assert (
-                    input_array.shape[0] == output_array.shape[0]
-                ), "Number of shapes do not match"
+                assert input_array.shape[0] == output_array.shape[0], (
+                    "Number of shapes do not match"
+                )
                 output_array = np.concatenate((output_array, input_array), axis=3)
                 ensembled_outputs["imputation"][split][split_key]["imputation_dict"][
                     "imputation"
@@ -1382,9 +1382,9 @@ def compute_ensemble_stats(
         assert len(dict_out["mean"].shape) == 3, "Mean array is not 3d"
         dict_out["std"] = np.nanstd(input_array, axis=3)
         dict_out["n"] = input_array.shape[3]
-        assert (
-            dict_out["n"] == n
-        ), "Number of submodels used for stats does not match the number of submodel names"
+        assert dict_out["n"] == n, (
+            "Number of submodels used for stats does not match the number of submodel names"
+        )
         # assuming this is now normally distributed, you could test this as well? TODO!
         dict_out["CI"] = 1.96 * dict_out["std"] / np.sqrt(input_array.shape[3])
         return dict_out

@@ -120,9 +120,9 @@ def combine_standardized_inputs_with_df(
     for data_key in data_dict.keys():
         array = data_dict[data_key]
         array_flattened = array.flatten()
-        assert (
-            no_samples_in == array_flattened.shape[0]
-        ), "Number of samples in the imputation and the data should be the same"
+        assert no_samples_in == array_flattened.shape[0], (
+            "Number of samples in the imputation and the data should be the same"
+        )
         df = df.with_columns(pl.lit(array_flattened).alias("standardized_" + data_key))
 
     return df
@@ -165,16 +165,16 @@ def combine_inputation_with_df(
             df = df.with_columns(pl.lit(None).alias(key_out))
         else:
             array_flattened = array.flatten()
-            assert (
-                no_samples_in == array_flattened.shape[0]
-            ), "Number of samples in the imputation and the data should be the same"
+            assert no_samples_in == array_flattened.shape[0], (
+                "Number of samples in the imputation and the data should be the same"
+            )
             df = df.with_columns(pl.lit(array_flattened).alias(key_out))
 
     missingness_mask = imputation["indicating_mask"]
     missingness_flattened = missingness_mask.flatten()
-    assert (
-        no_samples_in == missingness_flattened.shape[0]
-    ), "Number of samples in the imputation and the data should be the same"
+    assert no_samples_in == missingness_flattened.shape[0], (
+        "Number of samples in the imputation and the data should be the same"
+    )
     df = df.with_columns(
         pl.lit(missingness_flattened).alias("imputation_missingness_mask")
     )

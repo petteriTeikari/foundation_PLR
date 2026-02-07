@@ -19,9 +19,9 @@ def create_tabm_model(
 ):
     n_cont_features = data["train"]["x_cont"].shape[1]
     n_classes = len(torch.unique(data["train"]["y"]))
-    assert (
-        n_classes == 2
-    ), "Only binary classification is supported. You had {} classes.".format(n_classes)
+    assert n_classes == 2, (
+        "Only binary classification is supported. You had {} classes.".format(n_classes)
+    )
 
     if arch_type == "tabm-mini":
         # TabM-mini with the piecewise-linear embeddings.

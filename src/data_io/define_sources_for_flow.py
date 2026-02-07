@@ -313,9 +313,9 @@ def get_best_imputation_runs(
         logger.debug(f"Unique combo: {unique_combo}")
         runs_out = pd.concat([runs_out, best_run])
 
-    assert len(runs_out) == len(
-        unique_combos
-    ), f"Expected {len(unique_combos)} runs, got {len(runs_out)}"
+    assert len(runs_out) == len(unique_combos), (
+        f"Expected {len(unique_combos)} runs, got {len(runs_out)}"
+    )
 
     return runs_out
 
@@ -434,9 +434,9 @@ def get_unique_outlier_runs(
             run_df = run_df.sort_values(by="start_time", ascending=False)
         best_runs = pd.concat([best_runs, run_df.iloc[0:1]])
 
-    assert len(best_runs) == len(
-        unique_run_names
-    ), f"Expected {len(unique_run_names)} runs, got {len(best_runs)}"
+    assert len(best_runs) == len(unique_run_names), (
+        f"Expected {len(unique_run_names)} runs, got {len(best_runs)}"
+    )
 
     # Drop rows with NaN values in the best metric
     # best_runs = best_runs.dropna(subset=[best_string])
@@ -766,10 +766,10 @@ def check_arrays(splits_dicts: dict[str, dict[str, np.ndarray]], task: str) -> N
         If X and mask arrays have different shapes.
     """
     for split, split_dict in splits_dicts.items():
-        assert (
-            split_dict["X"].shape == split_dict["mask"].shape
-        ), "{} X and mask have different sizes, X: {}, mask: {}".format(
-            split, split_dict["X"].shape, split_dict["mask"].shape
+        assert split_dict["X"].shape == split_dict["mask"].shape, (
+            "{} X and mask have different sizes, X: {}, mask: {}".format(
+                split, split_dict["X"].shape, split_dict["mask"].shape
+            )
         )
 
 
@@ -915,12 +915,12 @@ def get_arrays_for_splits_from_outlier_artifacts(
                                 )
                                 raise e
 
-                    assert (
-                        len(dict_out[split_out]["X"].shape) == 2
-                    ), "reconstructed signal array needs to be 2D"
-                    assert (
-                        len(dict_out[split_out]["mask"].shape) == 2
-                    ), "mask needs to be 2D"
+                    assert len(dict_out[split_out]["X"].shape) == 2, (
+                        "reconstructed signal array needs to be 2D"
+                    )
+                    assert len(dict_out[split_out]["mask"].shape) == 2, (
+                        "mask needs to be 2D"
+                    )
 
                 else:
                     # MOMENT
@@ -1116,9 +1116,9 @@ def get_dict_per_col_name(
             for key, split_dict in data_dict["df"][split].items():
                 if key != "data":
                     # copy as it is, the other dicts
-                    assert isinstance(
-                        split_dict, dict
-                    ), "This should be a dict, not {}".format(type(split_dict))
+                    assert isinstance(split_dict, dict), (
+                        "This should be a dict, not {}".format(type(split_dict))
+                    )
                     data_dicts["df"][split][key] = split_dict
                 if key == "labels":
                     if "data" not in data_dicts["df"][split].keys():
@@ -1432,9 +1432,9 @@ def combine_source_with_data_dicts(
     """
     # e.g. "pupil_gt" or "pupil_gt" and "pupil_raw"
     no_of_data_dicts_for_source = len(data_dicts_for_source)
-    assert (
-        no_of_data_dicts_for_source == 1
-    ), "Implement more input data sources if you feel like"
+    assert no_of_data_dicts_for_source == 1, (
+        "Implement more input data sources if you feel like"
+    )
     pupil_col = list(data_dicts_for_source.keys())[0]
     data_dict_template = data_dicts_for_source[pupil_col]
 

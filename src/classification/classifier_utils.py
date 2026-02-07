@@ -315,9 +315,9 @@ def check_classification_labels(
     AssertionError
         If feature count changed or labels are not binary.
     """
-    assert (
-        features_in == features[source]["data"][split].shape[1]
-    ), "Number of features changed"
+    assert features_in == features[source]["data"][split].shape[1], (
+        "Number of features changed"
+    )
 
     labels: pl.Series = features[source]["data"][split]["metadata_class_label"]
     unique_labels = set(labels)
@@ -383,9 +383,9 @@ def get_numpy_boolean_index_for_class_labels(label_array: np.ndarray) -> np.ndar
         If input is not 2D numpy array or doesn't have exactly 2 classes.
     """
     assert isinstance(label_array, np.ndarray), "label_array must be a Numpy array"
-    assert (
-        len(label_array.shape) == 2
-    ), "Must be a 2D array, (no_subjects, no_timepoints)"
+    assert len(label_array.shape) == 2, (
+        "Must be a 2D array, (no_subjects, no_timepoints)"
+    )
     label_array = label_array[:, 0]  # (no_subjects)
     is_None = []
     for item in label_array:
@@ -394,9 +394,9 @@ def get_numpy_boolean_index_for_class_labels(label_array: np.ndarray) -> np.ndar
     is_str_None = label_array == "None"
     is_labeled = ~is_None & ~is_str_None
     labels = label_array[is_labeled]
-    assert (
-        len(np.unique(labels)) == 2
-    ), "Label array must have 2 unique values (as we have a binary classification)"
+    assert len(np.unique(labels)) == 2, (
+        "Label array must have 2 unique values (as we have a binary classification)"
+    )
 
     return is_labeled
 
@@ -422,9 +422,9 @@ def index_with_boolean_all_numpys_in_datadict(
     dict_out = deepcopy(data_dict)
     for category in data_dict.keys():
         for variable in data_dict[category].keys():
-            assert isinstance(
-                data_dict[category][variable], np.ndarray
-            ), "data_dict[category][variable] must be a numpy array"
+            assert isinstance(data_dict[category][variable], np.ndarray), (
+                "data_dict[category][variable] must be a numpy array"
+            )
             dict_out[category][variable] = data_dict[category][variable][
                 labeled_boolean, :
             ]

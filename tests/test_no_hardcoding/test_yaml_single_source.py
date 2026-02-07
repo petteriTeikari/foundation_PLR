@@ -43,17 +43,17 @@ def test_combos_yaml_has_all_required_fields() -> None:
     if "standard_combos" in config:
         for combo in config["standard_combos"]:
             for field in required_fields:
-                assert (
-                    field in combo
-                ), f"Standard combo {combo.get('id', '?')} missing {field}"
+                assert field in combo, (
+                    f"Standard combo {combo.get('id', '?')} missing {field}"
+                )
 
     # Check extended combos
     if "extended_combos" in config:
         for combo in config["extended_combos"]:
             for field in required_fields:
-                assert (
-                    field in combo
-                ), f"Extended combo {combo.get('id', '?')} missing {field}"
+                assert field in combo, (
+                    f"Extended combo {combo.get('id', '?')} missing {field}"
+                )
 
 
 def test_display_names_yaml_exists_and_complete() -> None:
@@ -70,12 +70,12 @@ def test_display_names_yaml_exists_and_complete() -> None:
     config = yaml.safe_load(display_path.read_text())
 
     # Expected minimum counts from registry
-    assert (
-        "outlier_methods" in config
-    ), "display_names.yaml missing outlier_methods section"
-    assert (
-        "imputation_methods" in config
-    ), "display_names.yaml missing imputation_methods section"
+    assert "outlier_methods" in config, (
+        "display_names.yaml missing outlier_methods section"
+    )
+    assert "imputation_methods" in config, (
+        "display_names.yaml missing imputation_methods section"
+    )
     assert "classifiers" in config, "display_names.yaml missing classifiers section"
 
     # Count methods (new format uses nested objects)
@@ -84,9 +84,9 @@ def test_display_names_yaml_exists_and_complete() -> None:
     classifier_count = len(config["classifiers"])
 
     assert outlier_count >= 11, f"Only {outlier_count} outlier methods defined, need 11"
-    assert (
-        imputation_count >= 7
-    ), f"Only {imputation_count} imputation methods defined, need 7"
+    assert imputation_count >= 7, (
+        f"Only {imputation_count} imputation methods defined, need 7"
+    )
     assert classifier_count >= 5, f"Only {classifier_count} classifiers defined, need 5"
 
 
@@ -123,9 +123,9 @@ def test_category_mapping_yaml_exists() -> None:
 
     # Must have outlier and imputation categories
     assert "outlier_method_categories" in config, "Missing outlier_method_categories"
-    assert (
-        "imputation_method_categories" in config
-    ), "Missing imputation_method_categories"
+    assert "imputation_method_categories" in config, (
+        "Missing imputation_method_categories"
+    )
 
 
 def test_method_abbreviations_yaml_exists() -> None:
@@ -143,9 +143,9 @@ def test_method_abbreviations_yaml_exists() -> None:
     config = yaml.safe_load(abbrev_path.read_text())
 
     # Must have abbreviation sections
-    assert (
-        "outlier_method_abbreviations" in config
-    ), "Missing outlier_method_abbreviations"
-    assert (
-        "imputation_method_abbreviations" in config
-    ), "Missing imputation_method_abbreviations"
+    assert "outlier_method_abbreviations" in config, (
+        "Missing outlier_method_abbreviations"
+    )
+    assert "imputation_method_abbreviations" in config, (
+        "Missing imputation_method_abbreviations"
+    )

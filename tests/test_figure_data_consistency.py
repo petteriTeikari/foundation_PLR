@@ -166,9 +166,9 @@ class TestSelectiveClassificationDataConsistency:
         expected_ids = set(EXPECTED_PIPELINES.keys())
 
         missing = expected_ids - config_ids
-        assert (
-            not missing
-        ), f"Missing categories in selective_classification_data.json: {missing}"
+        assert not missing, (
+            f"Missing categories in selective_classification_data.json: {missing}"
+        )
 
     @pytest.mark.parametrize("config_id", EXPECTED_PIPELINES.keys())
     def test_category_name_correct(self, selective_data, config_id):

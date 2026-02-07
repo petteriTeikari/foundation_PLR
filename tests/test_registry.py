@@ -97,9 +97,9 @@ class TestRegistryExists:
 
     def test_classification_params_exists(self):
         """Classification parameters file must exist."""
-        assert (
-            CLASSIFICATION_PARAMS.exists()
-        ), f"Classification params not found: {CLASSIFICATION_PARAMS}"
+        assert CLASSIFICATION_PARAMS.exists(), (
+            f"Classification params not found: {CLASSIFICATION_PARAMS}"
+        )
 
     def test_classification_params_valid_yaml(self):
         """Classification parameters must be valid YAML."""
@@ -259,9 +259,9 @@ class TestFactorialDesign:
     def test_expected_factorial_size(self):
         """Full factorial design should be 11 × 8 × 5 = 440."""
         expected_size = 11 * 8 * 5
-        assert (
-            get_expected_factorial_size() == expected_size
-        ), f"Factorial size should be {expected_size} (11 outliers × 8 imputations × 5 classifiers)"
+        assert get_expected_factorial_size() == expected_size, (
+            f"Factorial size should be {expected_size} (11 outliers × 8 imputations × 5 classifiers)"
+        )
 
     def test_catboost_only_factorial_size(self):
         """CatBoost-only design should be 11 × 8 × 1 = 88."""
@@ -291,9 +291,9 @@ class TestRegistryIntegrity:
     def test_no_duplicate_outlier_methods(self):
         """No duplicate outlier methods should exist."""
         methods = get_valid_outlier_methods()
-        assert (
-            len(methods) == len(set(methods))
-        ), f"Duplicate outlier methods found: {[m for m in methods if methods.count(m) > 1]}"
+        assert len(methods) == len(set(methods)), (
+            f"Duplicate outlier methods found: {[m for m in methods if methods.count(m) > 1]}"
+        )
 
     def test_no_duplicate_imputation_methods(self):
         """No duplicate imputation methods should exist."""

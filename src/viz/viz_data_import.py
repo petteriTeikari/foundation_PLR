@@ -189,9 +189,9 @@ def visualize_input_data(df: pl.DataFrame, cfg: DictConfig, PLR_length: int = 19
         tqdm(unique_subjects, desc="Visualizing data", total=len(unique_subjects))
     ):
         df_subject = df.filter(pl.col("subject_code") == code)
-        assert (
-            df_subject.shape[0] == PLR_length
-        ), f"Subject {code} has {df_subject.shape[0]} rows, expected {PLR_length}"
+        assert df_subject.shape[0] == PLR_length, (
+            f"Subject {code} has {df_subject.shape[0]} rows, expected {PLR_length}"
+        )
         paths_out.append(
             visualize_input_per_subject(
                 df_subject, code, cfg, viz_cfg=cfg["VISUALIZATION"]

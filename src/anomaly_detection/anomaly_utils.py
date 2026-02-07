@@ -105,9 +105,9 @@ def get_data_for_sklearn_anomaly_models(
 
     X_test = data_dict["df"]["test"]["data"][train_on]
     y_test = data_dict["df"]["test"]["labels"]["outlier_mask"]
-    assert (
-        X_test.shape == y_test.shape
-    ), f"X_test.shape: {X_test.shape}, y_test.shape: {y_test.shape}"
+    assert X_test.shape == y_test.shape, (
+        f"X_test.shape: {X_test.shape}, y_test.shape: {y_test.shape}"
+    )
 
     # the timing should be the same for both train and test, and for all the subjects
     light = data_dict["df"]["train"]["light"]
@@ -571,9 +571,9 @@ def check_split_results(split_results: Dict[str, Any]) -> None:
     no_samples_in_flat = split_results["arrays_flat"]["trues_valid"].shape[0]
     no_samples_in_array = split_results["arrays"]["trues"].size
     # A bit bizarre issue with samples being dropped somewhere?
-    assert (
-        no_samples_in_flat == no_samples_in_array
-    ), f"no_samples_in_flat: {no_samples_in_flat}, no_samples_in_array: {no_samples_in_array}, should be equal"
+    assert no_samples_in_flat == no_samples_in_array, (
+        f"no_samples_in_flat: {no_samples_in_flat}, no_samples_in_array: {no_samples_in_array}, should be equal"
+    )
 
 
 def get_no_subjects_in_outlier_artifacts(outlier_artifacts: Dict[str, Any]) -> int:

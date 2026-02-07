@@ -50,9 +50,9 @@ def pypots_split_preprocess_wrapper(
         data_filtering="raw",
         split=split,
     )
-    assert (
-        np.isnan(X_raw_imputed).sum() == 0
-    ), "There are still missing values in the imputed raw data"
+    assert np.isnan(X_raw_imputed).sum() == 0, (
+        "There are still missing values in the imputed raw data"
+    )
 
     # Same for the orig data
     X_orig = long_df_to_long_numpy(df=df_split, size_col_name="pupil_orig")
@@ -74,9 +74,9 @@ def pypots_split_preprocess_wrapper(
         data_filtering="orig",
         split=split,
     )
-    assert (
-        np.isnan(X_orig_imputed).sum() == 0
-    ), "There are still missing values in the imputed raw data"
+    assert np.isnan(X_orig_imputed).sum() == 0, (
+        "There are still missing values in the imputed raw data"
+    )
 
     # Set the same missing values missing in the denoised gold standard as were in the raw data
     X_gt_missing = set_missing_in_data(
@@ -177,10 +177,10 @@ def add_metadata_dicts(
         df_string="PLR",
     )
 
-    assert (
-        len(unique_codes) == X_gt.shape[0]
-    ), "Unique codes ({}) in the metadata df and the number of rows in the data ({}) do not match".format(
-        len(unique_codes), X_gt.shape[0]
+    assert len(unique_codes) == X_gt.shape[0], (
+        "Unique codes ({}) in the metadata df and the number of rows in the data ({}) do not match".format(
+            len(unique_codes), X_gt.shape[0]
+        )
     )
 
     return unique_codes

@@ -473,9 +473,9 @@ class TestYAMLConfigLoading:
                 if "width" in styling and "height" in styling:
                     figures_with_dims += 1
 
-        assert (
-            figures_with_dims > 0
-        ), "r_figures should have at least some figures with width/height defined"
+        assert figures_with_dims > 0, (
+            "r_figures should have at least some figures with width/height defined"
+        )
 
     def test_save_publication_figure_uses_registry_dimensions(self):
         """save_publication_figure() should auto-load dimensions from registry."""

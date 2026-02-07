@@ -86,9 +86,9 @@ class TestSHAPExtractionContract:
         assert len(expected_configs) == 10, "Should have exactly 10 configs"
         # All configs must have known outlier sources
         for config in expected_configs:
-            assert config[
-                "outlier_source_known"
-            ], f"Config {config['outlier']} should have known OD"
+            assert config["outlier_source_known"], (
+                f"Config {config['outlier']} should have known OD"
+            )
             # Verify NOT using unknown OD sources
             assert config["outlier"] not in [
                 "anomaly",
@@ -377,48 +377,48 @@ class TestTop10ArtifactIntegrity:
         """Verify feature names are the same for all configs."""
         first_names = top10_artifact["configs"][0]["feature_names"]
         for i, cfg in enumerate(top10_artifact["configs"][1:], 2):
-            assert (
-                cfg["feature_names"] == first_names
-            ), f"Config {i} has different feature names"
+            assert cfg["feature_names"] == first_names, (
+                f"Config {i} has different feature names"
+            )
 
     def test_feature_count_matches_data_shape(self, top10_artifact):
         """Verify feature dimension matches between names and data."""
         for i, cfg in enumerate(top10_artifact["configs"]):
             n_features = len(cfg["feature_names"])
-            assert (
-                cfg["X_train"].shape[1] == n_features
-            ), f"Config {i + 1}: X_train shape mismatch"
-            assert (
-                cfg["X_test"].shape[1] == n_features
-            ), f"Config {i + 1}: X_test shape mismatch"
+            assert cfg["X_train"].shape[1] == n_features, (
+                f"Config {i + 1}: X_train shape mismatch"
+            )
+            assert cfg["X_test"].shape[1] == n_features, (
+                f"Config {i + 1}: X_test shape mismatch"
+            )
 
     def test_bootstrap_models_available(self, top10_artifact):
         """Verify 1000 bootstrap models available for each config."""
         for i, cfg in enumerate(top10_artifact["configs"]):
-            assert (
-                cfg["bootstrap_models"] is not None
-            ), f"Config {i + 1} missing bootstrap_models"
-            assert (
-                len(cfg["bootstrap_models"]) == 1000
-            ), f"Config {i + 1} has {len(cfg['bootstrap_models'])} bootstrap models, expected 1000"
+            assert cfg["bootstrap_models"] is not None, (
+                f"Config {i + 1} missing bootstrap_models"
+            )
+            assert len(cfg["bootstrap_models"]) == 1000, (
+                f"Config {i + 1} has {len(cfg['bootstrap_models'])} bootstrap models, expected 1000"
+            )
 
     def test_models_are_catboost_classifiers(self, top10_artifact):
         """Verify models are CatBoostClassifier with predict_proba."""
         for i, cfg in enumerate(top10_artifact["configs"]):
             model = cfg["model"]
-            assert hasattr(
-                model, "predict_proba"
-            ), f"Config {i + 1} model missing predict_proba"
-            assert (
-                "CatBoost" in type(model).__name__
-            ), f"Config {i + 1} model is {type(model).__name__}, not CatBoost"
+            assert hasattr(model, "predict_proba"), (
+                f"Config {i + 1} model missing predict_proba"
+            )
+            assert "CatBoost" in type(model).__name__, (
+                f"Config {i + 1} model is {type(model).__name__}, not CatBoost"
+            )
 
     def test_exclusion_criteria_documented(self, top10_artifact):
         """Verify exclusion criteria are documented in metadata."""
         metadata = top10_artifact["metadata"]
-        assert (
-            "exclusion_criteria" in metadata
-        ), "Missing exclusion_criteria in metadata"
+        assert "exclusion_criteria" in metadata, (
+            "Missing exclusion_criteria in metadata"
+        )
         excl = metadata["exclusion_criteria"]
         assert "excluded_outlier_methods" in excl, "Missing excluded methods list"
         assert "anomaly" in excl["excluded_outlier_methods"]

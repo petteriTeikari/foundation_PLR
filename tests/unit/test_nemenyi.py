@@ -64,17 +64,17 @@ class TestNemenyiQValues:
         """Test that all q-values at α=0.05 match Demšar Table 5."""
         for k, expected in self.EXPECTED_Q_VALUES_005.items():
             actual = get_nemenyi_q_alpha(k, alpha=0.05)
-            assert actual == pytest.approx(
-                expected, rel=1e-3
-            ), f"q-value for k={k} at α=0.05 should be {expected}, got {actual}"
+            assert actual == pytest.approx(expected, rel=1e-3), (
+                f"q-value for k={k} at α=0.05 should be {expected}, got {actual}"
+            )
 
     def test_q_values_alpha_010(self):
         """Test q-values at α=0.10 (less conservative)."""
         for k, expected in self.EXPECTED_Q_VALUES_010.items():
             actual = get_nemenyi_q_alpha(k, alpha=0.10)
-            assert actual == pytest.approx(
-                expected, rel=1e-3
-            ), f"q-value for k={k} at α=0.10 should be {expected}, got {actual}"
+            assert actual == pytest.approx(expected, rel=1e-3), (
+                f"q-value for k={k} at α=0.10 should be {expected}, got {actual}"
+            )
 
     def test_k_equals_12_specific(self):
         """
@@ -88,23 +88,23 @@ class TestNemenyiQValues:
         actual = get_nemenyi_q_alpha(k, alpha=0.05)
 
         # Assert it's NOT the incorrect value
-        assert actual != pytest.approx(
-            2.576, rel=0.01
-        ), "q-value for k=12 should NOT be 2.576 (this was the bug)"
+        assert actual != pytest.approx(2.576, rel=0.01), (
+            "q-value for k=12 should NOT be 2.576 (this was the bug)"
+        )
 
         # Assert it IS the correct value
-        assert actual == pytest.approx(
-            expected, rel=1e-3
-        ), f"q-value for k=12 should be {expected}, got {actual}"
+        assert actual == pytest.approx(expected, rel=1e-3), (
+            f"q-value for k=12 should be {expected}, got {actual}"
+        )
 
     def test_q_values_increase_with_k(self):
         """Test that q-values increase monotonically with k."""
         previous = 0
         for k in range(2, 21):
             current = get_nemenyi_q_alpha(k, alpha=0.05)
-            assert (
-                current > previous
-            ), f"q-value should increase with k, but q({k}) = {current} <= q({k - 1}) = {previous}"
+            assert current > previous, (
+                f"q-value should increase with k, but q({k}) = {current} <= q({k - 1}) = {previous}"
+            )
             previous = current
 
     def test_invalid_alpha_raises_error(self):
@@ -145,9 +145,9 @@ class TestCriticalDifferenceFormula:
         cd = q_alpha * np.sqrt(k * (k + 1) / (6 * N))
 
         expected_cd = 0.527
-        assert cd == pytest.approx(
-            expected_cd, rel=0.01
-        ), f"CD for k=12, N=1000 should be ~{expected_cd}, got {cd}"
+        assert cd == pytest.approx(expected_cd, rel=0.01), (
+            f"CD for k=12, N=1000 should be ~{expected_cd}, got {cd}"
+        )
 
     def test_cd_increases_with_k(self):
         """Test that CD increases with number of algorithms."""
@@ -157,9 +157,9 @@ class TestCriticalDifferenceFormula:
         for k in [5, 10, 15, 20]:
             q_alpha = get_nemenyi_q_alpha(k)
             cd = q_alpha * np.sqrt(k * (k + 1) / (6 * N))
-            assert (
-                cd > previous_cd
-            ), f"CD should increase with k, but CD(k={k}) <= CD(k-prev)"
+            assert cd > previous_cd, (
+                f"CD should increase with k, but CD(k={k}) <= CD(k-prev)"
+            )
             previous_cd = cd
 
     def test_cd_decreases_with_N(self):

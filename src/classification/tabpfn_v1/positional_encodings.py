@@ -45,9 +45,9 @@ class LearnedPositionalEncoding(nn.Module):
 
     def forward(self, x):
         seq_len, bs, d_model = x.shape
-        assert seq_len <= len(
-            self.positional_embeddings
-        ), "seq_len can be at most max_len."
+        assert seq_len <= len(self.positional_embeddings), (
+            "seq_len can be at most max_len."
+        )
         pos_emb = self.positional_embeddings[:seq_len]
         return (
             pos_emb.unsqueeze(1).expand(seq_len, bs, d_model) + x
@@ -58,12 +58,12 @@ class PairedScrambledPositionalEncodings(LearnedPositionalEncoding):
     # TODO check whether it is a problem to use the same perm. for full batch
     def forward(self, x):
         seq_len, bs, d_model = x.shape
-        assert seq_len <= len(
-            self.positional_embeddings
-        ), "seq_len can be at most max_len."
-        assert (
-            len(self.positional_embeddings) % 2 == 0
-        ), "Please specify an even max_len."
+        assert seq_len <= len(self.positional_embeddings), (
+            "seq_len can be at most max_len."
+        )
+        assert len(self.positional_embeddings) % 2 == 0, (
+            "Please specify an even max_len."
+        )
 
         paired_embs = self.positional_embeddings.view(
             len(self.positional_embeddings), -1, 2

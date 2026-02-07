@@ -28,6 +28,12 @@ output/*
 # Exception: Synthetic data is safe to commit (no PII)
 !/data/synthetic/
 !/data/synthetic/**
+# Exception: Public artifacts (anonymized metrics, DuckDB). Future: DVC-tracked.
+!/data/public/
+!/data/public/**
+# Exception: R data exports (JSON for ggplot2). Future: DVC-tracked.
+!/data/r_data/
+!/data/r_data/**
 /src/catboost_info/*
 catboost_info/
 
@@ -121,3 +127,4 @@ figures/synthetic/
 **/synthetic_*.json
 figures/generated/fig_decomposition_grid_TEST.png
 figures/generated/data/fig_decomposition_grid_TEST.json
+apps/visualization/node_modules/*

@@ -61,9 +61,9 @@ class TestGroundTruthAUROC:
         assert result is not None, "Ground truth config not found in essential_metrics"
         auroc = result[0]
         assert auroc is not None, "Ground truth AUROC is NULL"
-        assert (
-            abs(auroc - 0.911) < 0.005
-        ), f"Ground truth AUROC = {auroc}, expected ~0.911 (±0.005)"
+        assert abs(auroc - 0.911) < 0.005, (
+            f"Ground truth AUROC = {auroc}, expected ~0.911 (±0.005)"
+        )
 
     def test_best_ensemble_auroc_matches(self, conn):
         """Ensemble + CSDI + CatBoost AUROC should be ~0.913."""
@@ -81,9 +81,9 @@ class TestGroundTruthAUROC:
 
         auroc = result[0]
         assert auroc is not None, "Best ensemble AUROC is NULL"
-        assert (
-            abs(auroc - 0.913) < 0.005
-        ), f"Best ensemble AUROC = {auroc}, expected ~0.913 (±0.005)"
+        assert abs(auroc - 0.913) < 0.005, (
+            f"Best ensemble AUROC = {auroc}, expected ~0.913 (±0.005)"
+        )
 
 
 class TestConfigCounts:
@@ -138,13 +138,13 @@ class TestSTRATOSMetricsPopulated:
             pytest.skip("No configs in essential_metrics")
 
         # At least 80% should have calibration metrics
-        assert (
-            has_slope / total >= 0.8
-        ), f"Only {has_slope}/{total} configs have calibration_slope"
+        assert has_slope / total >= 0.8, (
+            f"Only {has_slope}/{total} configs have calibration_slope"
+        )
         assert has_oe / total >= 0.8, f"Only {has_oe}/{total} configs have o_e_ratio"
-        assert (
-            has_nb5 / total >= 0.8
-        ), f"Only {has_nb5}/{total} configs have net_benefit_5pct"
+        assert has_nb5 / total >= 0.8, (
+            f"Only {has_nb5}/{total} configs have net_benefit_5pct"
+        )
 
     def test_calibration_slope_range(self, conn):
         """Calibration slopes should be in reasonable range for non-degenerate models."""
@@ -164,9 +164,9 @@ class TestSTRATOSMetricsPopulated:
         # Degenerate models (AUROC~0.5) may have slope=0.0, excluded above
         assert min_slope >= 0.1, f"Min calibration slope {min_slope} < 0.1 (suspicious)"
         # Severely miscalibrated models (e.g., XGBoost + some pipelines) can have slopes ~20
-        assert (
-            max_slope <= 25.0
-        ), f"Max calibration slope {max_slope} > 25.0 (suspicious)"
+        assert max_slope <= 25.0, (
+            f"Max calibration slope {max_slope} > 25.0 (suspicious)"
+        )
 
     def test_net_benefit_range(self, conn):
         """Net benefit values should be in reasonable range (-0.5 to 1.0)."""
@@ -192,9 +192,9 @@ class TestSTRATOSMetricsPopulated:
             "WHERE table_name = 'essential_metrics' AND column_name = 'net_benefit_15pct'"
         ).fetchall()
 
-        assert (
-            len(result) > 0
-        ), "net_benefit_15pct column missing from essential_metrics"
+        assert len(result) > 0, (
+            "net_benefit_15pct column missing from essential_metrics"
+        )
 
         # Check it has values
         result = conn.execute(

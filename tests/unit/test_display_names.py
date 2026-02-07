@@ -29,9 +29,9 @@ def display_names_yaml():
     """Load display names YAML file."""
     import yaml
 
-    assert (
-        DISPLAY_NAMES_PATH.exists()
-    ), f"display_names.yaml missing: {DISPLAY_NAMES_PATH}"
+    assert DISPLAY_NAMES_PATH.exists(), (
+        f"display_names.yaml missing: {DISPLAY_NAMES_PATH}"
+    )
 
     with open(DISPLAY_NAMES_PATH) as f:
         return yaml.safe_load(f)
@@ -88,28 +88,28 @@ class TestYAMLStructure:
 
     def test_has_outlier_methods_section(self, display_names_yaml):
         """Test 4: outlier_methods section exists."""
-        assert (
-            "outlier_methods" in display_names_yaml
-        ), "Missing 'outlier_methods' section"
-        assert isinstance(
-            display_names_yaml["outlier_methods"], dict
-        ), "outlier_methods must be a dict mapping raw names to display names"
+        assert "outlier_methods" in display_names_yaml, (
+            "Missing 'outlier_methods' section"
+        )
+        assert isinstance(display_names_yaml["outlier_methods"], dict), (
+            "outlier_methods must be a dict mapping raw names to display names"
+        )
 
     def test_has_imputation_methods_section(self, display_names_yaml):
         """Test 5: imputation_methods section exists."""
-        assert (
-            "imputation_methods" in display_names_yaml
-        ), "Missing 'imputation_methods' section"
-        assert isinstance(
-            display_names_yaml["imputation_methods"], dict
-        ), "imputation_methods must be a dict mapping raw names to display names"
+        assert "imputation_methods" in display_names_yaml, (
+            "Missing 'imputation_methods' section"
+        )
+        assert isinstance(display_names_yaml["imputation_methods"], dict), (
+            "imputation_methods must be a dict mapping raw names to display names"
+        )
 
     def test_has_classifiers_section(self, display_names_yaml):
         """Test 6: classifiers section exists."""
         assert "classifiers" in display_names_yaml, "Missing 'classifiers' section"
-        assert isinstance(
-            display_names_yaml["classifiers"], dict
-        ), "classifiers must be a dict mapping raw names to display names"
+        assert isinstance(display_names_yaml["classifiers"], dict), (
+            "classifiers must be a dict mapping raw names to display names"
+        )
 
 
 # =============================================================================
@@ -250,12 +250,12 @@ class TestNamingConventions:
             "display_name"
         ]
 
-        assert (
-            "Fine-tuned" in outlier_moment
-        ), f"Expected 'Fine-tuned' (hyphenated) in '{outlier_moment}'"
-        assert (
-            "Fine-tuned" in imputation_moment
-        ), f"Expected 'Fine-tuned' (hyphenated) in '{imputation_moment}'"
+        assert "Fine-tuned" in outlier_moment, (
+            f"Expected 'Fine-tuned' (hyphenated) in '{outlier_moment}'"
+        )
+        assert "Fine-tuned" in imputation_moment, (
+            f"Expected 'Fine-tuned' (hyphenated) in '{imputation_moment}'"
+        )
 
     def test_moment_zeroshot_display(self, display_names_yaml):
         """Test 16: MOMENT zeroshot contains 'Zero-shot' (hyphenated)."""
@@ -266,21 +266,21 @@ class TestNamingConventions:
             "display_name"
         ]
 
-        assert (
-            "Zero-shot" in outlier_moment
-        ), f"Expected 'Zero-shot' (hyphenated) in '{outlier_moment}'"
-        assert (
-            "Zero-shot" in imputation_moment
-        ), f"Expected 'Zero-shot' (hyphenated) in '{imputation_moment}'"
+        assert "Zero-shot" in outlier_moment, (
+            f"Expected 'Zero-shot' (hyphenated) in '{outlier_moment}'"
+        )
+        assert "Zero-shot" in imputation_moment, (
+            f"Expected 'Zero-shot' (hyphenated) in '{imputation_moment}'"
+        )
 
     def test_prophet_capitalization(self, display_names_yaml):
         """Test 17: PROPHET displays as 'Prophet' (proper noun)."""
         prophet_display = display_names_yaml["outlier_methods"]["PROPHET"][
             "display_name"
         ]
-        assert (
-            prophet_display == "Prophet"
-        ), f"Expected 'Prophet' (proper noun capitalization), got '{prophet_display}'"
+        assert prophet_display == "Prophet", (
+            f"Expected 'Prophet' (proper noun capitalization), got '{prophet_display}'"
+        )
 
     def test_lof_uppercase(self, display_names_yaml):
         """Test 18: LOF remains uppercase (acronym)."""
@@ -292,9 +292,9 @@ class TestNamingConventions:
         svm_display = display_names_yaml["outlier_methods"]["OneClassSVM"][
             "display_name"
         ]
-        assert (
-            svm_display == "One-Class SVM"
-        ), f"Expected 'One-Class SVM', got '{svm_display}'"
+        assert svm_display == "One-Class SVM", (
+            f"Expected 'One-Class SVM', got '{svm_display}'"
+        )
 
     def test_ensemble_full_name(self, display_names_yaml):
         """Test 20: Full ensemble displays as 'Ensemble (Full)'."""
@@ -304,9 +304,9 @@ class TestNamingConventions:
         full_display = display_names_yaml["outlier_methods"][full_ensemble_key][
             "display_name"
         ]
-        assert (
-            full_display == "Ensemble (Full)"
-        ), f"Expected 'Ensemble (Full)', got '{full_display}'"
+        assert full_display == "Ensemble (Full)", (
+            f"Expected 'Ensemble (Full)', got '{full_display}'"
+        )
 
     def test_ensemble_thresholded_name(self, display_names_yaml):
         """Test 21: Thresholded ensemble displays as 'Ensemble (Thresholded)'."""
@@ -314,9 +314,9 @@ class TestNamingConventions:
         thresholded_display = display_names_yaml["outlier_methods"][thresholded_key][
             "display_name"
         ]
-        assert (
-            thresholded_display == "Ensemble (Thresholded)"
-        ), f"Expected 'Ensemble (Thresholded)', got '{thresholded_display}'"
+        assert thresholded_display == "Ensemble (Thresholded)", (
+            f"Expected 'Ensemble (Thresholded)', got '{thresholded_display}'"
+        )
 
 
 # =============================================================================
@@ -352,9 +352,9 @@ class TestPythonModule:
         result = get_outlier_display_name(unknown_method)
 
         # Should return the raw name as fallback (never crash)
-        assert (
-            result == unknown_method
-        ), f"Expected fallback to return raw name '{unknown_method}', got '{result}'"
+        assert result == unknown_method, (
+            f"Expected fallback to return raw name '{unknown_method}', got '{result}'"
+        )
         # Note: Also logs WARNING but loguru's output isn't captured by pytest.
         # The warning can be seen in "Captured stderr call" during test output.
 
@@ -368,9 +368,9 @@ class TestPythonModule:
 
         # Should have at least 23 entries (11 outlier + 8 imputation + 5 classifiers - 1 shared)
         # Note: pupil-gt appears in both outlier and imputation, so dict has 23 unique keys
-        assert (
-            len(all_names) >= 23
-        ), f"Expected at least 23 display names, got {len(all_names)}"
+        assert len(all_names) >= 23, (
+            f"Expected at least 23 display names, got {len(all_names)}"
+        )
 
         # Verify some known entries
         assert "pupil-gt" in all_names, "Missing 'pupil-gt' in all display names"
@@ -390,9 +390,8 @@ class TestIntegration:
         csv_path = (
             Path(__file__).parents[2] / "data" / "r_data" / "essential_metrics.csv"
         )
-        assert (
-            csv_path.exists()
-        ), f"essential_metrics.csv missing: {csv_path}. Run: make analyze"
+        if not csv_path.exists():
+            pytest.skip(f"essential_metrics.csv missing: {csv_path}. Run: make analyze")
 
         import pandas as pd
 

@@ -38,9 +38,9 @@ class TestFullPipeline:
 
     def test_database_exists(self):
         """Extraction output exists."""
-        assert (
-            self.DB_PATH.exists()
-        ), f"Database not found: {self.DB_PATH}. Run: make extract"
+        assert self.DB_PATH.exists(), (
+            f"Database not found: {self.DB_PATH}. Run: make extract"
+        )
 
     def test_database_has_essential_metrics_table(self):
         """Database has the essential_metrics table."""
@@ -49,15 +49,15 @@ class TestFullPipeline:
         table_names = [t[0] for t in tables]
         conn.close()
 
-        assert (
-            "essential_metrics" in table_names
-        ), f"essential_metrics table not found. Available tables: {table_names}"
+        assert "essential_metrics" in table_names, (
+            f"essential_metrics table not found. Available tables: {table_names}"
+        )
 
     def test_csv_export_exists(self):
         """CSV export for R exists."""
-        assert (
-            self.CSV_PATH.exists()
-        ), f"CSV not found: {self.CSV_PATH}. Run: make analyze"
+        assert self.CSV_PATH.exists(), (
+            f"CSV not found: {self.CSV_PATH}. Run: make analyze"
+        )
 
     def test_csv_has_data(self):
         """CSV export has rows and required columns."""
@@ -103,9 +103,9 @@ class TestFullPipeline:
 
     def test_figure_exists(self):
         """Forest plot figure exists."""
-        assert (
-            self.FIGURE_PATH.exists()
-        ), f"Figure not found: {self.FIGURE_PATH}. Run: make analyze"
+        assert self.FIGURE_PATH.exists(), (
+            f"Figure not found: {self.FIGURE_PATH}. Run: make analyze"
+        )
 
     def test_figure_not_stale(self):
         """Figure is newer than database (or within 30 days).

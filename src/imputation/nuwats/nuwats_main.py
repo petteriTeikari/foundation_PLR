@@ -31,9 +31,9 @@ def check_dataloader_for_nuwats(dataloader):
     masked_points = 0
     for i, (batch_x_gt, batch_y, _) in enumerate(dataloader):
         no_of_nans_in_x = torch.isnan(batch_x_gt).sum().item()
-        assert (
-            no_of_nans_in_x == 0
-        ), "You are not supposed to have NaNs in your input data"
+        assert no_of_nans_in_x == 0, (
+            "You are not supposed to have NaNs in your input data"
+        )
         masked_points += torch.sum(batch_y == 1).sum().item()
         # if your trim and batch size is small, you might have batches that do not have any masked points
 

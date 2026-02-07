@@ -227,9 +227,9 @@ class TestBootstrapCIValidity:
 
         for ci in cis:
             if ci["lo"] is not None and ci["hi"] is not None:
-                assert (
-                    ci["lo"] <= ci["hi"]
-                ), f"CRITICAL: {ci['path']} has inverted CI: [{ci['lo']}, {ci['hi']}]"
+                assert ci["lo"] <= ci["hi"], (
+                    f"CRITICAL: {ci['path']} has inverted CI: [{ci['lo']}, {ci['hi']}]"
+                )
 
     def test_cis_not_zero_width(self, calibration_data):
         """Zero-width CIs indicate computation errors."""
@@ -326,9 +326,9 @@ class TestDCAValidity:
 
         # Check ordering
         for i in range(len(thresholds) - 1):
-            assert (
-                thresholds[i] < thresholds[i + 1]
-            ), f"CRITICAL: DCA thresholds not monotonically increasing: {thresholds}"
+            assert thresholds[i] < thresholds[i + 1], (
+                f"CRITICAL: DCA thresholds not monotonically increasing: {thresholds}"
+            )
 
     def test_net_benefit_bounds(self, dca_data):
         """Net benefit has theoretical bounds based on prevalence."""

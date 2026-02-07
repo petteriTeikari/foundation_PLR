@@ -1,0 +1,31 @@
+# Data Manifest: data/r_data/
+# ============================
+# JSON exports for R/ggplot2 visualization pipeline.
+# Populate with: make analyze
+# Future: DVC-tracked for cloud training.
+#
+# Expected files after analysis:
+#   essential_metrics.csv              - Tabular metrics for R
+#   featurization_comparison.json      - Handcrafted vs embeddings comparison
+#   subject_traces.json                - Demo subject PLR traces (anonymized)
+#   predictions_top4.json              - Top-4 combo predictions
+#   calibration_data.json              - Calibration curve data
+#   dca_data.json                      - DCA curve data
+#   selective_classification_data.json - Risk-coverage data
+#   catboost_metrics.json              - CatBoost performance summary
+#
+# None of these files contain PII (subject IDs are anonymized H/G codes).
+# Subject-level JSON files with PLR codes are in data/private/ (gitignored).
+
+_version: "1.0"
+
+files:
+  essential_metrics.csv:
+    description: "All STRATOS metrics for R figure generation"
+    source: "scripts/export/export_data_for_r.py"
+    pii: false
+
+  featurization_comparison.json:
+    description: "Handcrafted vs embedding feature comparison"
+    source: "scripts/export/export_featurization_comparison.py"
+    pii: false

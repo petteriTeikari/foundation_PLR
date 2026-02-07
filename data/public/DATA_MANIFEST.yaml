@@ -1,0 +1,32 @@
+# Data Manifest: data/public/
+# ============================
+# Anonymized, shareable artifacts from the extraction pipeline.
+# Populate with: make extract
+# Future: DVC-tracked for cloud training.
+#
+# Expected files after extraction:
+#   foundation_plr_results.db      - Main DuckDB (406 configs, STRATOS metrics)
+#   foundation_plr_results_stratos.db - Extended STRATOS metrics
+#   cd_diagram_data.duckdb         - Critical difference diagram data
+#
+# None of these files contain PII (subject IDs are anonymized H/G codes).
+
+_version: "1.0"
+
+files:
+  foundation_plr_results.db:
+    description: "Consolidated DuckDB with all 406 pipeline configurations"
+    tables:
+      - essential_metrics    # AUROC, calibration, Brier, net benefit
+      - calibration_curves   # Pre-computed calibration curve data
+      - dca_curves           # Decision curve analysis data
+      - retention_metrics    # Selective classification metrics
+      - cohort_metrics       # Cohort-level performance
+      - distribution_stats   # Probability distribution statistics
+    source: "make extract (MLflow → DuckDB)"
+    pii: false
+
+  cd_diagram_data.duckdb:
+    description: "Critical difference diagram rankings"
+    source: "scripts/extraction/extract_cd_diagram_data.py"
+    pii: false

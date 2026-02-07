@@ -27,9 +27,9 @@ class TestDeliverablesVerificationIntegration:
             if fig_dir.exists():
                 existing_figures.extend(fig_dir.glob("*.png"))
 
-        assert (
-            len(existing_figures) > 0
-        ), "No figures found in figures/generated/. Run figure generation first."
+        assert len(existing_figures) > 0, (
+            "No figures found in figures/generated/. Run figure generation first."
+        )
 
     def test_figure_registry_matches_generated(self):
         """Figures in registry should exist in generated directory."""
@@ -59,6 +59,6 @@ class TestDeliverablesVerificationIntegration:
 
         # Allow some missing (not all figures generated yet)
         # But warn if many are missing
-        assert (
-            len(missing) <= 3
-        ), f"Many figures not generated: {missing}. Run: make analyze"
+        assert len(missing) <= 3, (
+            f"Many figures not generated: {missing}. Run: make analyze"
+        )

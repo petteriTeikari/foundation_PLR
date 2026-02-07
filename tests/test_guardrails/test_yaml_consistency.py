@@ -24,9 +24,9 @@ class TestYAMLConsistency:
 
         config = yaml.safe_load(yaml_path.read_text())
 
-        assert (
-            "color_definitions" in config
-        ), "Missing color_definitions section in plot_hyperparam_combos.yaml"
+        assert "color_definitions" in config, (
+            "Missing color_definitions section in plot_hyperparam_combos.yaml"
+        )
 
         color_defs = config["color_definitions"]
         assert len(color_defs) > 0, "color_definitions is empty"

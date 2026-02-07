@@ -186,9 +186,10 @@ class TestPrivateLookupTable:
     """Tests for private subject lookup table."""
 
     def test_lookup_file_exists(self):
-        """Verify private lookup file exists."""
+        """Verify private lookup file exists (local dev only, gitignored)."""
         lookup_path = PRIVATE_DIR / "subject_lookup.yaml"
-        assert lookup_path.exists(), f"Missing: {lookup_path}"
+        if not lookup_path.exists():
+            pytest.skip(f"Private lookup not found (expected on CI): {lookup_path}")
 
     def test_lookup_contains_demo_subjects(self, private_lookup, demo_subjects_config):
         """Verify lookup table contains all demo subjects."""

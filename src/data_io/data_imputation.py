@@ -93,9 +93,9 @@ def impute_from_gt(
     null_mask = df_raw[col_with_missing].is_null()
     df_raw = df_raw.with_columns(pl.col(new_col_name).fill_null(pl.col(col_gt)))
     no_nans_out = df_raw[new_col_name].null_count()
-    assert (
-        no_nans_out == 0
-    ), f"Imputation failed, {no_nans_out} NaNs left in {col_with_missing}"
+    assert no_nans_out == 0, (
+        f"Imputation failed, {no_nans_out} NaNs left in {col_with_missing}"
+    )
 
     if "_orig" in new_col_name:
         # the _orig signal has some missing values "rejected" by the pupillometer software, and

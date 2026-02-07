@@ -25,16 +25,16 @@ class TestRenvLockExists:
     def test_renv_lock_exists(self):
         """renv.lock must exist after initialization."""
         renv_lock = PROJECT_ROOT / "renv.lock"
-        assert (
-            renv_lock.exists()
-        ), 'renv.lock not found. Run: Rscript -e "renv::init(); renv::snapshot()"'
+        assert renv_lock.exists(), (
+            'renv.lock not found. Run: Rscript -e "renv::init(); renv::snapshot()"'
+        )
 
     def test_renv_lock_valid_json(self):
         """renv.lock must be valid JSON."""
         renv_lock = PROJECT_ROOT / "renv.lock"
-        assert (
-            renv_lock.exists()
-        ), "renv.lock missing. Run: Rscript -e 'renv::init(); renv::snapshot()'"
+        assert renv_lock.exists(), (
+            "renv.lock missing. Run: Rscript -e 'renv::init(); renv::snapshot()'"
+        )
 
         with open(renv_lock) as f:
             data = json.load(f)
@@ -45,9 +45,9 @@ class TestRenvLockExists:
     def test_renv_lock_has_r_version(self):
         """renv.lock must specify R version."""
         renv_lock = PROJECT_ROOT / "renv.lock"
-        assert (
-            renv_lock.exists()
-        ), "renv.lock missing. Run: Rscript -e 'renv::init(); renv::snapshot()'"
+        assert renv_lock.exists(), (
+            "renv.lock missing. Run: Rscript -e 'renv::init(); renv::snapshot()'"
+        )
 
         with open(renv_lock) as f:
             data = json.load(f)
@@ -81,9 +81,9 @@ class TestCriticalPackages:
     def test_critical_packages_in_lockfile(self):
         """All critical packages must be in renv.lock."""
         renv_lock = PROJECT_ROOT / "renv.lock"
-        assert (
-            renv_lock.exists()
-        ), "renv.lock missing. Run: Rscript -e 'renv::init(); renv::snapshot()'"
+        assert renv_lock.exists(), (
+            "renv.lock missing. Run: Rscript -e 'renv::init(); renv::snapshot()'"
+        )
 
         with open(renv_lock) as f:
             data = json.load(f)
@@ -169,9 +169,9 @@ class TestRenvRestore:
     def test_renv_restore_succeeds(self):
         """renv::restore() must complete without errors."""
         renv_lock = PROJECT_ROOT / "renv.lock"
-        assert (
-            renv_lock.exists()
-        ), "renv.lock missing. Run: Rscript -e 'renv::init(); renv::snapshot()'"
+        assert renv_lock.exists(), (
+            "renv.lock missing. Run: Rscript -e 'renv::init(); renv::snapshot()'"
+        )
 
         result = subprocess.run(
             [
@@ -192,9 +192,9 @@ class TestRenvRestore:
     def test_critical_packages_load(self):
         """Critical packages must load without error."""
         renv_lock = PROJECT_ROOT / "renv.lock"
-        assert (
-            renv_lock.exists()
-        ), "renv.lock missing. Run: Rscript -e 'renv::init(); renv::snapshot()'"
+        assert renv_lock.exists(), (
+            "renv.lock missing. Run: Rscript -e 'renv::init(); renv::snapshot()'"
+        )
 
         # R code to load critical packages
         r_code = """
@@ -215,9 +215,9 @@ class TestRenvRestore:
             cwd=PROJECT_ROOT,
         )
 
-        assert (
-            "SUCCESS" in result.stdout
-        ), f"Failed to load critical packages: {result.stderr}"
+        assert "SUCCESS" in result.stdout, (
+            f"Failed to load critical packages: {result.stderr}"
+        )
 
 
 class TestGitignore:

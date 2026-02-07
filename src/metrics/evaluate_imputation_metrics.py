@@ -456,10 +456,10 @@ def subjectwise_metrics_wrapper(
         Dictionary mapping subject codes to their metric dictionaries.
     """
     no_subjects = predictions.shape[0]
-    assert (
-        metadata_dict["subject_code"].shape[0] == no_subjects
-    ), "Number of subjects should match, {} subjects imputed, and {} metadata subjects".format(
-        no_subjects, metadata_dict["subject_code"].shape[0]
+    assert metadata_dict["subject_code"].shape[0] == no_subjects, (
+        "Number of subjects should match, {} subjects imputed, and {} metadata subjects".format(
+            no_subjects, metadata_dict["subject_code"].shape[0]
+        )
     )
 
     metrics_subjectwise = {}

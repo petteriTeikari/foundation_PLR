@@ -170,21 +170,21 @@ def transform_data_for_xgboost(
         hparam_cfg=hparam_cfg,
     )
 
-    assert (
-        feature_names_train == feature_names_test
-    ), "Feature names do not match between train and test"
-    assert (
-        y_test.shape[0] == x_test.shape[0]
-    ), "Number of labels does not match the number of samples"
-    assert (
-        y_train.shape[0] == x_train.shape[0]
-    ), "Number of labels does not match the number of samples"
-    assert x_train.shape[1] == len(
-        feature_names_train
-    ), "Number of features does not match the number of feature names"
-    assert x_test.shape[1] == len(
-        feature_names_test
-    ), "Number of features does not match the number of feature names"
+    assert feature_names_train == feature_names_test, (
+        "Feature names do not match between train and test"
+    )
+    assert y_test.shape[0] == x_test.shape[0], (
+        "Number of labels does not match the number of samples"
+    )
+    assert y_train.shape[0] == x_train.shape[0], (
+        "Number of labels does not match the number of samples"
+    )
+    assert x_train.shape[1] == len(feature_names_train), (
+        "Number of features does not match the number of feature names"
+    )
+    assert x_test.shape[1] == len(feature_names_test), (
+        "Number of features does not match the number of feature names"
+    )
 
     # quick test if you have for example the other split standardized
     # and the other not
@@ -194,13 +194,13 @@ def transform_data_for_xgboost(
 
     if check_ratio:
         if not np.isnan(ratio):
-            assert (
-                train_mean_1st_feature != test_mean_1st_feature
-            ), "Test and Train seems to be the same data?"
-            assert (
-                ratio < 10 and ratio > 0.1
-            ), "Train {} and test {} seem to have wildly different means".format(
-                train_mean_1st_feature, test_mean_1st_feature
+            assert train_mean_1st_feature != test_mean_1st_feature, (
+                "Test and Train seems to be the same data?"
+            )
+            assert ratio < 10 and ratio > 0.1, (
+                "Train {} and test {} seem to have wildly different means".format(
+                    train_mean_1st_feature, test_mean_1st_feature
+                )
             )
 
     return x_train, y_train, x_test, y_test, feature_names_train
@@ -293,21 +293,21 @@ def polars_to_numpy_arrays(
             hparam_cfg=hparam_cfg,
         )
 
-    assert len(feature_names) == len(
-        feature_names_w
-    ), "Number of feature names do not match between mean and variance data"
-    assert (
-        x_train.shape[0] == x_train_w.shape[0]
-    ), "Number of samples do not match between mean and variance data"
-    assert (
-        x_test.shape[0] == x_test_w.shape[0]
-    ), "Number of samples do not match between mean and variance data"
-    assert (
-        x_train.shape[1] == x_train_w.shape[1]
-    ), "Number of features do not match between mean and variance data"
-    assert (
-        x_test.shape[1] == x_test_w.shape[1]
-    ), "Number of features do not match between mean and variance data"
+    assert len(feature_names) == len(feature_names_w), (
+        "Number of feature names do not match between mean and variance data"
+    )
+    assert x_train.shape[0] == x_train_w.shape[0], (
+        "Number of samples do not match between mean and variance data"
+    )
+    assert x_test.shape[0] == x_test_w.shape[0], (
+        "Number of samples do not match between mean and variance data"
+    )
+    assert x_train.shape[1] == x_train_w.shape[1], (
+        "Number of features do not match between mean and variance data"
+    )
+    assert x_test.shape[1] == x_test_w.shape[1], (
+        "Number of features do not match between mean and variance data"
+    )
 
     if "DATA" in xgboost_cfg:
         if xgboost_cfg["DATA"]["use_cupy_arrays"]:
@@ -411,13 +411,13 @@ def create_dmatrices_and_dict_arrays(
     train_mean_1st_feature = np.mean(dict_arrays["x_train"][:, 0])
     test_mean_1st_feature = np.mean(dict_arrays["x_test"][:, 0])
     ratio = train_mean_1st_feature / test_mean_1st_feature
-    assert (
-        train_mean_1st_feature != test_mean_1st_feature
-    ), "Test and Train seems to be the same data?"
-    assert (
-        ratio < 10 and ratio > 0.1
-    ), "Train {} and test {} seem to have wildly different means".format(
-        train_mean_1st_feature, test_mean_1st_feature
+    assert train_mean_1st_feature != test_mean_1st_feature, (
+        "Test and Train seems to be the same data?"
+    )
+    assert ratio < 10 and ratio > 0.1, (
+        "Train {} and test {} seem to have wildly different means".format(
+            train_mean_1st_feature, test_mean_1st_feature
+        )
     )
 
     train_w_mean_1st_feature = np.mean(dict_arrays["x_train_w"][:, 0])
@@ -434,14 +434,14 @@ def create_dmatrices_and_dict_arrays(
                     "You have not computed weights as they are all 1 (e.g. with embeddings with no stdev)"
                 )
             else:
-                assert (
-                    train_w_mean_1st_feature != test_w_mean_1st_feature
-                ), "Test and Train weights seems to be the same data?"
+                assert train_w_mean_1st_feature != test_w_mean_1st_feature, (
+                    "Test and Train weights seems to be the same data?"
+                )
                 if ~np.isnan(ratio):
-                    assert (
-                        ratio < 10 and ratio > 0.1
-                    ), "Train {} and test {} weights seem to have wildly different means".format(
-                        train_w_mean_1st_feature, test_w_mean_1st_feature
+                    assert ratio < 10 and ratio > 0.1, (
+                        "Train {} and test {} weights seem to have wildly different means".format(
+                            train_w_mean_1st_feature, test_w_mean_1st_feature
+                        )
                     )
 
     dtrain = None  # xgb.DMatrix(X_train, label=y_train, feature_names=feat_names)

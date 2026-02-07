@@ -103,9 +103,9 @@ def split_df_to_samples(
         df_sample = df_sample.drop(subject_col_name, axis=1)
         dict_of_dfs[code] = df_sample
 
-    assert (
-        len(dict_of_dfs) == no_of_unique_subjects
-    ), "Number of subjects does not match!"
+    assert len(dict_of_dfs) == no_of_unique_subjects, (
+        "Number of subjects does not match!"
+    )
 
     return dict_of_dfs
 
@@ -890,9 +890,9 @@ def add_label_per_code(
     """
     df_per_code = df.filter(pl.col(code_col) == code)
     # Obviosuly this will break if you start doing some custom recordings
-    assert (
-        len(df_per_code) == length_PLR
-    ), f"Length of the PLR data for {code} is not {length_PLR}"
+    assert len(df_per_code) == length_PLR, (
+        f"Length of the PLR data for {code} is not {length_PLR}"
+    )
 
     # Loop through all the metadata columns that you have and them based on the subject code
     for col in df_metadata.columns:
@@ -1103,9 +1103,9 @@ def pick_n_subjects_per_label(
     df_out = pl.DataFrame()
     for i, code in enumerate(first_n_subjects):
         df_code = df_label.filter(pl.col("subject_code") == code)
-        assert (
-            len(df_code) == PLR_length
-        ), "Length of the PLR data for {} is not {}".format(code, PLR_length)
+        assert len(df_code) == PLR_length, (
+            "Length of the PLR data for {} is not {}".format(code, PLR_length)
+        )
         df_out = pl.concat([df_out, df_code])
         assert df_out.shape[0] == (i + 1) * PLR_length, (
             "Seems like subject was not added with pl.concat?\n"
@@ -1122,9 +1122,9 @@ def pick_n_subjects_per_label(
         f"is not equal to the number of subjects ({n}) requested"
     )
     unique_subjects_out = get_list_of_unique_subjects(df_out)
-    assert (
-        len(unique_subjects_out) == n
-    ), "Number of subjects in the output dataframe is not equal to the number of subjects requested"
+    assert len(unique_subjects_out) == n, (
+        "Number of subjects in the output dataframe is not equal to the number of subjects requested"
+    )
 
     return df_out
 
@@ -1466,9 +1466,9 @@ def check_time_vector_quality(
     """
     time_vec_in = csv_subset["time"].to_numpy()
     time_vec_ideal = define_desired_timevector(PLR_length=cfg["DATA"]["PLR_length"])
-    assert (
-        time_vec_in.shape[0] == time_vec_ideal.shape[0]
-    ), "Time vector length does not match"
+    assert time_vec_in.shape[0] == time_vec_ideal.shape[0], (
+        "Time vector length does not match"
+    )
     time_checks = check_time_similarity(time_vec_in, time_vec_ideal)
 
     return time_vec_in, time_vec_ideal, time_checks
@@ -1568,10 +1568,10 @@ def fix_for_orphaned_nans(
                     f"Subject {subject_code} still has {no_orphaned_nans_after} orphaned NaNs in the {col} column"
                 )
 
-    assert (
-        csv_subset.shape[0] == cfg["DATA"]["PLR_length"]
-    ), 'Length of the PLR data for "{}" is not {}'.format(
-        subject_code, cfg["DATA"]["PLR_length"]
+    assert csv_subset.shape[0] == cfg["DATA"]["PLR_length"], (
+        'Length of the PLR data for "{}" is not {}'.format(
+            subject_code, cfg["DATA"]["PLR_length"]
+        )
     )
 
     return csv_subset
@@ -1597,10 +1597,10 @@ def check_for_data_lengths(df: pl.DataFrame, cfg: DictConfig) -> None:
 
     for code in unique_codes:
         df_code = df.filter(pl.col("subject_code") == code)
-        assert (
-            len(df_code) == cfg["DATA"]["PLR_length"]
-        ), 'Length ({}) of the PLR data for "{}" is not {}'.format(
-            df_code.shape[0], code, cfg["DATA"]["PLR_length"]
+        assert len(df_code) == cfg["DATA"]["PLR_length"], (
+            'Length ({}) of the PLR data for "{}" is not {}'.format(
+                df_code.shape[0], code, cfg["DATA"]["PLR_length"]
+            )
         )
 
 
@@ -1946,9 +1946,9 @@ def downsample_PLR(
         # we know assume that you only have NaN padding and no NaNs in the signal, so if you get some new
         # NaNs, it is an issue. And this might happen also with non-nice downsample factors?
         safety_factor = 1.5
-        assert (
-            nan_ratio_resampled < nan_ratio * safety_factor
-        ), f"NaN ratio before ({nan_ratio}) and after ({nan_ratio_resampled}) resampling do not match"
+        assert nan_ratio_resampled < nan_ratio * safety_factor, (
+            f"NaN ratio before ({nan_ratio}) and after ({nan_ratio_resampled}) resampling do not match"
+        )
         # import matplotlib.pyplot as plt
         # plt.plot(x, y)
         # plt.show()
@@ -1966,9 +1966,9 @@ def downsample_PLR(
         else:
             y_out = np.vstack((y_out, y_resampled))
 
-    assert (
-        y_out.shape[1] == samples_out
-    ), f"Downsampled array length is not {samples_out}"
+    assert y_out.shape[1] == samples_out, (
+        f"Downsampled array length is not {samples_out}"
+    )
 
     nan_ratio = np.isnan(y_out).sum() / y_out.size
     assert nan_ratio != 1, "All your values seem NaN now"

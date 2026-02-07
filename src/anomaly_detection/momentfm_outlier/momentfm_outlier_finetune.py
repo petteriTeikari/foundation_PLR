@@ -142,9 +142,9 @@ def post_eval_checks(dataloader, results_dict, split, cfg, finetune_cfg):
     if results_dict["preds"]["arrays"]["pred_mask"] is not None:
         no_of_input_samples = len(dataloader.dataset.tensors[0])
         no_of_pred_samples = results_dict["preds"]["arrays"]["pred_mask"].shape[0]
-        assert (
-            no_of_input_samples == no_of_pred_samples
-        ), f"Input samples {no_of_input_samples} != Pred samples {no_of_pred_samples}"
+        assert no_of_input_samples == no_of_pred_samples, (
+            f"Input samples {no_of_input_samples} != Pred samples {no_of_pred_samples}"
+        )
 
 
 def eval_moment_outlier_finetune(

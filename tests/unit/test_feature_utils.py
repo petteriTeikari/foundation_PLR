@@ -204,9 +204,9 @@ class TestGetLightStimuliTimings:
         for color in ["Red", "Blue"]:
             onset = timings[color]["light_onset"]
             offset = timings[color]["light_offset"]
-            assert (
-                onset < offset
-            ), f"{color} light onset ({onset}) must be before offset ({offset})"
+            assert onset < offset, (
+                f"{color} light onset ({onset}) must be before offset ({offset})"
+            )
 
 
 class TestSyntheticDataEdgeCases:
@@ -243,9 +243,9 @@ class TestSyntheticDataEdgeCases:
         offset = offset_row.item(0, "time")
 
         # This is the exact assertion that failed before the fix
-        assert (
-            onset < offset
-        ), f"BUG REGRESSION: Light onset ({onset}) should be before offset ({offset})"
+        assert onset < offset, (
+            f"BUG REGRESSION: Light onset ({onset}) should be before offset ({offset})"
+        )
 
         # Additional sanity checks
         assert 1.9 < onset < 2.1  # Should be ~2.0

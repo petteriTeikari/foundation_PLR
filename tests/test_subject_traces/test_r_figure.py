@@ -84,21 +84,21 @@ class TestRScriptHardcoding:
 
     def test_uses_color_defs(self, r_code):
         """R script must load colors from YAML via color_defs."""
-        assert (
-            "color_defs <- load_color_definitions()" in r_code
-        ), "R script must load colors using load_color_definitions()"
+        assert "color_defs <- load_color_definitions()" in r_code, (
+            "R script must load colors using load_color_definitions()"
+        )
 
         # Should reference color_defs for actual color usage
-        assert (
-            "color_defs[[" in r_code
-        ), "R script must use color_defs[['--color-name']] for colors"
+        assert "color_defs[[" in r_code, (
+            "R script must use color_defs[['--color-name']] for colors"
+        )
 
     def test_uses_config_for_dimensions(self, r_code):
         """R script must get dimensions from config, not hardcoded."""
         # Should reference cfg$dimensions
-        assert (
-            "cfg$dimensions$width" in r_code or "cfg$dimensions" in r_code
-        ), "R script must get width from cfg$dimensions"
+        assert "cfg$dimensions$width" in r_code or "cfg$dimensions" in r_code, (
+            "R script must get width from cfg$dimensions"
+        )
 
     def test_graceful_degradation(self, r_code):
         """R script must handle missing data gracefully."""
@@ -106,9 +106,9 @@ class TestRScriptHardcoding:
         assert "is.null(data)" in r_code, "R script must check if data is NULL"
 
         # Should not use stop() for missing data
-        assert (
-            'quit(save = "no", status = 0)' in r_code
-        ), "R script must exit cleanly (status=0) when data unavailable"
+        assert 'quit(save = "no", status = 0)' in r_code, (
+            "R script must exit cleanly (status=0) when data unavailable"
+        )
 
     def test_no_hardcoded_numeric_dimensions(self, r_lines):
         """Check that width/height are not hardcoded in save calls."""
@@ -145,18 +145,18 @@ class TestFigureOutputs:
         assert fig_path.exists(), f"Missing: {fig_path}. Run: make analyze"
 
         # Check file size is reasonable (> 100KB for a real figure)
-        assert (
-            fig_path.stat().st_size > 100_000
-        ), f"Figure too small ({fig_path.stat().st_size} bytes)"
+        assert fig_path.stat().st_size > 100_000, (
+            f"Figure too small ({fig_path.stat().st_size} bytes)"
+        )
 
     def test_glaucoma_figure_exists(self, output_dir):
         """Glaucoma figure should exist after generation."""
         fig_path = output_dir / "fig_subject_traces_glaucoma.png"
         assert fig_path.exists(), f"Missing: {fig_path}. Run: make analyze"
 
-        assert (
-            fig_path.stat().st_size > 100_000
-        ), f"Figure too small ({fig_path.stat().st_size} bytes)"
+        assert fig_path.stat().st_size > 100_000, (
+            f"Figure too small ({fig_path.stat().st_size} bytes)"
+        )
 
 
 class TestRSyntaxValidation:

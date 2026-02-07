@@ -225,9 +225,9 @@ class TestMetricsConfig:
         ]
 
         for metric in stratos_metrics:
-            assert (
-                metric in metrics_config["metrics"]
-            ), f"Missing STRATOS metric: {metric}"
+            assert metric in metrics_config["metrics"], (
+                f"Missing STRATOS metric: {metric}"
+            )
 
     def test_stratos_combo_exists(self):
         """Test that STRATOS combo is defined."""
