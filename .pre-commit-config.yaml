@@ -1,13 +1,19 @@
 default_language_version:
   python: python3.11
 repos:
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.9.1  # Updated from v0.6.5
+# All hooks use `uv run` so versions come from uv.lock (SINGLE SOURCE OF TRUTH).
+# To update ruff: `uv lock --upgrade-package ruff && uv sync --dev`
+- repo: local
   hooks:
     - id: ruff
-      args: [--fix, --config=pyproject.toml]
+      name: ruff lint (auto-fix)
+      entry: uv run ruff check --fix --config=pyproject.toml
+      language: system
       types: [python]
     - id: ruff-format
+      name: ruff format
+      entry: uv run ruff format
+      language: system
       types: [python]
 
 # Registry validation - CRITICAL quality gate

@@ -227,9 +227,9 @@ class TestCalibrationPlot:
         # For well-calibrated data, smoothed y should be close to x
         residuals = np.abs(y_smooth - x_smooth)
         mean_deviation = np.mean(residuals)
-        assert (
-            mean_deviation < 0.15
-        ), f"Well-calibrated data should be close to diagonal, got mean deviation {mean_deviation}"
+        assert mean_deviation < 0.15, (
+            f"Well-calibrated data should be close to diagonal, got mean deviation {mean_deviation}"
+        )
 
     def test_overconfident_detection_via_loess(self, overconfident_data):
         """Test that overconfident predictions show deviation from diagonal via LOESS."""

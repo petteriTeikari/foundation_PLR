@@ -45,9 +45,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def artifact():
     """Load the top-10 artifact once for all tests."""
-    assert (
-        ARTIFACT_PATH.exists()
-    ), f"Artifact not found: {ARTIFACT_PATH}. Run: make extract"
+    if not ARTIFACT_PATH.exists():
+        pytest.skip(f"Artifact not found: {ARTIFACT_PATH}. Run: make extract")
     with open(ARTIFACT_PATH, "rb") as f:
         return pickle.load(f)
 
@@ -57,7 +56,8 @@ def db_connection():
     """Get DuckDB connection."""
     import duckdb
 
-    assert DB_PATH.exists(), f"Database not found: {DB_PATH}. Run: make extract"
+    if not DB_PATH.exists():
+        pytest.skip(f"Database not found: {DB_PATH}. Run: make extract")
     return duckdb.connect(str(DB_PATH), read_only=True)
 
 
@@ -96,12 +96,12 @@ class TestDataIntegrity:
             unique_train = set(np.unique(y_train))
             unique_test = set(np.unique(y_test))
 
-            assert unique_train.issubset(
-                {0, 1}
-            ), f"Config {i + 1}: y_train not binary: {unique_train}"
-            assert unique_test.issubset(
-                {0, 1}
-            ), f"Config {i + 1}: y_test not binary: {unique_test}"
+            assert unique_train.issubset({0, 1}), (
+                f"Config {i + 1}: y_train not binary: {unique_train}"
+            )
+            assert unique_test.issubset({0, 1}), (
+                f"Config {i + 1}: y_test not binary: {unique_test}"
+            )
 
     def test_sample_counts_match_expected(self, artifact):
         """Sample counts should match expected (208 total, ~145 train, ~63 test)."""
@@ -134,9 +134,9 @@ class TestDataIntegrity:
             for pattern in expected_patterns
             if pattern.lower() in name.lower()
         )
-        assert (
-            matches >= 4
-        ), f"Feature names don't look like PLR features: {feature_names}"
+        assert matches >= 4, (
+            f"Feature names don't look like PLR features: {feature_names}"
+        )
 
     def test_feature_values_in_reasonable_range(self, artifact):
         """Feature values should be in physiologically reasonable range."""
@@ -232,9 +232,9 @@ class TestModelFunctionality:
             assert (proba <= 1).all(), f"Config {i + 1}: probabilities > 1"
             # Rows should sum to 1
             row_sums = proba.sum(axis=1)
-            assert np.allclose(
-                row_sums, 1.0
-            ), f"Config {i + 1}: proba rows don't sum to 1"
+            assert np.allclose(row_sums, 1.0), (
+                f"Config {i + 1}: proba rows don't sum to 1"
+            )
 
     def test_bootstrap_models_give_different_predictions(self, artifact):
         """Bootstrap models should give slightly different predictions."""
@@ -252,9 +252,9 @@ class TestModelFunctionality:
 
         # Predictions should vary across bootstrap (std > 0)
         std_across_bootstrap = predictions.std(axis=0)
-        assert (
-            std_across_bootstrap.mean() > 0.001
-        ), "Bootstrap models give identical predictions - something wrong"
+        assert std_across_bootstrap.mean() > 0.001, (
+            "Bootstrap models give identical predictions - something wrong"
+        )
 
     def test_all_1000_bootstrap_models_work(self, artifact):
         """All 1000 bootstrap models should be loadable and functional."""
@@ -263,9 +263,9 @@ class TestModelFunctionality:
         X_sample = cfg["X_test"][:5]  # Small sample for speed
         bootstrap_models = cfg["bootstrap_models"]
 
-        assert (
-            len(bootstrap_models) == 1000
-        ), f"Expected 1000 models, got {len(bootstrap_models)}"
+        assert len(bootstrap_models) == 1000, (
+            f"Expected 1000 models, got {len(bootstrap_models)}"
+        )
 
         # Test every 100th model to verify they all work
         for idx in [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 999]:
@@ -298,9 +298,9 @@ class TestCrossValidationWithMLflow:
 
             if result:
                 db_auroc = result[0]
-                assert (
-                    abs(db_auroc - expected_auroc) < 0.001
-                ), f"AUROC mismatch for {run_id}: artifact={expected_auroc}, db={db_auroc}"
+                assert abs(db_auroc - expected_auroc) < 0.001, (
+                    f"AUROC mismatch for {run_id}: artifact={expected_auroc}, db={db_auroc}"
+                )
 
     def test_top10_ranks_are_correct(self, artifact, db_connection):
         """Top-10 should be correctly ranked by AUROC (descending)."""
@@ -309,9 +309,9 @@ class TestCrossValidationWithMLflow:
 
         # Should be in descending order
         for i in range(len(aurocs) - 1):
-            assert (
-                aurocs[i] >= aurocs[i + 1]
-            ), f"Rank {i + 1} AUROC ({aurocs[i]}) < Rank {i + 2} AUROC ({aurocs[i + 1]})"
+            assert aurocs[i] >= aurocs[i + 1], (
+                f"Rank {i + 1} AUROC ({aurocs[i]}) < Rank {i + 2} AUROC ({aurocs[i + 1]})"
+            )
 
     def test_excluded_configs_not_in_artifact(self, artifact, db_connection):
         """Garbage outlier methods should NOT be in artifact.
@@ -334,9 +334,9 @@ class TestCrossValidationWithMLflow:
         artifact_run_ids = {cfg["config"]["run_id"] for cfg in artifact["configs"]}
 
         for run_id, outlier in excluded:
-            assert (
-                run_id not in artifact_run_ids
-            ), f"Excluded config {run_id} (outlier={outlier}) found in artifact"
+            assert run_id not in artifact_run_ids, (
+                f"Excluded config {run_id} (outlier={outlier}) found in artifact"
+            )
 
     @pytest.mark.skipif(
         not MLRUNS_DIR.exists(), reason="MLflow directory not available"
@@ -345,9 +345,9 @@ class TestCrossValidationWithMLflow:
         """Model paths in artifact should exist in MLflow."""
         for i, cfg in enumerate(artifact["configs"]):
             model_path = Path(cfg["config"]["model_path"])
-            assert (
-                model_path.exists()
-            ), f"Config {i + 1}: model path doesn't exist: {model_path}"
+            assert model_path.exists(), (
+                f"Config {i + 1}: model path doesn't exist: {model_path}"
+            )
 
 
 # =============================================================================
@@ -363,9 +363,9 @@ class TestSHAPReadiness:
         model = artifact["configs"][0]["model"]
 
         # CatBoost should have these attributes
-        assert hasattr(
-            model, "get_feature_importance"
-        ), "Model missing get_feature_importance"
+        assert hasattr(model, "get_feature_importance"), (
+            "Model missing get_feature_importance"
+        )
 
     def test_feature_count_matches_model_expectation(self, artifact):
         """Feature count in data should match what model expects."""
@@ -384,9 +384,9 @@ class TestSHAPReadiness:
         for i, cfg in enumerate(artifact["configs"]):
             X_test = cfg["X_test"]
 
-            assert isinstance(
-                X_test, np.ndarray
-            ), f"Config {i + 1}: X_test not numpy array"
+            assert isinstance(X_test, np.ndarray), (
+                f"Config {i + 1}: X_test not numpy array"
+            )
             assert X_test.dtype in [
                 np.float32,
                 np.float64,
@@ -411,9 +411,9 @@ class TestSHAPReadiness:
 
         # Verify reasonable numbers
         assert n_configs == 10, f"Expected 10 configs, got {n_configs}"
-        assert (
-            n_bootstrap_per_config == 1000
-        ), f"Expected 1000 bootstrap, got {n_bootstrap_per_config}"
+        assert n_bootstrap_per_config == 1000, (
+            f"Expected 1000 bootstrap, got {n_bootstrap_per_config}"
+        )
         assert 50 < n_test_samples < 100, f"Unexpected test size: {n_test_samples}"
         assert 5 < n_features < 20, f"Unexpected feature count: {n_features}"
 
@@ -460,9 +460,9 @@ class TestGroundTruthConfig:
                 break
 
         if gt_auroc:
-            assert (
-                best_auroc >= gt_auroc - 0.01
-            ), f"Best config ({best_auroc}) worse than ground truth ({gt_auroc})"
+            assert best_auroc >= gt_auroc - 0.01, (
+                f"Best config ({best_auroc}) worse than ground truth ({gt_auroc})"
+            )
 
 
 # =============================================================================

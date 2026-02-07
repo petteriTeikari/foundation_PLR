@@ -301,9 +301,9 @@ class PerFeatureEncoderLayer(Module):
         Returns:
             The transformer state passed through the encoder layer.
         """
-        assert (
-            len(state.shape) == 4
-        ), "src must be of shape (batch_size, num_items, num feature blocks, d_model)"
+        assert len(state.shape) == 4, (
+            "src must be of shape (batch_size, num_items, num feature blocks, d_model)"
+        )
         if single_eval_pos is None:
             single_eval_pos = 0
 
@@ -313,9 +313,9 @@ class PerFeatureEncoderLayer(Module):
             save_peak_mem_factor = None
 
         if att_src is not None:
-            assert (
-                not self.multiquery_item_attention_for_test_set
-            ), "Not implemented yet."
+            assert not self.multiquery_item_attention_for_test_set, (
+                "Not implemented yet."
+            )
             assert not cache_trainset_representation, "Not implemented yet."
             assert not single_eval_pos, (
                 "single_eval_pos should not be set, as the train representation"

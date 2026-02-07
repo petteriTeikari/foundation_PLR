@@ -112,9 +112,9 @@ class GrowthLayer(nn.Module):
         self.es = ExponentialSmoothing(self.d_head, self.nhead, dropout=dropout)
         self.out_proj = nn.Linear(self.d_head * self.nhead, self.d_model)
 
-        assert (
-            self.d_head * self.nhead == self.d_model
-        ), "d_model must be divisible by nhead"
+        assert self.d_head * self.nhead == self.d_model, (
+            "d_model must be divisible by nhead"
+        )
 
     def forward(self, inputs):
         """

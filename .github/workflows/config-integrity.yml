@@ -1,0 +1,189 @@
+name: Config Integrity Check
+
+# This workflow catches --no-verify bypasses and validates config versions
+# It is the safety net for the pre-commit auto-versioning system
+
+on:
+  pull_request:
+    paths:
+      - 'configs/**/*.yaml'
+
+jobs:
+  validate-config-versions:
+    runs-on: ubuntu-latest
+    name: Validate Config Versions
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for git operations
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: |
+          uv sync --dev
+
+      - name: Check all configs have version fields
+        run: |
+          uv run python -c "
+          from pathlib import Path
+          import yaml
+
+          configs_dir = Path('configs')
+          exempt = {'_version_manifest.yaml', 'FROZEN_2026-02.yaml'}
+          exempt_dirs = {'archived', 'schemas'}
+          errors = []
+
+          for f in configs_dir.rglob('*.yaml'):
+              if f.name in exempt:
+                  continue
+              if any(d in f.parts for d in exempt_dirs):
+                  continue
+              try:
+                  content = yaml.safe_load(f.read_text())
+                  if content is None or not isinstance(content, dict):
+                      continue
+                  has_version = '_version' in content or 'VERSION' in content or 'version' in content
+                  if not has_version:
+                      errors.append(str(f))
+              except:
+                  pass
+
+          if errors:
+              print('ERROR: Config files missing version field:')
+              for e in errors:
+                  print(f'  - {e}')
+              exit(1)
+          print('All configs have version fields.')
+          "
+
+      - name: Verify config content hashes
+        run: |
+          uv run python scripts/config_versioning.py verify
+
+      - name: Check manifest is up-to-date
+        run: |
+          # Generate a fresh manifest and compare
+          uv run python -c "
+          import yaml
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, 'scripts')
+          from config_versioning import generate_manifest, load_manifest
+
+          current = generate_manifest()
+          saved = load_manifest()
+
+          if saved is None:
+              print('ERROR: Manifest does not exist!')
+              exit(1)
+
+          # Check if any hashes differ
+          mismatches = []
+          for path, info in current['configs'].items():
+              if path not in saved['configs']:
+                  mismatches.append(f'NEW (not in manifest): {path}')
+              elif saved['configs'][path]['content_hash'] != info['content_hash']:
+                  mismatches.append(f'HASH MISMATCH: {path}')
+
+          for path in saved['configs']:
+              if path not in current['configs']:
+                  mismatches.append(f'DELETED (in manifest but not on disk): {path}')
+
+          if mismatches:
+              print('ERROR: Config manifest out of sync!')
+              print('Someone may have bypassed pre-commit with --no-verify')
+              print()
+              for m in mismatches:
+                  print(f'  - {m}')
+              print()
+              print('Run: python scripts/config_versioning.py generate')
+              print('Then commit the updated manifest.')
+              exit(1)
+
+          print('Config manifest is up-to-date.')
+          "
+
+  check-frozen-configs:
+    runs-on: ubuntu-latest
+    name: Check Frozen Configs
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base
+
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          path: pr
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check for frozen config modifications
+        run: |
+          python3 << 'EOF'
+          import yaml
+          from pathlib import Path
+
+          base_dir = Path('base/configs/experiment')
+          pr_dir = Path('pr/configs/experiment')
+
+          violations = []
+
+          for base_file in base_dir.glob('*.yaml'):
+              try:
+                  content = yaml.safe_load(base_file.read_text())
+                  if not isinstance(content, dict):
+                      continue
+
+                  # Check if frozen
+                  is_frozen = content.get('frozen') is True
+                  if not is_frozen:
+                      exp = content.get('experiment', {})
+                      is_frozen = isinstance(exp, dict) and exp.get('frozen') is True
+
+                  if not is_frozen:
+                      continue
+
+                  # Check if modified in PR
+                  pr_file = pr_dir / base_file.name
+                  if not pr_file.exists():
+                      violations.append(f'{base_file.name}: DELETED frozen config!')
+                      continue
+
+                  if base_file.read_text() != pr_file.read_text():
+                      violations.append(f'{base_file.name}: Modified frozen config!')
+
+              except Exception as e:
+                  print(f'Warning: Could not check {base_file}: {e}')
+
+          if violations:
+              print('ERROR: Frozen experiment configs were modified!')
+              print()
+              for v in violations:
+                  print(f'  - {v}')
+              print()
+              print('Frozen configs (frozen: true) represent published results.')
+              print('Create a new experiment config instead of modifying existing ones.')
+              exit(1)
+
+          print('No frozen configs modified.')
+          EOF

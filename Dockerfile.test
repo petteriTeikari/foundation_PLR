@@ -14,7 +14,7 @@ FROM python:3.11-slim-bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential git libgomp1 && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.5.14 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /usr/local/bin/uv
 WORKDIR /project
 COPY pyproject.toml uv.lock ./
 
@@ -28,7 +28,7 @@ FROM python:3.11-slim-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git libgomp1 && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.5.14 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /usr/local/bin/uv
 COPY --from=builder /opt/venv /opt/venv
 
 ENV VIRTUAL_ENV=/opt/venv PATH="/opt/venv/bin:$PATH"
@@ -36,12 +36,17 @@ ENV PYTHONPATH=/project/src PREFECT_DISABLED=1 MPLBACKEND=Agg
 
 WORKDIR /project
 COPY pyproject.toml uv.lock Makefile renv.lock .Rprofile ./
+COPY .gitignore AGENTS.md ARCHITECTURE.md ./
+COPY .github/ .github/
 COPY src/ src/
 COPY tests/ tests/
 COPY configs/ configs/
 COPY scripts/ scripts/
+COPY docs/ docs/
+COPY data/r_data/ data/r_data/
+COPY data/public/ data/public/
 
-RUN mkdir -p data/r_data data/public figures/generated
+RUN mkdir -p figures/generated
 
 CMD ["python", "-m", "pytest", "tests/", "-m", "unit or guardrail", \
      "--ignore=tests/test_docker_r.py", "--ignore=tests/test_docker_full.py", \

@@ -144,9 +144,9 @@ class TestDistributionStatistics:
 
         stats = _compute_stats_from_arrays(**sample_data)
         assert "auroc" in stats
-        assert np.isnan(
-            stats["auroc"]
-        ), "AUROC should be NaN (must be read from DuckDB)"
+        assert np.isnan(stats["auroc"]), (
+            "AUROC should be NaN (must be read from DuckDB)"
+        )
 
     def test_computes_median_difference(self, sample_data):
         """Test median difference between classes."""

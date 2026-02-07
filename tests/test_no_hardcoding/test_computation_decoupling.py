@@ -169,12 +169,12 @@ class TestDecouplingSanity:
 
         # Verify it imports the stats modules (it SHOULD compute metrics)
         content = extraction_script.read_text()
-        assert (
-            "calibration_slope_intercept" in content
-        ), "Extraction script should compute calibration metrics"
-        assert (
-            "scaled_brier_score" in content
-        ), "Extraction script should compute scaled Brier score"
+        assert "calibration_slope_intercept" in content, (
+            "Extraction script should compute calibration metrics"
+        )
+        assert "scaled_brier_score" in content, (
+            "Extraction script should compute scaled Brier score"
+        )
         assert "net_benefit" in content, "Extraction script should compute net benefit"
 
     def test_duckdb_schema_has_stratos_metrics(self):

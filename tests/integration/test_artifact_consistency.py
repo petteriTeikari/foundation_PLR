@@ -37,7 +37,8 @@ def manuscript_root() -> Path:
     path = Path(
         "/home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR"
     )
-    assert path.exists(), f"Manuscript directory not found: {path}"
+    if not path.exists():
+        pytest.skip(f"Manuscript directory not found (expected on CI): {path}")
     return path
 
 
@@ -108,9 +109,9 @@ class TestSubjectCounts:
 
     def test_total_subjects_from_csv(self, outlier_difficulty_csv):
         """Total subjects should be 507."""
-        assert (
-            len(outlier_difficulty_csv) == 507
-        ), f"Expected 507 subjects, got {len(outlier_difficulty_csv)}"
+        assert len(outlier_difficulty_csv) == 507, (
+            f"Expected 507 subjects, got {len(outlier_difficulty_csv)}"
+        )
 
     def test_control_subjects_count(self, outlier_difficulty_csv):
         """Control subjects should be 152."""
@@ -152,9 +153,9 @@ class TestSubjectCounts:
         csv_control = len(
             outlier_difficulty_csv[outlier_difficulty_csv["class_label"] == "control"]
         )
-        assert (
-            json_control == csv_control
-        ), f"JSON control={json_control}, CSV control={csv_control}"
+        assert json_control == csv_control, (
+            f"JSON control={json_control}, CSV control={csv_control}"
+        )
 
     def test_json_matches_csv_glaucoma(
         self, outlier_difficulty_json, outlier_difficulty_csv
@@ -164,9 +165,9 @@ class TestSubjectCounts:
         csv_glaucoma = len(
             outlier_difficulty_csv[outlier_difficulty_csv["class_label"] == "glaucoma"]
         )
-        assert (
-            json_glaucoma == csv_glaucoma
-        ), f"JSON glaucoma={json_glaucoma}, CSV glaucoma={csv_glaucoma}"
+        assert json_glaucoma == csv_glaucoma, (
+            f"JSON glaucoma={json_glaucoma}, CSV glaucoma={csv_glaucoma}"
+        )
 
 
 # =============================================================================
@@ -212,17 +213,17 @@ class TestCorrelationConsistency:
         parallel_n = parallel_preprocessing_json["n_configurations"]
 
         # These SHOULD be different - parallel requires complete data
-        assert (
-            scatter_f1_n != parallel_n
-        ), "Expected different n values between scatter and parallel coords"
+        assert scatter_f1_n != parallel_n, (
+            "Expected different n values between scatter and parallel coords"
+        )
 
         # Document expected values
-        assert (
-            parallel_n == 24
-        ), f"Parallel coords expected n=24 complete configs, got {parallel_n}"
-        assert (
-            scatter_f1_n == 40
-        ), f"Scatter expected n=40 F1 values, got {scatter_f1_n}"
+        assert parallel_n == 24, (
+            f"Parallel coords expected n=24 complete configs, got {parallel_n}"
+        )
+        assert scatter_f1_n == 40, (
+            f"Scatter expected n=40 F1 values, got {scatter_f1_n}"
+        )
 
     def test_parallel_coords_correlation_documented(
         self, preprocessing_vs_auroc_json, parallel_preprocessing_json
@@ -239,17 +240,17 @@ class TestCorrelationConsistency:
         scatter_r = preprocessing_vs_auroc_json["panel_a"]["correlation_r"]
 
         # They should be different but within reasonable range
-        assert (
-            abs(parallel_r - 0.407) < 0.01
-        ), f"Parallel expected r≈0.407, got {parallel_r}"
-        assert (
-            abs(scatter_r - 0.421) < 0.01
-        ), f"Scatter expected r≈0.421, got {scatter_r}"
+        assert abs(parallel_r - 0.407) < 0.01, (
+            f"Parallel expected r≈0.407, got {parallel_r}"
+        )
+        assert abs(scatter_r - 0.421) < 0.01, (
+            f"Scatter expected r≈0.421, got {scatter_r}"
+        )
 
         # Scatter should be the canonical value (larger sample)
-        assert (
-            scatter_r > parallel_r
-        ), "Scatter r should be > parallel r (different subsets)"
+        assert scatter_r > parallel_r, (
+            "Scatter r should be > parallel r (different subsets)"
+        )
 
 
 # =============================================================================
@@ -295,9 +296,9 @@ class TestFriedmanStatistics:
         n_iterations = cd_comparison_json["n_iterations"]
 
         # Flag: extremely small p-value with bootstrap samples
-        assert (
-            p_value < 1e-100
-        ), "P-value should be extremely small (this is a FLAG, not validation)"
+        assert p_value < 1e-100, (
+            "P-value should be extremely small (this is a FLAG, not validation)"
+        )
 
         # Document: bootstrap samples are NOT independent
         # In a proper test with k-fold CV (k=10), we'd expect n=10, not n=1000
@@ -383,9 +384,9 @@ class TestCrossArtifactConsistency:
         cd_max = max(cd_aurocs.values())
 
         # Allow small tolerance due to different aggregations
-        assert (
-            abs(parallel_max - cd_max) < 0.01
-        ), f"Parallel max AUROC={parallel_max}, CD max AUROC={cd_max}"
+        assert abs(parallel_max - cd_max) < 0.01, (
+            f"Parallel max AUROC={parallel_max}, CD max AUROC={cd_max}"
+        )
 
     def test_control_outlier_rate_consistent(
         self, outlier_difficulty_json, outlier_difficulty_csv
@@ -399,9 +400,9 @@ class TestCrossArtifactConsistency:
         ]
         csv_rate = control_df["outlier_pct"].mean()
 
-        assert (
-            abs(json_rate - csv_rate) < 0.001
-        ), f"JSON control rate={json_rate}, CSV control rate={csv_rate}"
+        assert abs(json_rate - csv_rate) < 0.001, (
+            f"JSON control rate={json_rate}, CSV control rate={csv_rate}"
+        )
 
     def test_glaucoma_outlier_rate_consistent(
         self, outlier_difficulty_json, outlier_difficulty_csv
@@ -415,9 +416,9 @@ class TestCrossArtifactConsistency:
         ]
         csv_rate = glaucoma_df["outlier_pct"].mean()
 
-        assert (
-            abs(json_rate - csv_rate) < 0.001
-        ), f"JSON glaucoma rate={json_rate}, CSV glaucoma rate={csv_rate}"
+        assert abs(json_rate - csv_rate) < 0.001, (
+            f"JSON glaucoma rate={json_rate}, CSV glaucoma rate={csv_rate}"
+        )
 
 
 # =============================================================================

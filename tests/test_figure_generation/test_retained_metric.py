@@ -10,6 +10,7 @@ refactoring (computation decoupling):
 """
 
 import json
+import pytest
 from pathlib import Path
 from PIL import Image
 import numpy as np
@@ -84,18 +85,18 @@ class TestRetainedMetricModuleStructure:
         """Test that METRIC_REGISTRY (compute function mapping) is removed."""
         from src.viz import retained_metric
 
-        assert not hasattr(
-            retained_metric, "METRIC_REGISTRY"
-        ), "METRIC_REGISTRY should be removed - compute functions belong in extraction."
+        assert not hasattr(retained_metric, "METRIC_REGISTRY"), (
+            "METRIC_REGISTRY should be removed - compute functions belong in extraction."
+        )
 
     def test_no_sklearn_imports(self):
         """Test that no sklearn imports exist (CRITICAL-FAILURE-003)."""
         module_path = PROJECT_ROOT / "src" / "viz" / "retained_metric.py"
         content = module_path.read_text()
 
-        assert (
-            "sklearn" not in content
-        ), "CRITICAL-FAILURE-003: Found sklearn import in viz module."
+        assert "sklearn" not in content, (
+            "CRITICAL-FAILURE-003: Found sklearn import in viz module."
+        )
 
     def test_no_compute_functions(self):
         """Test that on-the-fly compute functions are removed."""
@@ -158,11 +159,16 @@ class TestRetainedMetricProductionFigure:
     )
     METRICS_JSON = PROJECT_ROOT / "data" / "r_data" / "catboost_metrics.json"
 
+    @pytest.fixture(autouse=True)
+    def _require_production_data(self):
+        """Skip all tests in this class if production data is not available."""
+        if not self.COMBINED_FIGURE.exists():
+            pytest.skip(
+                f"Production data not found: {self.COMBINED_FIGURE}. Run: make analyze"
+            )
+
     def test_production_figure_not_blank(self):
         """Test production figure has visible content."""
-        assert (
-            self.COMBINED_FIGURE.exists()
-        ), f"Missing: {self.COMBINED_FIGURE}. Run: make analyze"
         img = Image.open(self.COMBINED_FIGURE)
         arr = np.array(img)
 
@@ -174,20 +180,24 @@ class TestRetainedMetricProductionFigure:
 
     def test_production_json_has_required_fields(self):
         """Test production JSON has required structure."""
-        assert (
-            self.METRICS_JSON.exists()
-        ), f"Missing: {self.METRICS_JSON}. Run: make analyze"
+        if not self.METRICS_JSON.exists():
+            pytest.skip(
+                f"Production data not found: {self.METRICS_JSON}. Run: make analyze"
+            )
         with open(self.METRICS_JSON) as f:
             data = json.load(f)
 
         json_str = json.dumps(data)
-        assert (
-            "auroc" in json_str.lower() or "metric" in json_str.lower()
-        ), "Metrics JSON missing metric data"
+        assert "auroc" in json_str.lower() or "metric" in json_str.lower(), (
+            "Metrics JSON missing metric data"
+        )
 
     def test_production_json_not_synthetic(self):
         """Test production JSON is not marked as synthetic."""
-        assert self.METRICS_JSON.exists(), f"Missing: {self.METRICS_JSON}"
+        if not self.METRICS_JSON.exists():
+            pytest.skip(
+                f"Production data not found: {self.METRICS_JSON}. Run: make analyze"
+            )
         with open(self.METRICS_JSON) as f:
             data = json.load(f)
 

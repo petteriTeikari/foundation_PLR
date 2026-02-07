@@ -58,13 +58,13 @@ NUMBERS_TEX = (
 # =============================================================================
 
 EXPECTED_VALUES = {
-    # From DB/pipeline (2026-01-25 extraction)
+    # From DB/pipeline (2026-02-07 extraction, 408 runs, 1 failed, 1 dupe removed)
     # 406 total configs in consolidated DB (all classifiers, all featurizations)
     # 81 of these are CatBoost
     "n_configs": 406,
     "n_catboost_configs": 81,
     "min_auroc": 0.500,
-    "max_auroc": 0.974,
+    "max_auroc": 0.913,
     "mean_auroc": 0.829,
     # From Najjar et al. 2023 (external reference)
     "najjar_auroc": 0.93,
@@ -92,15 +92,18 @@ TOLERANCE = 0.001
 @pytest.fixture
 def db_connection():
     """Get DuckDB connection to main results database."""
-    assert HAS_DUCKDB, "duckdb not installed. Run: uv add duckdb"
-    assert DB_PATH.exists(), f"Database missing: {DB_PATH}. Run: make extract"
+    if not HAS_DUCKDB:
+        pytest.skip("duckdb not installed. Run: uv add duckdb")
+    if not DB_PATH.exists():
+        pytest.skip(f"Database missing: {DB_PATH}. Run: make extract")
     return duckdb.connect(str(DB_PATH), read_only=True)
 
 
 @pytest.fixture
 def numbers_tex_content() -> Optional[str]:
     """Load numbers.tex content."""
-    assert NUMBERS_TEX.exists(), f"numbers.tex missing: {NUMBERS_TEX}"
+    if not NUMBERS_TEX.exists():
+        pytest.skip(f"numbers.tex missing: {NUMBERS_TEX}")
     return NUMBERS_TEX.read_text()
 
 
@@ -135,13 +138,13 @@ class TestDatabaseValues:
     """Tests that verify values in the DuckDB database."""
 
     def test_config_count(self, db_connection):
-        """Verify exactly 407 configurations extracted."""
+        """Verify expected number of configurations extracted."""
         count = db_connection.execute(
             "SELECT COUNT(*) FROM essential_metrics"
         ).fetchone()[0]
-        assert (
-            count == EXPECTED_VALUES["n_configs"]
-        ), f"Expected {EXPECTED_VALUES['n_configs']} configs, got {count}"
+        assert count == EXPECTED_VALUES["n_configs"], (
+            f"Expected {EXPECTED_VALUES['n_configs']} configs, got {count}"
+        )
 
     def test_auroc_range_valid(self, db_connection):
         """Verify all AUROC values are in valid range [0, 1]."""
@@ -157,27 +160,27 @@ class TestDatabaseValues:
         min_auroc = db_connection.execute(
             "SELECT MIN(auroc) FROM essential_metrics"
         ).fetchone()[0]
-        assert (
-            abs(min_auroc - EXPECTED_VALUES["min_auroc"]) < TOLERANCE
-        ), f"Expected min AUROC {EXPECTED_VALUES['min_auroc']}, got {min_auroc}"
+        assert abs(min_auroc - EXPECTED_VALUES["min_auroc"]) < TOLERANCE, (
+            f"Expected min AUROC {EXPECTED_VALUES['min_auroc']}, got {min_auroc}"
+        )
 
     def test_max_auroc(self, db_connection):
         """Verify maximum AUROC matches expected value."""
         max_auroc = db_connection.execute(
             "SELECT MAX(auroc) FROM essential_metrics"
         ).fetchone()[0]
-        assert (
-            abs(max_auroc - EXPECTED_VALUES["max_auroc"]) < TOLERANCE
-        ), f"Expected max AUROC {EXPECTED_VALUES['max_auroc']}, got {max_auroc}"
+        assert abs(max_auroc - EXPECTED_VALUES["max_auroc"]) < TOLERANCE, (
+            f"Expected max AUROC {EXPECTED_VALUES['max_auroc']}, got {max_auroc}"
+        )
 
     def test_mean_auroc(self, db_connection):
         """Verify mean AUROC matches expected value."""
         mean_auroc = db_connection.execute(
             "SELECT AVG(auroc) FROM essential_metrics"
         ).fetchone()[0]
-        assert (
-            abs(mean_auroc - EXPECTED_VALUES["mean_auroc"]) < TOLERANCE
-        ), f"Expected mean AUROC {EXPECTED_VALUES['mean_auroc']}, got {mean_auroc}"
+        assert abs(mean_auroc - EXPECTED_VALUES["mean_auroc"]) < TOLERANCE, (
+            f"Expected mean AUROC {EXPECTED_VALUES['mean_auroc']}, got {mean_auroc}"
+        )
 
     def test_all_required_columns_present(self, db_connection):
         """Verify all required columns exist in essential_metrics."""
@@ -234,9 +237,9 @@ class TestNumbersTexValues:
             "SELECT COUNT(*) FROM essential_metrics"
         ).fetchone()[0]
 
-        assert (
-            abs(int(latex_value) - db_count) <= 5
-        ), f"LaTeX nConfigs={latex_value} vs DB count={db_count} (diff > 5)"
+        assert abs(int(latex_value) - db_count) <= 5, (
+            f"LaTeX nConfigs={latex_value} vs DB count={db_count} (diff > 5)"
+        )
 
     def test_max_auroc_matches_db(self, numbers_tex_content, db_connection):
         """Verify \\maxAUROC in LaTeX is consistent with database.
@@ -251,9 +254,9 @@ class TestNumbersTexValues:
             "SELECT MAX(auroc) FROM essential_metrics WHERE featurization LIKE 'simple%'"
         ).fetchone()[0]
 
-        assert (
-            abs(float(latex_value) - db_max) < TOLERANCE
-        ), f"LaTeX maxAUROC={latex_value} != DB handcrafted max={db_max}"
+        assert abs(float(latex_value) - db_max) < TOLERANCE, (
+            f"LaTeX maxAUROC={latex_value} != DB handcrafted max={db_max}"
+        )
 
     def test_mean_auroc_matches_db(self, numbers_tex_content, db_connection):
         """Verify \\meanAUROC in LaTeX is close to database mean."""
@@ -264,9 +267,9 @@ class TestNumbersTexValues:
             "SELECT AVG(auroc) FROM essential_metrics"
         ).fetchone()[0]
 
-        assert (
-            abs(float(latex_value) - db_mean) < 0.01
-        ), f"LaTeX meanAUROC={latex_value} != DB mean={db_mean:.4f}"
+        assert abs(float(latex_value) - db_mean) < 0.01, (
+            f"LaTeX meanAUROC={latex_value} != DB mean={db_mean:.4f}"
+        )
 
     def test_najjar_benchmark_values(self, numbers_tex_content):
         """Verify Najjar benchmark values are correctly stored."""
@@ -281,22 +284,29 @@ class TestNumbersTexValues:
 
 
 class TestJsonDataConsistency:
-    """Tests that verify JSON figure data matches database."""
+    """Tests that verify JSON figure data matches database.
+
+    These tests reference the sister manuscript repo (FIGURES_DATA_DIR).
+    Skipped on CI where the sister repo is not available.
+    """
 
     def test_fig01_variance_decomposition_exists(self):
         """Verify variance decomposition JSON exists."""
         json_path = FIGURES_DATA_DIR / "fig01_variance_decomposition_data.json"
-        assert json_path.exists(), f"Missing: {json_path}"
+        if not json_path.exists():
+            pytest.skip(f"Manuscript figures not found: {json_path}")
 
     def test_fig02_forest_outlier_exists(self):
         """Verify outlier forest plot JSON exists."""
         json_path = FIGURES_DATA_DIR / "fig02_forest_outlier_data.json"
-        assert json_path.exists(), f"Missing: {json_path}"
+        if not json_path.exists():
+            pytest.skip(f"Manuscript figures not found: {json_path}")
 
     def test_specification_curve_config_count(self, db_connection):
         """Verify specification curve JSON has a reasonable number of configs."""
         json_path = FIGURES_DATA_DIR / "fig06_specification_curve_data.json"
-        assert json_path.exists(), f"JSON missing: {json_path}"
+        if not json_path.exists():
+            pytest.skip(f"Manuscript figures not found: {json_path}")
 
         data = json.loads(json_path.read_text())
         # JSON uses nested structure: data.estimates contains AUROC for each config
@@ -307,9 +317,9 @@ class TestJsonDataConsistency:
         ).fetchone()[0]
 
         # Allow ±5 tolerance for minor extraction differences
-        assert (
-            abs(json_count - db_count) <= 5
-        ), f"JSON has {json_count} configs, DB has {db_count} (diff > 5)"
+        assert abs(json_count - db_count) <= 5, (
+            f"JSON has {json_count} configs, DB has {db_count} (diff > 5)"
+        )
 
 
 # =============================================================================
@@ -340,9 +350,9 @@ class TestCrossSourceConsistency:
             db_gap = feat_aurocs["simple1.0"] - feat_aurocs["MOMENT-embedding-PCA"]
 
             # Should be approximately 0.09 (9 percentage points)
-            assert (
-                0.05 < db_gap < 0.15
-            ), f"Featurization gap {db_gap:.3f} outside expected range"
+            assert 0.05 < db_gap < 0.15, (
+                f"Featurization gap {db_gap:.3f} outside expected range"
+            )
 
 
 # =============================================================================
@@ -370,9 +380,9 @@ class TestKnownValues:
         n_control = EXPECTED_VALUES["n_control"]
         n_labeled = EXPECTED_VALUES["n_labeled_subjects"]
 
-        assert (
-            n_glaucoma + n_control == n_labeled
-        ), f"{n_glaucoma} + {n_control} != {n_labeled}"
+        assert n_glaucoma + n_control == n_labeled, (
+            f"{n_glaucoma} + {n_control} != {n_labeled}"
+        )
 
 
 # =============================================================================

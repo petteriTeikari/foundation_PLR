@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS essential_metrics (
     outlier_method TEXT NOT NULL,
     imputation_method TEXT NOT NULL,
     classifier TEXT NOT NULL,
+    featurization TEXT,
     source_name TEXT NOT NULL,
+    run_id TEXT,
     mlflow_run_id TEXT,
     -- Discrimination
     auroc REAL,
@@ -63,7 +65,7 @@ CREATE TABLE IF NOT EXISTS essential_metrics (
     calibration_slope REAL,
     calibration_intercept REAL,
     o_e_ratio REAL,
-    brier_score REAL,
+    brier REAL,
     -- Clinical utility
     net_benefit_5pct REAL,
     net_benefit_10pct REAL,
@@ -500,6 +502,14 @@ class StreamingDuckDBExporter:
 
         return sorted(run_dirs, key=lambda x: x.name)
 
+    # Canonical classifier names per registry (configs/mlflow_registry/parameters/classification.yaml)
+    _CLASSIFIER_CANONICAL = {
+        "CATBOOST": "CatBoost",
+        "XGBOOST": "XGBoost",
+        "catboost": "CatBoost",
+        "xgboost": "XGBoost",
+    }
+
     def _parse_run_name(self, run_name: str) -> Dict[str, str]:
         """Parse configuration from run name."""
         config = {"source_name": run_name}
@@ -507,7 +517,8 @@ class StreamingDuckDBExporter:
         parts = run_name.split("__")
         if len(parts) >= 1:
             clf_part = parts[0].split("_")
-            config["classifier"] = clf_part[0]
+            raw_clf = clf_part[0]
+            config["classifier"] = self._CLASSIFIER_CANONICAL.get(raw_clf, raw_clf)
 
         if len(parts) >= 2:
             config["featurization"] = parts[1]
@@ -566,12 +577,35 @@ class StreamingDuckDBExporter:
         # Extract essential metrics
         essential = self._extract_essential_metrics(metrics_data, config)
         essential["config_id"] = config_id
+        essential["run_id"] = run_id
         essential["mlflow_run_id"] = run_id
         essential["source_name"] = config.get("source_name", run_name)
         essential["outlier_method"] = config.get("outlier_method", "unknown")
         essential["imputation_method"] = config.get("imputation_method", "unknown")
         essential["classifier"] = config.get("classifier", "unknown")
+        essential["featurization"] = config.get("featurization", "unknown")
         essential["extracted_at"] = datetime.now().isoformat()
+
+        # Dedup check: skip if this (outlier, imputation, classifier, featurization) exists
+        existing = con.execute(
+            """SELECT COUNT(*) FROM essential_metrics
+            WHERE outlier_method = ? AND imputation_method = ?
+              AND classifier = ? AND featurization = ?""",
+            [
+                essential["outlier_method"],
+                essential["imputation_method"],
+                essential["classifier"],
+                essential["featurization"],
+            ],
+        ).fetchone()[0]
+        if existing > 0:
+            logger.debug(
+                f"Skipping duplicate: {essential['outlier_method']}/{essential['imputation_method']}"
+                f"/{essential['classifier']}/{essential['featurization']}"
+            )
+            del metrics_data
+            gc.collect()
+            return False
 
         # Insert essential metrics
         self._insert_essential_metrics(essential, con)
@@ -585,7 +619,9 @@ class StreamingDuckDBExporter:
         self._extract_calibration_curve(metrics_data, config_id, con)
 
         # Extract probability distribution and compute net benefit if missing
-        nb_from_raw = self._extract_probability_distribution(run_dir, config_id, con)
+        nb_from_raw = self._extract_probability_distribution(
+            run_dir, config_id, con, metrics_data=metrics_data
+        )
 
         # Update metrics if they were computed from raw predictions
         # and not already in the essential metrics (includes STRATOS calibration)
@@ -653,7 +689,7 @@ class StreamingDuckDBExporter:
             "calibration_slope": None,
             "calibration_intercept": None,
             "o_e_ratio": None,
-            "brier_score": None,
+            "brier": None,
             "net_benefit_5pct": None,
             "net_benefit_10pct": None,
             "net_benefit_15pct": None,
@@ -684,7 +720,7 @@ class StreamingDuckDBExporter:
 
         # Brier score
         if "Brier" in scalars:
-            result["brier_score"] = scalars["Brier"].get("mean")
+            result["brier"] = scalars["Brier"].get("mean")
 
         # Calibration metrics (if computed)
         if "CalibrationSlope" in scalars:
@@ -795,8 +831,22 @@ class StreamingDuckDBExporter:
         # Try different possible locations for calibration data
         if "arrays" in metrics:
             arrays = metrics["arrays"]
-            # Look for calibration bins data
-            if "calibration_bins" in arrays:
+            # Primary: calibration_curve with prob_pred/prob_true structure
+            if "calibration_curve" in arrays:
+                cal_curve = arrays["calibration_curve"]
+                prob_pred = cal_curve.get("prob_pred", {})
+                prob_true = cal_curve.get("prob_true", {})
+                pred_mean = prob_pred.get("mean")
+                true_mean = prob_true.get("mean")
+                if pred_mean is not None and true_mean is not None:
+                    calibration_data = {
+                        "bin_midpoints": list(pred_mean),
+                        "observed": list(true_mean),
+                        "predicted": list(pred_mean),
+                        "n_samples": [None] * len(pred_mean),
+                    }
+            # Legacy: calibration_bins / CalibrationBins
+            elif "calibration_bins" in arrays:
                 calibration_data = arrays["calibration_bins"]
             elif "CalibrationBins" in arrays:
                 calibration_data = arrays["CalibrationBins"]
@@ -905,25 +955,53 @@ class StreamingDuckDBExporter:
         run_dir: Path,
         config_id: int,
         con: duckdb.DuckDBPyConnection,
+        metrics_data: Optional[Dict] = None,
     ) -> Optional[Dict[str, float]]:
         """
         Extract probability distribution by outcome class.
 
         Also returns net benefit values computed from raw predictions.
+
+        Sources predictions from metrics_data['subjectwise_stats'] (preferred)
+        or falls back to dict_arrays pickle (legacy).
         """
-        # Find arrays pickle for predictions
-        arrays_path = self._find_artifact(run_dir, "dict_arrays", "*.pickle")
-        if not arrays_path:
-            return None
+        y_test = np.array([])
+        y_prob = np.array([])
+        arrays_data = None
 
-        try:
-            with open(arrays_path, "rb") as f:
-                arrays_data = pickle.load(f)
-        except Exception:
-            return None
+        # Primary source: subjectwise_stats in metrics_data
+        if metrics_data is not None:
+            subj_stats = metrics_data.get("subjectwise_stats", {})
+            test_data = subj_stats.get("test", {})
+            labels = test_data.get("labels", np.array([]))
+            preds = test_data.get("preds", {})
+            y_prob_data = preds.get("y_pred_proba", {})
+            y_prob_mean = y_prob_data.get("mean", np.array([]))
 
-        y_test = arrays_data.get("y_test", np.array([]))
-        y_prob = arrays_data.get("y_pred_proba_mean", np.array([]))
+            if hasattr(labels, "__len__") and len(labels) > 0:
+                y_test = np.asarray(labels)
+            if hasattr(y_prob_mean, "__len__") and len(y_prob_mean) > 0:
+                y_prob = np.asarray(y_prob_mean)
+
+            # Also grab uncertainty for retention/cohort metrics
+            y_prob_std = y_prob_data.get("std", None)
+            if y_prob_std is not None and hasattr(y_prob_std, "__len__"):
+                arrays_data = {"y_pred_proba_std": np.asarray(y_prob_std)}
+
+        # Fallback: dict_arrays pickle (legacy path)
+        if len(y_test) == 0 or len(y_prob) == 0:
+            arrays_path = self._find_artifact(run_dir, "dict_arrays", "*.pickle")
+            if not arrays_path:
+                return None
+
+            try:
+                with open(arrays_path, "rb") as f:
+                    arrays_data = pickle.load(f)
+            except Exception:
+                return None
+
+            y_test = arrays_data.get("y_test", np.array([]))
+            y_prob = arrays_data.get("y_pred_proba_mean", np.array([]))
 
         if len(y_test) == 0 or len(y_prob) == 0:
             del arrays_data
@@ -976,12 +1054,13 @@ class StreamingDuckDBExporter:
         self._extract_distribution_stats(y_test, y_prob, config_id, con)
 
         # Extract retention metrics (selective classification curves)
-        uncertainty = arrays_data.get("y_pred_proba_std", None)
+        uncertainty = arrays_data.get("y_pred_proba_std", None) if arrays_data else None
         if uncertainty is not None and len(uncertainty) > 0:
             self._extract_retention_metrics(y_test, y_prob, uncertainty, config_id, con)
             self._extract_cohort_metrics(y_test, y_prob, uncertainty, config_id, con)
 
-        del arrays_data
+        if arrays_data is not None:
+            del arrays_data
         gc.collect()
 
         return net_benefits

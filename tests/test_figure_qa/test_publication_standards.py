@@ -286,9 +286,9 @@ class TestMetadataPresence:
         """Each figure should have corresponding JSON data for reproducibility."""
         json_dir = project_root / "data" / "r_data"
 
-        assert (
-            json_dir.exists()
-        ), f"JSON data directory not found: {json_dir}. Run: make analyze"
+        assert json_dir.exists(), (
+            f"JSON data directory not found: {json_dir}. Run: make analyze"
+        )
 
         for fig_path in ggplot2_figures:
             # Map figure name to expected JSON

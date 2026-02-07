@@ -78,9 +78,9 @@ class TestPrevalenceConfig:
         loader = get_config_loader()
         prevalence = loader.get_prevalence()
         # Should be approximately 0.0354 (3.54%)
-        assert (
-            0.03 < prevalence < 0.04
-        ), f"Prevalence {prevalence} should be ~0.0354 per Tham 2014"
+        assert 0.03 < prevalence < 0.04, (
+            f"Prevalence {prevalence} should be ~0.0354 per Tham 2014"
+        )
 
 
 class TestHyperparamCombos:
@@ -96,9 +96,9 @@ class TestHyperparamCombos:
         """Test that there are at least 4 standard combos."""
         loader = get_config_loader()
         combos = loader.get_standard_hyperparam_combos()
-        assert (
-            len(combos) >= 4
-        ), f"Expected at least 4 standard combos, got {len(combos)}"
+        assert len(combos) >= 4, (
+            f"Expected at least 4 standard combos, got {len(combos)}"
+        )
 
     def test_standard_combos_have_required_keys(self):
         """Test that standard combos have required keys."""
@@ -109,18 +109,18 @@ class TestHyperparamCombos:
 
         for combo in combos:
             missing = required_keys - set(combo.keys())
-            assert (
-                not missing
-            ), f"Combo {combo.get('id', 'UNKNOWN')} missing keys: {missing}"
+            assert not missing, (
+                f"Combo {combo.get('id', 'UNKNOWN')} missing keys: {missing}"
+            )
 
     def test_ground_truth_combo_exists(self):
         """Test that ground_truth combo exists."""
         loader = get_config_loader()
         combos = loader.get_standard_hyperparam_combos()
         combo_ids = [c.get("id") for c in combos]
-        assert (
-            "ground_truth" in combo_ids
-        ), f"ground_truth combo should exist, found: {combo_ids}"
+        assert "ground_truth" in combo_ids, (
+            f"ground_truth combo should exist, found: {combo_ids}"
+        )
 
 
 class TestMetricCombos:

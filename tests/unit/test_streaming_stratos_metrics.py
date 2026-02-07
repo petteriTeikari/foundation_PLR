@@ -52,9 +52,9 @@ class TestStreamingSTRATOSComputation:
         # Intercept should be defined and in reasonable range
         assert result.intercept is not None
         assert np.isfinite(result.intercept)
-        assert (
-            -2.0 <= result.intercept <= 2.0
-        ), f"Intercept {result.intercept} unrealistic"
+        assert -2.0 <= result.intercept <= 2.0, (
+            f"Intercept {result.intercept} unrealistic"
+        )
 
     def test_oe_ratio_computed_from_raw(self, sample_predictions):
         """O:E ratio should be computed from y_true, y_prob."""

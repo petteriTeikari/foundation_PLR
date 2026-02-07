@@ -97,9 +97,9 @@ class TestCatBoostReproducibility:
         pred2 = model2.predict_proba(X)
 
         # Should NOT be identical
-        assert not np.allclose(
-            pred1, pred2
-        ), "Different seeds produced identical predictions - something is wrong"
+        assert not np.allclose(pred1, pred2), (
+            "Different seeds produced identical predictions - something is wrong"
+        )
 
 
 class TestXGBoostReproducibility:

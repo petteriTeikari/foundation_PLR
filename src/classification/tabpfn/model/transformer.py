@@ -56,9 +56,9 @@ class LayerStack(nn.Module):
         **kwargs: Any,
     ) -> torch.Tensor:
         if half_layers:
-            assert (
-                self.min_num_layers_layer_dropout == self.num_layers
-            ), "half_layers only works without layer dropout"
+            assert self.min_num_layers_layer_dropout == self.num_layers, (
+                "half_layers only works without layer dropout"
+            )
             n_layers = self.num_layers // 2
         else:
             n_layers = torch.randint(
@@ -688,9 +688,9 @@ class PerFeatureTransformer(nn.Module):
         use_cached_embeddings: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         if use_cached_embeddings and self.cached_embeddings is not None:
-            assert (
-                data_dags is None
-            ), "Caching embeddings is not supported with data_dags at this point."
+            assert data_dags is None, (
+                "Caching embeddings is not supported with data_dags at this point."
+            )
             x += self.cached_embeddings[None, None]
             return x, y
 
@@ -748,9 +748,9 @@ class PerFeatureTransformer(nn.Module):
 
         self.cached_embeddings = None
         if cache_embeddings and embs is not None:
-            assert (
-                data_dags is None
-            ), "Caching embeddings is not supported with data_dags at this point."
+            assert data_dags is None, (
+                "Caching embeddings is not supported with data_dags at this point."
+            )
             self.cached_embeddings = embs
 
         # TODO(old) should this go into encoder?

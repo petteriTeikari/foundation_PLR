@@ -405,9 +405,9 @@ def make_parameter_groups(
     custom_params = frozenset(
         itertools.chain.from_iterable(group["params"] for group in custom_groups)
     )
-    assert len(custom_params) == sum(
-        len(group["params"]) for group in custom_groups
-    ), "Parameters in custom_groups must not intersect"
+    assert len(custom_params) == sum(len(group["params"]) for group in custom_groups), (
+        "Parameters in custom_groups must not intersect"
+    )
     zero_wd_params = frozenset(
         p
         for mn, m in module.named_modules()

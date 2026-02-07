@@ -355,12 +355,12 @@ def compute_ensemble_anomaly_metrics(pred_masks, labels, sources):
     --------
     src.anomaly_detection.anomaly_detection_metrics_wrapper.metrics_per_split
     """
-    assert (
-        len(pred_masks["train"].shape) == 3
-    ), "The pred_masks should be a 3D numpy array"
-    assert (
-        len(pred_masks["test"].shape) == 3
-    ), "The pred_masks should be a 3D numpy array"
+    assert len(pred_masks["train"].shape) == 3, (
+        "The pred_masks should be a 3D numpy array"
+    )
+    assert len(pred_masks["test"].shape) == 3, (
+        "The pred_masks should be a 3D numpy array"
+    )
 
     metrics = {}
     for split in labels.keys():

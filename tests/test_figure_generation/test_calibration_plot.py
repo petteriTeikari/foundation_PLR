@@ -152,9 +152,9 @@ class TestCalibrationComputation:
 
         # Lower bound should be <= upper bound where both are valid
         if valid_mask.sum() > 0:
-            assert np.all(
-                y_lower[valid_mask] <= y_upper[valid_mask]
-            ), "CI lower should be <= upper (for valid values)"
+            assert np.all(y_lower[valid_mask] <= y_upper[valid_mask]), (
+                "CI lower should be <= upper (for valid values)"
+            )
 
     def test_plot_accepts_precomputed_metrics(self, well_calibrated_data):
         """Test that plot_calibration_curve accepts pre-computed metrics dict."""
@@ -187,9 +187,9 @@ class TestCalibrationComputation:
 
         # Well-calibrated predictions: LOESS should be close to diagonal
         ici = np.mean(np.abs(y_smooth - x_smooth))
-        assert (
-            ici < 0.15
-        ), f"Expected LOESS close to diagonal for well-calibrated data, got ICI={ici}"
+        assert ici < 0.15, (
+            f"Expected LOESS close to diagonal for well-calibrated data, got ICI={ici}"
+        )
 
     def test_loess_ici_is_non_negative(self, well_calibrated_data):
         """Test that ICI from LOESS is non-negative."""
@@ -279,18 +279,18 @@ class TestCalibrationPlotSTRATOSCompliance:
         content = module_path.read_text()
 
         # Check deprecated save_calibration_extended_json (not the _from_db version)
-        assert not re.search(
-            r"def save_calibration_extended_json\(", content
-        ), "Deprecated save_calibration_extended_json should be removed"
+        assert not re.search(r"def save_calibration_extended_json\(", content), (
+            "Deprecated save_calibration_extended_json should be removed"
+        )
 
         # Check deprecated save_calibration_multi_combo_json (not the _from_db version)
-        assert not re.search(
-            r"def save_calibration_multi_combo_json\(", content
-        ), "Deprecated save_calibration_multi_combo_json should be removed"
+        assert not re.search(r"def save_calibration_multi_combo_json\(", content), (
+            "Deprecated save_calibration_multi_combo_json should be removed"
+        )
 
-        assert (
-            "def compute_calibration_metrics(" not in content
-        ), "compute_calibration_metrics should be removed (use DuckDB instead)"
+        assert "def compute_calibration_metrics(" not in content, (
+            "compute_calibration_metrics should be removed (use DuckDB instead)"
+        )
 
 
 class TestCalibrationPlotProductionFigure:
@@ -303,11 +303,16 @@ class TestCalibrationPlotProductionFigure:
     )
     CALIBRATION_JSON = PROJECT_ROOT / "data" / "r_data" / "calibration_data.json"
 
+    @pytest.fixture(autouse=True)
+    def _require_production_data(self):
+        """Skip all tests in this class if production data is not available."""
+        if not self.COMBINED_FIGURE.exists():
+            pytest.skip(
+                f"Production data not found: {self.COMBINED_FIGURE}. Run: make analyze"
+            )
+
     def test_production_figure_not_blank(self):
         """Test production figure has visible content."""
-        assert (
-            self.COMBINED_FIGURE.exists()
-        ), f"Missing: {self.COMBINED_FIGURE}. Run: make analyze"
         img = Image.open(self.COMBINED_FIGURE)
         arr = np.array(img)
 
@@ -319,9 +324,10 @@ class TestCalibrationPlotProductionFigure:
 
     def test_production_json_has_calibration_curve(self):
         """Test production JSON has calibration curve data."""
-        assert (
-            self.CALIBRATION_JSON.exists()
-        ), f"Missing: {self.CALIBRATION_JSON}. Run: make analyze"
+        if not self.CALIBRATION_JSON.exists():
+            pytest.skip(
+                f"Production data not found: {self.CALIBRATION_JSON}. Run: make analyze"
+            )
         with open(self.CALIBRATION_JSON) as f:
             data = json.load(f)
 
@@ -329,7 +335,10 @@ class TestCalibrationPlotProductionFigure:
 
     def test_production_json_has_stratos_metrics(self):
         """Test production JSON includes STRATOS-required metrics."""
-        assert self.CALIBRATION_JSON.exists(), f"Missing: {self.CALIBRATION_JSON}"
+        if not self.CALIBRATION_JSON.exists():
+            pytest.skip(
+                f"Production data not found: {self.CALIBRATION_JSON}. Run: make analyze"
+            )
         with open(self.CALIBRATION_JSON) as f:
             data = json.load(f)
 
@@ -340,10 +349,13 @@ class TestCalibrationPlotProductionFigure:
 
     def test_production_json_not_synthetic(self):
         """Test production JSON is not marked as synthetic."""
-        assert self.CALIBRATION_JSON.exists(), f"Missing: {self.CALIBRATION_JSON}"
+        if not self.CALIBRATION_JSON.exists():
+            pytest.skip(
+                f"Production data not found: {self.CALIBRATION_JSON}. Run: make analyze"
+            )
         with open(self.CALIBRATION_JSON) as f:
             data = json.load(f)
 
-        assert (
-            data.get("synthetic") is not True
-        ), "CRITICAL: Production figure marked as synthetic!"
+        assert data.get("synthetic") is not True, (
+            "CRITICAL: Production figure marked as synthetic!"
+        )

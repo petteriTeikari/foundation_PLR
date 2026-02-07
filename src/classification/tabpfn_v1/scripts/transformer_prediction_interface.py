@@ -228,9 +228,9 @@ class TabPFNClassifier(BaseEstimator, ClassifierMixin):
         self.no_grad = no_grad
         self.subsample_features = subsample_features
 
-        assert (
-            self.no_preprocess_mode if not self.no_grad else True
-        ), "If no_grad is false, no_preprocess_mode must be true, because otherwise no gradient can be computed."
+        assert self.no_preprocess_mode if not self.no_grad else True, (
+            "If no_grad is false, no_preprocess_mode must be true, because otherwise no gradient can be computed."
+        )
 
         self.batch_size_inference = batch_size_inference
 

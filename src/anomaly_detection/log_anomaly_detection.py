@@ -71,9 +71,9 @@ def log_losses(best_outlier_results: dict, cfg: DictConfig, best_epoch: int):
             metric_key = f"{split}/{'loss'}"
             array = flat_arrays["losses"]
             best_loss = np.mean(array)
-            assert isinstance(
-                best_loss, float
-            ), f"best_loss is not a float: {best_loss}"
+            assert isinstance(best_loss, float), (
+                f"best_loss is not a float: {best_loss}"
+            )
             mlflow.log_metric(metric_key, best_loss)
 
         else:

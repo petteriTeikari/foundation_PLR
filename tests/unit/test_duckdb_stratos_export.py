@@ -214,9 +214,9 @@ class TestSTRATOSSchema:
                 WHERE table_name = 'metrics_per_fold' AND column_name = 'calibration_slope'
             """).fetchall()
 
-            assert (
-                len(result) == 1
-            ), "calibration_slope column must exist in metrics_per_fold"
+            assert len(result) == 1, (
+                "calibration_slope column must exist in metrics_per_fold"
+            )
 
     def test_metrics_per_fold_has_calibration_intercept(self, tmp_path):
         """Schema must include calibration_intercept column."""
@@ -229,9 +229,9 @@ class TestSTRATOSSchema:
                 WHERE table_name = 'metrics_per_fold' AND column_name = 'calibration_intercept'
             """).fetchall()
 
-            assert (
-                len(result) == 1
-            ), "calibration_intercept column must exist in metrics_per_fold"
+            assert len(result) == 1, (
+                "calibration_intercept column must exist in metrics_per_fold"
+            )
 
     def test_metrics_per_fold_has_e_o_ratio(self, tmp_path):
         """Schema must include e_o_ratio (O:E ratio) column."""
@@ -335,9 +335,9 @@ class TestSTRATOSMetricsExtraction:
             # Slope should be positive and finite (range depends on calibration)
             # Well-calibrated: 0.8-1.2, but test fixtures may produce wider range
             slopes = [r[0] for r in result]
-            assert all(
-                0.1 <= s <= 10.0 for s in slopes
-            ), f"calibration_slope values unrealistic: {slopes}"
+            assert all(0.1 <= s <= 10.0 for s in slopes), (
+                f"calibration_slope values unrealistic: {slopes}"
+            )
 
     def test_calibration_intercept_stored_correctly(
         self, sample_metrics_with_stratos, tmp_path
@@ -362,9 +362,9 @@ class TestSTRATOSMetricsExtraction:
 
             # Intercept should be small (between -1 and 1 for well-calibrated model)
             intercepts = [r[0] for r in result]
-            assert all(
-                -2.0 <= i <= 2.0 for i in intercepts
-            ), f"calibration_intercept values unrealistic: {intercepts}"
+            assert all(-2.0 <= i <= 2.0 for i in intercepts), (
+                f"calibration_intercept values unrealistic: {intercepts}"
+            )
 
     def test_e_o_ratio_stored_correctly(self, sample_metrics_with_stratos, tmp_path):
         """O:E ratio must be stored with correct interpretation."""
@@ -387,9 +387,9 @@ class TestSTRATOSMetricsExtraction:
 
             # O:E ratio should be positive (typically between 0.5 and 2.0)
             ratios = [r[0] for r in result]
-            assert all(
-                0.3 <= r <= 3.0 for r in ratios
-            ), f"e_o_ratio values unrealistic: {ratios}"
+            assert all(0.3 <= r <= 3.0 for r in ratios), (
+                f"e_o_ratio values unrealistic: {ratios}"
+            )
 
     def test_net_benefit_stored_at_multiple_thresholds(
         self, sample_metrics_with_stratos, tmp_path
@@ -419,9 +419,9 @@ class TestSTRATOSMetricsExtraction:
 
                 # Net benefit can be negative but shouldn't be extremely so
                 nbs = [r[0] for r in result]
-                assert all(
-                    -0.5 <= nb <= 1.0 for nb in nbs
-                ), f"{threshold_col} values unrealistic: {nbs}"
+                assert all(-0.5 <= nb <= 1.0 for nb in nbs), (
+                    f"{threshold_col} values unrealistic: {nbs}"
+                )
 
 
 # ============================================================================
@@ -474,9 +474,9 @@ class TestDCACurvesExport:
 
             for row in result:
                 source_name, classifier, n_thresholds = row
-                assert (
-                    n_thresholds >= 20
-                ), f"DCA curves for {source_name}/{classifier} has only {n_thresholds} thresholds (need >= 20)"
+                assert n_thresholds >= 20, (
+                    f"DCA curves for {source_name}/{classifier} has only {n_thresholds} thresholds (need >= 20)"
+                )
 
     def test_dca_curves_has_treat_all_and_treat_none(
         self, sample_dca_curves, sample_metrics_with_stratos, tmp_path
@@ -526,14 +526,14 @@ class TestDCACurvesExport:
             min_thresh, max_thresh = result
 
             # Should start at or below 5% (typical screening threshold)
-            assert (
-                min_thresh <= 0.05
-            ), f"DCA must include low thresholds (min={min_thresh:.2%}, need <= 5%)"
+            assert min_thresh <= 0.05, (
+                f"DCA must include low thresholds (min={min_thresh:.2%}, need <= 5%)"
+            )
 
             # Should extend to at least 30%
-            assert (
-                max_thresh >= 0.30
-            ), f"DCA must include high thresholds (max={max_thresh:.2%}, need >= 30%)"
+            assert max_thresh >= 0.30, (
+                f"DCA must include high thresholds (max={max_thresh:.2%}, need >= 30%)"
+            )
 
 
 # ============================================================================
@@ -610,9 +610,9 @@ class TestComputeSTRATOSFromPredictions:
         assert np.isfinite(result.slope)
 
         # Slope should be positive and finite (test fixtures may not be perfectly calibrated)
-        assert (
-            0.1 <= result.slope <= 10.0
-        ), f"Slope {result.slope} out of realistic range"
+        assert 0.1 <= result.slope <= 10.0, (
+            f"Slope {result.slope} out of realistic range"
+        )
 
     def test_e_o_ratio_computed_correctly(self, sample_predictions):
         """O:E ratio computation follows Van Calster 2024 definition."""
@@ -625,9 +625,9 @@ class TestComputeSTRATOSFromPredictions:
         expected = np.mean(y_prob)
         manual_oe = observed / expected
 
-        assert np.isclose(
-            result.o_e_ratio, manual_oe, rtol=0.01
-        ), f"O:E ratio mismatch: {result.o_e_ratio} vs manual {manual_oe}"
+        assert np.isclose(result.o_e_ratio, manual_oe, rtol=0.01), (
+            f"O:E ratio mismatch: {result.o_e_ratio} vs manual {manual_oe}"
+        )
 
     def test_net_benefit_computation(self, sample_predictions):
         """Net benefit computation follows Vickers & Elkin formula."""
@@ -699,9 +699,9 @@ class TestSTRATOSPipelineIntegration:
 
             for table, min_rows in tables_to_check:
                 count = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                assert (
-                    count >= min_rows
-                ), f"Table {table} has {count} rows, expected >= {min_rows}"
+                assert count >= min_rows, (
+                    f"Table {table} has {count} rows, expected >= {min_rows}"
+                )
 
     def test_stratos_metrics_queryable(
         self, sample_metrics_with_stratos, sample_dca_curves, tmp_path

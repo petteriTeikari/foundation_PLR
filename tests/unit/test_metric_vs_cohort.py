@@ -203,9 +203,9 @@ class TestNoComputationViolations:
         )
         content = module_path.read_text()
 
-        assert (
-            "sklearn" not in content
-        ), "CRITICAL-FAILURE-003: Found sklearn import in viz module."
+        assert "sklearn" not in content, (
+            "CRITICAL-FAILURE-003: Found sklearn import in viz module."
+        )
 
     def test_no_compute_functions(self):
         """Test that compute functions have been removed."""
@@ -223,6 +223,6 @@ class TestNoComputationViolations:
         ]
 
         for func in banned_functions:
-            assert (
-                func not in content
-            ), f"Found banned compute function '{func}' in metric_vs_cohort.py."
+            assert func not in content, (
+                f"Found banned compute function '{func}' in metric_vs_cohort.py."
+            )

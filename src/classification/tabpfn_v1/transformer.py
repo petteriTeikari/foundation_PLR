@@ -148,9 +148,9 @@ class TransformerModel(nn.Module):
                 nn.init.zeros_(attn.out_proj.bias)
 
     def forward(self, src, src_mask=None, single_eval_pos=None):
-        assert isinstance(
-            src, tuple
-        ), "inputs (src) have to be given as (x,y) or (style,x,y) tuple"
+        assert isinstance(src, tuple), (
+            "inputs (src) have to be given as (x,y) or (style,x,y) tuple"
+        )
 
         if len(src) == 2:  # (x,y) and no style
             src = (None,) + src

@@ -28,6 +28,12 @@ output/*
 # Exception: Synthetic data is safe to commit (no PII)
 !/data/synthetic/
 !/data/synthetic/**
+# Exception: Public artifacts (anonymized metrics, DuckDB). Future: DVC-tracked.
+!/data/public/
+!/data/public/**
+# Exception: R data exports (JSON for ggplot2). Future: DVC-tracked.
+!/data/r_data/
+!/data/r_data/**
 /src/catboost_info/*
 catboost_info/
 
@@ -59,7 +65,6 @@ scripts/*.duckdb
 
 # Node.js
 **/node_modules
-apps/visualization/node_modules/*
 
 # MkDocs build output — regenerate with: mkdocs build
 # This directory can safely be deleted; it will be rebuilt automatically.
@@ -119,5 +124,7 @@ figures/synthetic/
 
 # Synthetic JSON figure data (anywhere in tree)
 **/synthetic_*.json
-figures/generated/fig_decomposition_grid_TEST.png
-figures/generated/data/fig_decomposition_grid_TEST.json
+
+# Test figure outputs (generated during test runs)
+**/*_TEST.png
+**/*_TEST.json

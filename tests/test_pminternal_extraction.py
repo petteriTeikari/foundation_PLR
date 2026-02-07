@@ -44,9 +44,9 @@ class TestGroundTruthConfigExists:
         """Ground truth config (pupil-gt + pupil-gt + CatBoost + simple) exists."""
         gt_pattern = "metrics_CATBOOST*simple*pupil-gt__pupil-gt.pickle"
         gt_files = list(MLFLOW_BASE.glob(f"*/artifacts/metrics/{gt_pattern}"))
-        assert (
-            len(gt_files) >= 1
-        ), f"Ground truth pickle not found. Pattern: {gt_pattern}"
+        assert len(gt_files) >= 1, (
+            f"Ground truth pickle not found. Pattern: {gt_pattern}"
+        )
 
     def test_ground_truth_has_correct_structure(self):
         """Ground truth pickle has expected data structure."""
@@ -68,9 +68,9 @@ class TestGroundTruthConfigExists:
         assert "test" in data["metrics_iter"], "Missing 'test' split"
         assert "preds" in data["metrics_iter"]["test"], "Missing 'preds' in test"
         assert "arrays" in data["metrics_iter"]["test"]["preds"], "Missing 'arrays'"
-        assert (
-            "predictions" in data["metrics_iter"]["test"]["preds"]["arrays"]
-        ), "Missing 'predictions'"
+        assert "predictions" in data["metrics_iter"]["test"]["preds"]["arrays"], (
+            "Missing 'predictions'"
+        )
         assert (
             "y_pred_proba"
             in data["metrics_iter"]["test"]["preds"]["arrays"]["predictions"]
@@ -110,16 +110,16 @@ class TestBootstrapPredictionsShape:
     def test_predictions_shape_subjects(self, gt_predictions):
         """Predictions has expected number of subjects (test split)."""
         n_subjects = gt_predictions.shape[0]
-        assert (
-            n_subjects == EXPECTED_N_SUBJECTS_TEST
-        ), f"Expected {EXPECTED_N_SUBJECTS_TEST} subjects, got {n_subjects}"
+        assert n_subjects == EXPECTED_N_SUBJECTS_TEST, (
+            f"Expected {EXPECTED_N_SUBJECTS_TEST} subjects, got {n_subjects}"
+        )
 
     def test_predictions_shape_bootstrap(self, gt_predictions):
         """Predictions has expected number of bootstrap iterations."""
         n_bootstrap = gt_predictions.shape[1]
-        assert (
-            n_bootstrap == EXPECTED_N_BOOTSTRAP
-        ), f"Expected {EXPECTED_N_BOOTSTRAP} bootstrap iterations, got {n_bootstrap}"
+        assert n_bootstrap == EXPECTED_N_BOOTSTRAP, (
+            f"Expected {EXPECTED_N_BOOTSTRAP} bootstrap iterations, got {n_bootstrap}"
+        )
 
 
 class TestPredictionsValidRange:
@@ -147,15 +147,15 @@ class TestPredictionsValidRange:
 
     def test_predictions_min_valid(self, gt_predictions):
         """All predictions >= 0 (valid probabilities)."""
-        assert (
-            gt_predictions.min() >= 0
-        ), f"Invalid min probability: {gt_predictions.min()}"
+        assert gt_predictions.min() >= 0, (
+            f"Invalid min probability: {gt_predictions.min()}"
+        )
 
     def test_predictions_max_valid(self, gt_predictions):
         """All predictions <= 1 (valid probabilities)."""
-        assert (
-            gt_predictions.max() <= 1
-        ), f"Invalid max probability: {gt_predictions.max()}"
+        assert gt_predictions.max() <= 1, (
+            f"Invalid max probability: {gt_predictions.max()}"
+        )
 
     def test_predictions_no_nan(self, gt_predictions):
         """No NaN values in predictions."""
@@ -183,9 +183,9 @@ class TestLabelsAvailable:
             data = pickle.load(f)
 
         assert "subjectwise_stats" in data, "Missing 'subjectwise_stats'"
-        assert (
-            "test" in data["subjectwise_stats"]
-        ), "Missing 'test' in subjectwise_stats"
+        assert "test" in data["subjectwise_stats"], (
+            "Missing 'test' in subjectwise_stats"
+        )
         assert "labels" in data["subjectwise_stats"]["test"], "Missing 'labels'"
 
     def test_labels_shape_matches_predictions(self):
@@ -208,9 +208,9 @@ class TestLabelsAvailable:
         ]
         labels = data["subjectwise_stats"]["test"]["labels"]
 
-        assert (
-            len(labels) == preds.shape[0]
-        ), f"Labels length {len(labels)} != predictions subjects {preds.shape[0]}"
+        assert len(labels) == preds.shape[0], (
+            f"Labels length {len(labels)} != predictions subjects {preds.shape[0]}"
+        )
 
     def test_labels_binary(self):
         """Labels are binary (0 or 1)."""
@@ -231,6 +231,6 @@ class TestLabelsAvailable:
         labels = data["subjectwise_stats"]["test"]["labels"]
         unique_labels = np.unique(labels)
 
-        assert set(unique_labels).issubset(
-            {0, 1}
-        ), f"Non-binary labels found: {unique_labels}"
+        assert set(unique_labels).issubset({0, 1}), (
+            f"Non-binary labels found: {unique_labels}"
+        )

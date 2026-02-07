@@ -335,9 +335,9 @@ def normalize_mean(
         weights = np.nanmean(weights_array, axis=0)
 
     if samplewise:
-        assert (
-            weights.shape[0] == weights_array.shape[0]
-        ), "Sample weight shape mismatch"
+        assert weights.shape[0] == weights_array.shape[0], (
+            "Sample weight shape mismatch"
+        )
     else:
         assert len(weights) == weights_array.shape[1], "Feature weight shape mismatch"
 
@@ -440,9 +440,9 @@ def sample_weight_wrapper(
             ]
         else:
             sample_weight_eval_set = [sample_weight_eval_train, sample_weight_eval_test]
-        assert (
-            len(sample_weight) == dict_arrays["x_train_w"].shape[0]
-        ), "Sample weight shape mismatch"
+        assert len(sample_weight) == dict_arrays["x_train_w"].shape[0], (
+            "Sample weight shape mismatch"
+        )
 
     else:
         logger.debug("Skipping the use of sample weighing for XGBoost")
@@ -482,9 +482,9 @@ def feature_weight_wrapper(
             xgboost_cfg=xgboost_cfg,
             samplewise=False,
         )
-        assert (
-            len(feature_weight) == dict_arrays["x_train_w"].shape[1]
-        ), "Feature weight shape mismatch"
+        assert len(feature_weight) == dict_arrays["x_train_w"].shape[1], (
+            "Feature weight shape mismatch"
+        )
 
         return feature_weight, feature_stats
     else:

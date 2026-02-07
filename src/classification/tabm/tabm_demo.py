@@ -20,9 +20,9 @@ def get_demo_data():
 
     assert n_classes is not None
     Y = Y.astype(np.int64)
-    assert set(Y.tolist()) == set(
-        range(n_classes)
-    ), "Classification labels must form the range [0, 1, ..., n_classes - 1]"
+    assert set(Y.tolist()) == set(range(n_classes)), (
+        "Classification labels must form the range [0, 1, ..., n_classes - 1]"
+    )
 
     # >>> Split the dataset.
     all_idx = np.arange(len(Y))

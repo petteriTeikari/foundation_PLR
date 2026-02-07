@@ -323,9 +323,9 @@ def bootstrap_aggregate_by_subject_per_split(
         if metric not in metrics_per_split[main_key]["arrays"].keys():
             metrics_per_split[main_key]["arrays"][metric] = {}
         values: np.ndarray = arrays[subkey][metric]
-        assert len(values) == len(
-            codes_per_split
-        ), "Values and codes must have the same length"
+        assert len(values) == len(codes_per_split), (
+            "Values and codes must have the same length"
+        )
 
         for i, code in enumerate(codes_per_split):
             value = values[i]
@@ -478,12 +478,12 @@ def bootstrap_metrics_per_split(
     dict
         Updated metrics_per_split with new iteration's results.
     """
-    assert len(y_true) == len(
-        preds["y_pred"]
-    ), "y_true and y_pred must have the same length"
-    assert len(y_true) == len(
-        codes_per_split
-    ), "y_true and codes_per_split must have the same length"
+    assert len(y_true) == len(preds["y_pred"]), (
+        "y_true and y_pred must have the same length"
+    )
+    assert len(y_true) == len(codes_per_split), (
+        "y_true and codes_per_split must have the same length"
+    )
 
     # Get the basic metrics that you want
     metrics_dict = get_classifier_metrics(
@@ -1116,9 +1116,9 @@ def bootstrap_subject_stats_dict(
                     split, key
                 )
             )
-        assert len(labels) == len(
-            preds_per_key
-        ), "label and prediction lengths do not match"
+        assert len(labels) == len(preds_per_key), (
+            "label and prediction lengths do not match"
+        )
         uq_dict = uncertainty_wrapper_from_subject_codes(
             p_mean=dict_out["mean"], p_std=dict_out["std"], y_true=labels, split=split
         )
@@ -1314,12 +1314,12 @@ def bootstrap_compute_subject_stats(
                     )
             subject_stats[split]["subject_code"] = codes
             subject_stats[split]["labels"] = labels
-            assert len(subject_stats[split]["subject_code"]) == len(
-                preds_per_key
-            ), "Codes and predictions must have the same length"
-            assert len(subject_stats[split]["subject_code"]) == len(
-                labels
-            ), "Codes and labels must have the same length"
+            assert len(subject_stats[split]["subject_code"]) == len(preds_per_key), (
+                "Codes and predictions must have the same length"
+            )
+            assert len(subject_stats[split]["subject_code"]) == len(labels), (
+                "Codes and labels must have the same length"
+            )
 
         elif "preds" in dict_per_split.keys():
             # test split
@@ -1340,12 +1340,12 @@ def bootstrap_compute_subject_stats(
 
             subject_stats[split]["subject_code"] = codes
             subject_stats[split]["labels"] = labels
-            assert len(subject_stats[split]["subject_code"]) == len(
-                preds_per_key
-            ), "Codes and predictions must have the same length"
-            assert len(subject_stats[split]["subject_code"]) == len(
-                labels
-            ), "Codes and labels must have the same length"
+            assert len(subject_stats[split]["subject_code"]) == len(preds_per_key), (
+                "Codes and predictions must have the same length"
+            )
+            assert len(subject_stats[split]["subject_code"]) == len(labels), (
+                "Codes and labels must have the same length"
+            )
 
         else:
             logger.error(f"Where are the predictions now? {dict_per_split.keys()}")
@@ -1522,10 +1522,10 @@ def compute_uq_unks_from_dict_of_subjects(probs_dict: dict):
             for key in uq.keys():
                 uq[key] = np.vstack((uq[key], uq_code[key]))
 
-    assert uq["confidence"].shape[0] == len(
-        probs_dict
-    ), "You did not compute probs ({}) for all the subjects ({})".format(
-        uq["confidence"].shape[0], len(probs_dict)
+    assert uq["confidence"].shape[0] == len(probs_dict), (
+        "You did not compute probs ({}) for all the subjects ({})".format(
+            uq["confidence"].shape[0], len(probs_dict)
+        )
     )
 
     return uq

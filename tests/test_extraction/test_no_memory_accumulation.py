@@ -26,9 +26,9 @@ def test_no_unbounded_accumulation_patterns():
 
     # The checker exits 0 and prints "No memory accumulation patterns detected."
     # when all scripts pass
-    assert (
-        "No memory accumulation patterns detected" in result.stdout
-    ), f"Pattern checker found issues:\n{result.stdout}\n{result.stderr}"
+    assert "No memory accumulation patterns detected" in result.stdout, (
+        f"Pattern checker found issues:\n{result.stdout}\n{result.stderr}"
+    )
 
 
 def test_pattern_checker_detects_bad_patterns():
@@ -63,8 +63,8 @@ def process():
         )
 
         # Should detect the all_rows.append pattern
-        assert (
-            "all_rows" in result.stdout or "Unbounded" in result.stdout
-        ), f"Pattern checker should have detected all_rows.append:\n{result.stdout}"
+        assert "all_rows" in result.stdout or "Unbounded" in result.stdout, (
+            f"Pattern checker should have detected all_rows.append:\n{result.stdout}"
+        )
     finally:
         Path(temp_path).unlink()

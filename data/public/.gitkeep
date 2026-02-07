@@ -1,0 +1,3 @@
+# DuckDB artifacts from extraction pipeline land here.
+# Run `make extract` to populate.
+# Future: DVC-tracked, symlink from cloud storage.

@@ -136,9 +136,9 @@ def convert_subject_dict_of_arrays_to_df(
         else:
             if category_name in wildcard_categories:
                 for subkey, array in category_dict.items():
-                    assert (
-                        len(array.shape) == 1
-                    ), f"Array shape is not 1D: {array.shape}"
+                    assert len(array.shape) == 1, (
+                        f"Array shape is not 1D: {array.shape}"
+                    )
                     array = convert_object_type(
                         array
                     )  # if possible Object types, causing downstream issues

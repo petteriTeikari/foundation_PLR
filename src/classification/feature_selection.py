@@ -33,9 +33,9 @@ def xgboost_feature_selection(i, model, dict_arrays, xgboost_cfg):
     """
 
     feature_importances = model.feature_importances_
-    assert len(feature_importances) == len(
-        dict_arrays["feature_names"]
-    ), "Feature importances and feature names have different lengths"
+    assert len(feature_importances) == len(dict_arrays["feature_names"]), (
+        "Feature importances and feature names have different lengths"
+    )
     features_in = dict_arrays["feature_names"]
     no_features_in = len(features_in)
 

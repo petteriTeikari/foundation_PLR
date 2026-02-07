@@ -57,9 +57,9 @@ def get_batch_to_dataloader(get_batch_method_):
             )
 
         def __iter__(self):
-            assert hasattr(
-                self, "model"
-            ), "Please assign model with `dl.model = ...` before training."
+            assert hasattr(self, "model"), (
+                "Please assign model with `dl.model = ...` before training."
+            )
             self.epoch_count += 1
             return iter(
                 self.gbm(
@@ -142,9 +142,11 @@ def plot_prior(prior):
     plt.show()
 
 
-trunc_norm_sampler_f = lambda mu, sigma: lambda: stats.truncnorm(  # noqa: E731
-    (0 - mu) / sigma, (1000000 - mu) / sigma, loc=mu, scale=sigma
-).rvs(1)[0]
+trunc_norm_sampler_f = lambda mu, sigma: (  # noqa: E731
+    lambda: stats.truncnorm(
+        (0 - mu) / sigma, (1000000 - mu) / sigma, loc=mu, scale=sigma
+    ).rvs(1)[0]
+)
 beta_sampler_f = lambda a, b: lambda: np.random.beta(a, b)  # noqa: E731
 gamma_sampler_f = lambda a, b: lambda: np.random.gamma(a, b)  # noqa: E731
 uniform_sampler_f = lambda a, b: lambda: np.random.uniform(a, b)  # noqa: E731
@@ -158,8 +160,8 @@ def zipf_sampler_f(a, b, c):
     return lambda: stats.rv_discrete(name="bounded_zipf", values=(x, weights)).rvs(1)
 
 
-scaled_beta_sampler_f = lambda a, b, scale, minimum: lambda: minimum + round(  # noqa: E731
-    beta_sampler_f(a, b)() * (scale - minimum)
+scaled_beta_sampler_f = lambda a, b, scale, minimum: (  # noqa: E731
+    lambda: minimum + round(beta_sampler_f(a, b)() * (scale - minimum))
 )
 
 

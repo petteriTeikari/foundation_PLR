@@ -6,14 +6,12 @@ import mlflow
 
 
 def init_mlflow(tracking_uri: str, use_quickndirty_abs_check: bool = True):
-    abs_path = os.path.abspath(os.path.join(os.getcwd(), "..", "..", tracking_uri))
-    if use_quickndirty_abs_check:
-        if (
-            not abs_path
-            == "/home/petteri/Dropbox/manuscriptDrafts/foundationPLR/repo_desktop_clone/foundation_PLR/src/mlruns"
-        ):
-            abs_path = "/home/petteri/Dropbox/manuscriptDrafts/foundationPLR/repo_desktop_clone/foundation_PLR/src/mlruns"
-    assert os.path.exists(abs_path), "mlflow tracking uri does not exist"
+    # DEPRECATED: Legacy function. Prefer MLFLOW_TRACKING_URI env var.
+    abs_path = os.environ.get(
+        "MLFLOW_TRACKING_URI",
+        os.path.abspath(os.path.join(os.getcwd(), "..", "..", tracking_uri)),
+    )
+    assert os.path.exists(abs_path), f"mlflow tracking uri does not exist: {abs_path}"
     mlflow.set_tracking_uri(abs_path)
     print("Init ML | tracking_uri = {}".format(abs_path))
 

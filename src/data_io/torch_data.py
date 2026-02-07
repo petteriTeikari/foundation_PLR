@@ -229,13 +229,13 @@ def dataset_ts_cls_selector(
     if detection_type == "fine-tune" or detection_type == "full-finetune":
         X = data_dict[split]["data"]["X"]
         labels = data_dict[split]["labels"]["class_label"][:, 0]
-        assert (
-            len(np.unique(labels)) == 2
-        ), "You have != 2 classes, unique classes = {}".format(np.unique(labels))
+        assert len(np.unique(labels)) == 2, (
+            "You have != 2 classes, unique classes = {}".format(np.unique(labels))
+        )
         labels = encode_labels_to_integers(labels)
-        assert (
-            len(labels) == X.shape[0]
-        ), "Labels and X must have the same number of samples"
+        assert len(labels) == X.shape[0], (
+            "Labels and X must have the same number of samples"
+        )
     else:
         logger.error("Unknown detection type = {}".format(detection_type))
         raise ValueError("Unknown detection type = {}".format(detection_type))
@@ -397,9 +397,9 @@ def dataset_data_array_selector(
         logger.error("Unrecognized split = {}".format(split))
         raise ValueError("Unrecognized split = {}".format(split))
 
-    assert (
-        X.shape[0] == mask.shape[0]
-    ), "X and mask must have the same number of samples"
+    assert X.shape[0] == mask.shape[0], (
+        "X and mask must have the same number of samples"
+    )
 
     return X, mask
 

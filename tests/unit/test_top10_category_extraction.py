@@ -28,7 +28,8 @@ class TestDatabaseIntegration:
     def db_path(self):
         """Get path to STRATOS database."""
         db = PROJECT_ROOT / "data" / "public" / "foundation_plr_results_stratos.db"
-        assert db.exists(), f"STRATOS DB missing: {db}. Run: make extract"
+        if not db.exists():
+            pytest.skip(f"STRATOS DB missing: {db}. Run: make extract")
         return db
 
     def test_ground_truth_category_has_configs(self, db_path):

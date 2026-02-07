@@ -89,9 +89,9 @@ def apply_PCA_for_embedding(embeddings: dict, pca_config: DictConfig) -> dict:
     # print(np.cumsum(pca.explained_variance_ratio_))
     train_pcs = pca.transform(train_df_scaled)
     test_pcs = pca.transform(test_df_scaled)
-    assert (
-        train_pcs.shape[1] == test_pcs.shape[1]
-    ), "number of features (PCs) does not match"
+    assert train_pcs.shape[1] == test_pcs.shape[1], (
+        "number of features (PCs) does not match"
+    )
 
     logger.info(
         f"PCA kept {train_pcs.shape[1]} components with explained variance"
@@ -360,9 +360,9 @@ def umap_wrapper(embeddings: dict, dim_cfg: DictConfig, source_name: str) -> dic
         df=embeddings["train"]
     )
     test_df, test_labels, test_df_out = get_feature_embedding_df(df=embeddings["test"])
-    assert (
-        train_df.shape[1] == test_df.shape[1]
-    ), "Number of features do not match between test and train"
+    assert train_df.shape[1] == test_df.shape[1], (
+        "Number of features do not match between test and train"
+    )
 
     # unsupervised baseline
     # https://umap-learn.readthedocs.io/en/latest/supervised.html#umap-on-fashion-mnist

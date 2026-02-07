@@ -442,7 +442,8 @@ class TestDuckDBHasPrecomputedData:
                 db_path = p
                 break
 
-        assert db_path is not None, "DuckDB not found. Run: make extract"
+        if db_path is None:
+            pytest.skip("DuckDB not found. Run: make extract")
 
         import duckdb
 
@@ -505,7 +506,8 @@ class TestDuckDBHasCurveTables:
                 db_path = p
                 break
 
-        assert db_path is not None, "DuckDB not found. Run: make extract"
+        if db_path is None:
+            pytest.skip("DuckDB not found. Run: make extract")
 
         import duckdb
 

@@ -147,21 +147,21 @@ def filter_imputation_df_for_orig(
     AssertionError
         If DataFrame row count is not a multiple of PLR_length at any stage.
     """
-    assert (
-        df.shape[0] % cfg["DATA"]["PLR_length"] == 0
-    ), "Dataframe should have multiples of PLR recording length"
+    assert df.shape[0] % cfg["DATA"]["PLR_length"] == 0, (
+        "Dataframe should have multiples of PLR recording length"
+    )
     df = df.filter(pl.col("model") == model_name)
-    assert (
-        df.shape[0] % cfg["DATA"]["PLR_length"] == 0
-    ), "Dataframe should have multiples of PLR recording length"
+    assert df.shape[0] % cfg["DATA"]["PLR_length"] == 0, (
+        "Dataframe should have multiples of PLR recording length"
+    )
     df = df.filter(pl.col("split_key") == split_key)
-    assert (
-        df.shape[0] % cfg["DATA"]["PLR_length"] == 0
-    ), "Dataframe should have multiples of PLR recording length"
+    assert df.shape[0] % cfg["DATA"]["PLR_length"] == 0, (
+        "Dataframe should have multiples of PLR recording length"
+    )
     df = df.filter(pl.col("split") == split)
-    assert (
-        df.shape[0] % cfg["DATA"]["PLR_length"] == 0
-    ), "Dataframe should have multiples of PLR recording length"
+    assert df.shape[0] % cfg["DATA"]["PLR_length"] == 0, (
+        "Dataframe should have multiples of PLR recording length"
+    )
     return df
 
 
@@ -235,23 +235,23 @@ def compute_stats_for_shaded_lineseries(
             )
 
     def stats_per_column(y_col, error_cols, df):
-        assert (
-            df.shape[0] % cfg["DATA"]["PLR_length"] == 0
-        ), "Dataframe should have multiples of PLR recording length"
+        assert df.shape[0] % cfg["DATA"]["PLR_length"] == 0, (
+            "Dataframe should have multiples of PLR recording length"
+        )
         # Go to wide (spreadsheet) format
         check_pre_stats(df)
         df_wide = df.pivot(
             on="subject_code", index=stats_on_col, values=y_col
         )  # same as "melt" in pandas/ggplo2 in R
         time_vec = df_wide[stats_on_col].to_numpy()
-        assert (
-            time_vec.shape[0] == cfg["DATA"]["PLR_length"]
-        ), f"Expected {cfg['DATA']['PLR_length']} rows, got {time_vec.shape[0]} rows"
+        assert time_vec.shape[0] == cfg["DATA"]["PLR_length"], (
+            f"Expected {cfg['DATA']['PLR_length']} rows, got {time_vec.shape[0]} rows"
+        )
         df_wide = df_wide.drop(stats_on_col)  # drop the time column
         no_unique_subjects = df_wide.shape[1]  # time is the first column
-        assert (
-            df_wide.shape[0] == cfg["DATA"]["PLR_length"]
-        ), f"Expected {cfg['DATA']['PLR_length']} rows, got {df_wide.shape[0]} rows"
+        assert df_wide.shape[0] == cfg["DATA"]["PLR_length"], (
+            f"Expected {cfg['DATA']['PLR_length']} rows, got {df_wide.shape[0]} rows"
+        )
 
         # Numpy stats
         numpy_array = df_wide.to_numpy()

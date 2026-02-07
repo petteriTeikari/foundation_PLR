@@ -347,6 +347,6 @@ class TestEffectSizeCICoverage:
         coverage = coverage_count / n_simulations
         # Allow some tolerance (Monte Carlo variance)
         # 95% CI coverage should be between 85% and 100% for 100 sims
-        assert (
-            0.80 <= coverage <= 1.0
-        ), f"Coverage {coverage:.2f} outside expected range"
+        assert 0.80 <= coverage <= 1.0, (
+            f"Coverage {coverage:.2f} outside expected range"
+        )

@@ -267,6 +267,6 @@ def temp_duckdb_path(temp_artifacts_dir):
 @pytest.fixture
 def skip_if_no_demo_data(demo_data_available, demo_data_path):
     """Fail if demo data is not available."""
-    assert (
-        demo_data_available
-    ), f"Demo data missing: {demo_data_path}. Run: make synthetic"
+    assert demo_data_available, (
+        f"Demo data missing: {demo_data_path}. Run: make synthetic"
+    )

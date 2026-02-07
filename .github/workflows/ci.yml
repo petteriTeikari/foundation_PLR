@@ -1,0 +1,195 @@
+# Unified CI workflow — lint, test, quality gates
+#
+# Replaces old ci.yml + tests.yml with:
+#   - Tier 0: Lint (ruff, no project deps)
+#   - Tier 1: Fast tests (unit + guardrail, parallel with xdist)
+#   - Quality gates (registry, decoupling, parallel systems)
+#   - Tier 3: Integration tests (after Tier 1)
+#   - R lint (syntax check)
+#
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore: ['*.md', 'docs/**', '.claude/**']
+  workflow_dispatch:
+    inputs:
+      test_filter:
+        description: 'Pytest path/filter (e.g., "tests/test_guardrails/" or "-k test_name"). Empty = run all.'
+        required: false
+        default: ''
+        type: string
+      skip_integration:
+        description: 'Skip integration tests (saves ~5 min)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  MPLBACKEND: Agg
+
+jobs:
+  # ===========================================================================
+  # Change detection — skip expensive jobs when only docs/configs changed
+  # ===========================================================================
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      tests: ${{ steps.filter.outputs.tests }}
+      configs: ${{ steps.filter.outputs.configs }}
+      r: ${{ steps.filter.outputs.r }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            python:
+              - 'src/**/*.py'
+              - 'pyproject.toml'
+              - 'uv.lock'
+            tests:
+              - 'tests/**'
+            configs:
+              - 'configs/**'
+            r:
+              - 'src/r/**'
+
+  # ===========================================================================
+  # Tier 0: Lint (~30s, no project deps)
+  # ===========================================================================
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --dev --frozen
+      # Uses ruff version from uv.lock (single source of truth)
+      - run: uv run ruff check src/ tests/ scripts/
+      - run: uv run ruff format --check src/ tests/ scripts/
+
+  # ===========================================================================
+  # Tier 1: Fast tests — unit + guardrail (~2-3 min with cache)
+  # ===========================================================================
+  test-fast:
+    name: Tier 1 Tests
+    needs: detect-changes
+    if: needs.detect-changes.outputs.python == 'true' || needs.detect-changes.outputs.tests == 'true' || needs.detect-changes.outputs.configs == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --dev --frozen
+
+      - name: Run Tier 1 tests (parallel)
+        run: |
+          if [ -n "${{ inputs.test_filter }}" ]; then
+            echo "Running filtered tests: ${{ inputs.test_filter }}"
+            PREFECT_DISABLED=1 uv run python -m pytest ${{ inputs.test_filter }} \
+              --ignore=tests/test_docker_r.py --ignore=tests/test_docker_full.py \
+              -v --tb=short --junitxml=results.xml
+          else
+            PREFECT_DISABLED=1 uv run python -m pytest tests/ \
+              -m "unit or guardrail" \
+              --ignore=tests/test_docker_r.py --ignore=tests/test_docker_full.py \
+              -n auto -v --tb=short --junitxml=results.xml
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-tier1
+          path: results.xml
+
+  # ===========================================================================
+  # Quality gates (parallel with Tier 1)
+  # ===========================================================================
+  quality-gates:
+    name: Quality Gates
+    needs: detect-changes
+    if: needs.detect-changes.outputs.python == 'true' || needs.detect-changes.outputs.configs == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - run: uv python install ${{ env.PYTHON_VERSION }} && uv sync --dev --frozen
+
+      - name: Registry validation
+        run: uv run python scripts/validation/verify_registry_integrity.py
+
+      - name: Computation decoupling check
+        run: uv run python scripts/validation/check_computation_decoupling.py
+
+      - name: Parallel systems check
+        run: uv run python scripts/validation/check_parallel_systems.py
+
+  # ===========================================================================
+  # Tier 3: Integration tests (after Tier 1 passes)
+  # ===========================================================================
+  test-integration:
+    name: Integration Tests
+    needs: [detect-changes, test-fast]
+    if: (needs.detect-changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch') && inputs.skip_integration != true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - run: uv python install ${{ env.PYTHON_VERSION }} && uv sync --dev --frozen
+
+      - name: Run integration + e2e tests
+        run: |
+          PREFECT_DISABLED=1 uv run python -m pytest tests/ \
+            -m "integration or e2e" \
+            --ignore=tests/test_docker_r.py --ignore=tests/test_docker_full.py \
+            -n auto -v --tb=short
+
+  # ===========================================================================
+  # R lint (parallel, lightweight)
+  # ===========================================================================
+  r-lint:
+    name: R Lint
+    needs: detect-changes
+    if: needs.detect-changes.outputs.r == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+
+      - name: Check R script syntax
+        run: |
+          for f in src/r/figures/*.R; do
+            echo "Checking: $f"
+            Rscript -e "parse('$f')" || exit 1
+          done
+          echo "All R scripts parse successfully"

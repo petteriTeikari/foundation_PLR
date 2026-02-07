@@ -416,9 +416,9 @@ class TestNoComputationViolations:
         )
         content = module_path.read_text()
 
-        assert (
-            "def main(" not in content
-        ), "main() function with mock data generation should be removed."
+        assert "def main(" not in content, (
+            "main() function with mock data generation should be removed."
+        )
         assert "__main__" not in content, "__main__ block should be removed."
 
     def test_no_hardcoded_hex_colors(self):

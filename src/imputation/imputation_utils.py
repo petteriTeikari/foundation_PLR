@@ -207,24 +207,24 @@ def create_subjects_df(subplot_dict: dict, data_df: pl.DataFrame, cfg: DictConfi
     for idx in range(no_subjects):
         df_subject = pl.DataFrame()
         df_subject = add_ts_cols(subplot_dict, df_subject, idx, no_timepoints)
-        assert (
-            df_subject.shape[0] == no_timepoints
-        ), f"df_subject: {df_subject.shape[0]} time points for {idx}th subject "
+        assert df_subject.shape[0] == no_timepoints, (
+            f"df_subject: {df_subject.shape[0]} time points for {idx}th subject "
+        )
         subject_code = subplot_dict["metadata"]["metadata_df"]["subject_code"][idx]
         data_subject = get_subject_datadf(data_df, subject_code, no_timepoints)
         df_subject = pl.concat([df_subject, data_subject], how="horizontal")
-        assert (
-            df_subject.shape[0] == no_timepoints
-        ), f"{df_subject.shape[0]} time points for {idx} subject "
+        assert df_subject.shape[0] == no_timepoints, (
+            f"{df_subject.shape[0]} time points for {idx} subject "
+        )
         df_out = pandas_concat(df1=df_out, df2=df_subject)
-        assert (
-            df_out.shape[0] == (idx + 1) * no_timepoints
-        ), f"df_out: {df_out.shape[0]} time points for {idx} subject "
+        assert df_out.shape[0] == (idx + 1) * no_timepoints, (
+            f"df_out: {df_out.shape[0]} time points for {idx} subject "
+        )
         # The column lengths in the DataFrame are not equal.
 
-    assert (
-        df_out.shape[0] == no_subjects * no_timepoints
-    ), "The number of rows in the output DataFrame is not correct"
+    assert df_out.shape[0] == no_subjects * no_timepoints, (
+        "The number of rows in the output DataFrame is not correct"
+    )
 
     return df_out, {"no_subjects": no_subjects, "no_timepoints": no_timepoints}
 
@@ -253,9 +253,9 @@ def get_subject_datadf(data_df: pl.DataFrame, subject_code: str, no_timepoints: 
     """
     # Pick the time series from Polars DataFrame matching the subject code
     data_subject = data_df.filter(data_df["subject_code"] == subject_code)
-    assert (
-        data_subject.shape[0] == no_timepoints
-    ), f"data_subject: {data_subject.shape[0]} time points for {subject_code} subject "
+    assert data_subject.shape[0] == no_timepoints, (
+        f"data_subject: {data_subject.shape[0]} time points for {subject_code} subject "
+    )
     # Polars->Pandas->Polars to maybe catch the "The column lengths in the DataFrame are not equal."
     return pl.from_pandas(data_subject.to_pandas())
 
@@ -300,9 +300,9 @@ def add_ts_cols(
         if subplot_dict["data"][ts_key] is not None:
             # add the array to Polars DataFrame
             array_tmp = subplot_dict["data"][ts_key][idx, :, :].flatten()
-            assert (
-                len(array_tmp) == no_timepoints
-            ), f"array tmp: {len(array_tmp)} time points for {idx} subject "
+            assert len(array_tmp) == no_timepoints, (
+                f"array tmp: {len(array_tmp)} time points for {idx} subject "
+            )
             if add_as_list:
                 # some weird Polars glitch after Numpy 1.25.2 downgrade, getting
                 # "The column lengths in the DataFrame are not equal." Maybe list is better?
@@ -312,9 +312,9 @@ def add_ts_cols(
                 df_out = df_out.with_columns(pl.lit(array_tmp).alias(ts_key))
         else:
             df_out = df_out.with_columns(pl.lit(None).alias(ts_key))
-    assert (
-        df_out.shape[0] == no_timepoints
-    ), f"df_out: {df_out.shape[0]} time points for {idx} subject "
+    assert df_out.shape[0] == no_timepoints, (
+        f"df_out: {df_out.shape[0]} time points for {idx} subject "
+    )
 
     return df_out
 

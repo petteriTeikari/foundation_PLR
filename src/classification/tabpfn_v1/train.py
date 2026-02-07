@@ -181,9 +181,9 @@ def train(
         nan_steps = 0
         ignore_steps = 0
         before_get_batch = time.time()
-        assert (
-            len(dl) % aggregate_k_gradients == 0
-        ), "Please set the number of steps per epoch s.t. `aggregate_k_gradients` divides it."
+        assert len(dl) % aggregate_k_gradients == 0, (
+            "Please set the number of steps per epoch s.t. `aggregate_k_gradients` divides it."
+        )
         for batch, (data, targets, single_eval_pos) in enumerate(dl):
             if using_dist and not (
                 batch % aggregate_k_gradients == aggregate_k_gradients - 1
@@ -217,9 +217,9 @@ def train(
                     if single_eval_pos is not None:
                         targets = targets[single_eval_pos:]
                     if isinstance(criterion, nn.GaussianNLLLoss):
-                        assert (
-                            output.shape[-1] == 2
-                        ), "need to write a little bit of code to handle multiple regression targets at once"
+                        assert output.shape[-1] == 2, (
+                            "need to write a little bit of code to handle multiple regression targets at once"
+                        )
 
                         mean_pred = output[..., 0]
                         var_pred = output[..., 1].abs()

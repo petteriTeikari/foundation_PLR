@@ -1,0 +1,3 @@
+# JSON exports for R/ggplot2 visualization.
+# Run `make analyze` to populate.
+# Future: DVC-tracked, symlink from cloud storage.

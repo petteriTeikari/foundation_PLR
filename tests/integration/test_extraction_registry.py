@@ -30,7 +30,8 @@ pytestmark = pytest.mark.data
 @pytest.fixture
 def exported_df():
     """Load the exported CSV (filtered data used by R figures)."""
-    assert CSV_PATH.exists(), f"CSV not found: {CSV_PATH}. Run: make analyze"
+    if not CSV_PATH.exists():
+        pytest.skip(f"CSV not found: {CSV_PATH}. Run: make analyze")
     return pd.read_csv(CSV_PATH)
 
 
@@ -39,7 +40,8 @@ def db_connection():
     """Connect to extraction database."""
     import duckdb
 
-    assert DB_PATH.exists(), f"Database not found: {DB_PATH}. Run: make extract"
+    if not DB_PATH.exists():
+        pytest.skip(f"Database not found: {DB_PATH}. Run: make extract")
     conn = duckdb.connect(str(DB_PATH), read_only=True)
     yield conn
     conn.close()
@@ -74,21 +76,21 @@ class TestExportedDataUsesRegistry:
         """Exported data should have exactly the registry-defined outlier methods."""
         count = exported_df["outlier_method"].nunique()
 
-        assert (
-            count == EXPECTED_OUTLIER_COUNT
-        ), f"Exported {count} outlier methods, registry defines {EXPECTED_OUTLIER_COUNT}."
+        assert count == EXPECTED_OUTLIER_COUNT, (
+            f"Exported {count} outlier methods, registry defines {EXPECTED_OUTLIER_COUNT}."
+        )
 
     def test_no_anomaly_method(self, exported_df):
         """'anomaly' is garbage and must NEVER appear."""
-        assert (
-            "anomaly" not in exported_df["outlier_method"].values
-        ), "'anomaly' found in export - this is INVALID!"
+        assert "anomaly" not in exported_df["outlier_method"].values, (
+            "'anomaly' found in export - this is INVALID!"
+        )
 
     def test_no_exclude_method(self, exported_df):
         """'exclude' is garbage and must NEVER appear."""
-        assert (
-            "exclude" not in exported_df["outlier_method"].values
-        ), "'exclude' found in export - this is INVALID!"
+        assert "exclude" not in exported_df["outlier_method"].values, (
+            "'exclude' found in export - this is INVALID!"
+        )
 
     def test_no_orig_variant_methods(self, exported_df):
         """'-orig-' variant methods are not in the registry."""
@@ -141,14 +143,14 @@ class TestClassifierValidation:
         valid_classifiers = {c.upper() for c in get_valid_classifiers()}
 
         invalid = extracted_classifiers - valid_classifiers
-        assert (
-            not invalid
-        ), f"Exported INVALID classifiers: {invalid}. These are not in the registry."
+        assert not invalid, (
+            f"Exported INVALID classifiers: {invalid}. These are not in the registry."
+        )
 
     def test_classifier_count_not_exceeds_registry(self, exported_df):
         """Cannot have more classifiers than registry defines."""
         count = exported_df["classifier"].nunique()
 
-        assert (
-            count <= EXPECTED_CLASSIFIER_COUNT
-        ), f"Exported {count} classifiers, registry defines {EXPECTED_CLASSIFIER_COUNT}."
+        assert count <= EXPECTED_CLASSIFIER_COUNT, (
+            f"Exported {count} classifiers, registry defines {EXPECTED_CLASSIFIER_COUNT}."
+        )

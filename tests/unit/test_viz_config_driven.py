@@ -70,9 +70,9 @@ class TestNoHardcodedMethodNames:
         source = source_path.read_text()
 
         # The config loader import should exist
-        assert (
-            "from src.viz.config_loader import" in source
-        ), "plot_config.py should import from src.viz.config_loader"
+        assert "from src.viz.config_loader import" in source, (
+            "plot_config.py should import from src.viz.config_loader"
+        )
 
 
 # ============================================================================
@@ -104,15 +104,19 @@ class TestConfigFunctionsAvailable:
         """KEY_STATS should have all required performance statistics."""
         from src.viz.plot_config import KEY_STATS
 
-        required_keys = [
-            "handcrafted_mean_auroc",
-            "embeddings_mean_auroc",
-            "benchmark_auroc",
-            "ground_truth_auroc",
-        ]
+        # Keys that require production data (data/r_data/featurization_comparison.json)
+        production_keys = ["handcrafted_mean_auroc", "embeddings_mean_auroc"]
+        # Keys available from committed config files
+        config_keys = ["benchmark_auroc", "ground_truth_auroc"]
 
-        for key in required_keys:
+        for key in config_keys:
             assert key in KEY_STATS, f"KEY_STATS missing required key: {key}"
+
+        # Production keys only checked when data exists
+        r_data = Path(__file__).parent.parent.parent / "data" / "r_data"
+        if (r_data / "featurization_comparison.json").exists():
+            for key in production_keys:
+                assert key in KEY_STATS, f"KEY_STATS missing required key: {key}"
 
     def test_colors_has_semantic_keys(self):
         """COLORS should have semantic color keys."""

@@ -260,9 +260,11 @@ def evaluate(
 
             if not return_tensor:
                 make_scalar = (  # noqa E731
-                    lambda x: float(x.detach().cpu().numpy())
-                    if (torch.is_tensor(x) and (len(x.shape) == 0))
-                    else x
+                    lambda x: (
+                        float(x.detach().cpu().numpy())
+                        if (torch.is_tensor(x) and (len(x.shape) == 0))
+                        else x
+                    )
                 )
                 new_metric = make_scalar(new_metric)
                 ds_result = {k: make_scalar(ds_result[k]) for k in ds_result.keys()}

@@ -117,34 +117,34 @@ class TestConfigSchema:
     def test_config_has_n_patients(self, ground_truth_config):
         """Config has n_patients field."""
         assert "n_patients" in ground_truth_config, "Missing 'n_patients'"
-        assert (
-            ground_truth_config["n_patients"] == EXPECTED_N_PATIENTS
-        ), f"Expected {EXPECTED_N_PATIENTS} patients"
+        assert ground_truth_config["n_patients"] == EXPECTED_N_PATIENTS, (
+            f"Expected {EXPECTED_N_PATIENTS} patients"
+        )
 
     def test_config_has_n_bootstrap(self, ground_truth_config):
         """Config has n_bootstrap field."""
         assert "n_bootstrap" in ground_truth_config, "Missing 'n_bootstrap'"
-        assert (
-            ground_truth_config["n_bootstrap"] == EXPECTED_N_BOOTSTRAP
-        ), f"Expected {EXPECTED_N_BOOTSTRAP} bootstrap iterations"
+        assert ground_truth_config["n_bootstrap"] == EXPECTED_N_BOOTSTRAP, (
+            f"Expected {EXPECTED_N_BOOTSTRAP} bootstrap iterations"
+        )
 
     def test_config_has_y_true(self, ground_truth_config):
         """Config has y_true (ground truth labels)."""
         assert "y_true" in ground_truth_config, "Missing 'y_true'"
         assert isinstance(ground_truth_config["y_true"], list), "y_true should be list"
-        assert (
-            len(ground_truth_config["y_true"]) == EXPECTED_N_PATIENTS
-        ), f"y_true length should be {EXPECTED_N_PATIENTS}"
+        assert len(ground_truth_config["y_true"]) == EXPECTED_N_PATIENTS, (
+            f"y_true length should be {EXPECTED_N_PATIENTS}"
+        )
 
     def test_config_has_y_prob_original(self, ground_truth_config):
         """Config has y_prob_original (mean predictions from developed model)."""
         assert "y_prob_original" in ground_truth_config, "Missing 'y_prob_original'"
-        assert isinstance(
-            ground_truth_config["y_prob_original"], list
-        ), "y_prob_original should be list"
-        assert (
-            len(ground_truth_config["y_prob_original"]) == EXPECTED_N_PATIENTS
-        ), f"y_prob_original length should be {EXPECTED_N_PATIENTS}"
+        assert isinstance(ground_truth_config["y_prob_original"], list), (
+            "y_prob_original should be list"
+        )
+        assert len(ground_truth_config["y_prob_original"]) == EXPECTED_N_PATIENTS, (
+            f"y_prob_original length should be {EXPECTED_N_PATIENTS}"
+        )
 
     def test_config_has_y_prob_bootstrap(self, ground_truth_config):
         """Config has y_prob_bootstrap (bootstrap predictions matrix)."""
@@ -196,9 +196,9 @@ class TestJSONDimensionsConsistent:
         y_boot = ground_truth_config["y_prob_bootstrap"]
         lengths = [len(row) for row in y_boot]
         unique_lengths = set(lengths)
-        assert (
-            len(unique_lengths) == 1
-        ), f"Inconsistent row lengths in y_prob_bootstrap: {unique_lengths}"
+        assert len(unique_lengths) == 1, (
+            f"Inconsistent row lengths in y_prob_bootstrap: {unique_lengths}"
+        )
 
 
 class TestPredictionValuesValid:
@@ -221,17 +221,17 @@ class TestPredictionValuesValid:
     def test_y_prob_original_valid_range(self, ground_truth_config):
         """y_prob_original values are valid probabilities [0, 1]."""
         y_orig = ground_truth_config["y_prob_original"]
-        assert all(
-            0 <= p <= 1 for p in y_orig
-        ), "y_prob_original contains values outside [0, 1]"
+        assert all(0 <= p <= 1 for p in y_orig), (
+            "y_prob_original contains values outside [0, 1]"
+        )
 
     def test_y_prob_bootstrap_valid_range(self, ground_truth_config):
         """y_prob_bootstrap values are valid probabilities [0, 1]."""
         y_boot = ground_truth_config["y_prob_bootstrap"]
         for i, row in enumerate(y_boot[:10]):  # Check first 10 rows for speed
-            assert all(
-                0 <= p <= 1 for p in row
-            ), f"y_prob_bootstrap row {i} contains values outside [0, 1]"
+            assert all(0 <= p <= 1 for p in row), (
+                f"y_prob_bootstrap row {i} contains values outside [0, 1]"
+            )
 
     def test_y_true_binary(self, ground_truth_config):
         """y_true values are binary (0 or 1)."""

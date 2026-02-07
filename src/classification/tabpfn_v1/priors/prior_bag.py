@@ -16,9 +16,9 @@ def get_batch(
 ):
     batch_size_per_gp_sample = batch_size_per_gp_sample or (min(64, batch_size))
     num_models = batch_size // batch_size_per_gp_sample
-    assert (
-        num_models * batch_size_per_gp_sample == batch_size
-    ), f"Batch size ({batch_size}) not divisible by batch_size_per_gp_sample ({batch_size_per_gp_sample})"
+    assert num_models * batch_size_per_gp_sample == batch_size, (
+        f"Batch size ({batch_size}) not divisible by batch_size_per_gp_sample ({batch_size_per_gp_sample})"
+    )
 
     args = {
         "device": device,

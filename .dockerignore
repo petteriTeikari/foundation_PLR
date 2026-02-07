@@ -4,7 +4,6 @@
 
 # Git
 .git
-.gitignore
 
 # Python virtual environment
 .venv/
@@ -62,10 +61,12 @@ data/private/
 **/subject_lookup.json
 **/*_lookup_table.*
 
-# Large data files
+# Large data files (except public artifacts needed for tests)
 *.db
+!data/public/*.db
 *.sqlite
 *.duckdb
+!data/public/*.duckdb
 data/*.csv
 data/*.xlsx
 

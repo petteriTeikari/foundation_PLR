@@ -390,13 +390,13 @@ def check_metrics_iter_preds_dict(
     # (no_subjects, no_of_bootstrap_iters)
     if "labels" in dict_arrays:
         # TODO! why with CATBOOST? fix this eventually so that only one key
-        assert (
-            len(dict_arrays["y_pred_proba"]) == len(dict_arrays["labels"])
-        ), f"you have {len(dict_arrays['y_pred_proba'])} y_pred_proba and {len(dict_arrays['labels'])} labels"
+        assert len(dict_arrays["y_pred_proba"]) == len(dict_arrays["labels"]), (
+            f"you have {len(dict_arrays['y_pred_proba'])} y_pred_proba and {len(dict_arrays['labels'])} labels"
+        )
     elif "label" in dict_arrays:
-        assert (
-            len(dict_arrays["y_pred_proba"]) == len(dict_arrays["label"])
-        ), f"you have {len(dict_arrays['y_pred_proba'])} y_pred_proba and {len(dict_arrays['label'])} labels"
+        assert len(dict_arrays["y_pred_proba"]) == len(dict_arrays["label"]), (
+            f"you have {len(dict_arrays['y_pred_proba'])} y_pred_proba and {len(dict_arrays['label'])} labels"
+        )
     assert len(dict_arrays["y_pred_proba"]) == len(dict_arrays["y_pred"])
 
 
@@ -418,14 +418,14 @@ def check_metrics_iter_preds(dict_arrays: dict[str, np.ndarray]) -> None:
     """
     # (no_subjects, no_of_bootstrap_iters)
     if "label" in dict_arrays:
-        assert (
-            dict_arrays["y_pred_proba"].shape[0] == dict_arrays["label"].shape[0]
-        ), f"you have {dict_arrays['y_pred_proba'].shape[0]} y_pred_proba and {dict_arrays['label'].shape[0]} labels"
+        assert dict_arrays["y_pred_proba"].shape[0] == dict_arrays["label"].shape[0], (
+            f"you have {dict_arrays['y_pred_proba'].shape[0]} y_pred_proba and {dict_arrays['label'].shape[0]} labels"
+        )
     elif "labels" in dict_arrays:
         # TODO! why with CATBOOST? fix this eventually so that only one key
-        assert (
-            dict_arrays["y_pred_proba"].shape[0] == dict_arrays["labels"].shape[0]
-        ), f"you have {dict_arrays['y_pred_proba'].shape[0]} y_pred_proba and {dict_arrays['labels'].shape[0]} labels"
+        assert dict_arrays["y_pred_proba"].shape[0] == dict_arrays["labels"].shape[0], (
+            f"you have {dict_arrays['y_pred_proba'].shape[0]} y_pred_proba and {dict_arrays['labels'].shape[0]} labels"
+        )
     assert dict_arrays["y_pred_proba"].shape[0] == dict_arrays["y_pred"].shape[0]
 
 
@@ -485,9 +485,9 @@ def check_subjects_in_splits(
                 raise ValueError("Where are the preds?")
 
         if "val" in subjects:
-            assert (
-                subjects["train"] == subjects["val"]
-            ), "Your train and val codes do not match?"
+            assert subjects["train"] == subjects["val"], (
+                "Your train and val codes do not match?"
+            )
 
         return subjects
     else:
