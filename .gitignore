@@ -125,6 +125,8 @@ figures/synthetic/
 
 # Synthetic JSON figure data (anywhere in tree)
 **/synthetic_*.json
-figures/generated/fig_decomposition_grid_TEST.png
-figures/generated/data/fig_decomposition_grid_TEST.json
+
+# Test figure outputs (generated during test runs)
+**/*_TEST.png
+**/*_TEST.json
 apps/visualization/node_modules/*
