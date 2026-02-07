@@ -1,0 +1,30 @@
+/* Foundation PLR Documentation - Custom Styles */
+
+/* Admonition customization for research context */
+.md-typeset .admonition.note {
+  border-color: #448aff;
+}
+
+.md-typeset .admonition.warning {
+  border-color: #ff9100;
+}
+
+/* Code block improvements */
+.md-typeset pre > code {
+  font-size: 0.85em;
+}
+
+/* Table improvements */
+.md-typeset table:not([class]) {
+  font-size: 0.85em;
+}
+
+/* API reference styling */
+.doc-heading {
+  font-weight: 600;
+}
+
+/* Mermaid diagram centering */
+.mermaid {
+  text-align: center;
+}
