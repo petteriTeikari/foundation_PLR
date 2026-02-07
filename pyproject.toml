@@ -8,6 +8,8 @@ dependencies = [
     "catboost>=1.2.7",
     "duckdb-engine>=0.13.4",
     "duckdb>=1.1.2",
+    "emd>=0.8.1",
+    "emd-signal>=1.9.0",
     "fastexcel>=0.12.0",
     "gdown>=5.2.0",
     "hurst>=0.0.5",
@@ -28,6 +30,7 @@ dependencies = [
     "prefect>=3.0.11",
     "prophet>=1.1.6",
     "psutil>=6.1.0",
+    "pyemd>=1.1.0",
     "pynvml>=11.5.3",
     "pypots>=0.8.1",
     "pytest>=8.3.3",
@@ -43,4 +46,87 @@ dependencies = [
     "tqdm>=4.66.5",
     "umap-learn>=0.5.7",
     "xgboost>=2.1.2",
+    "factor-analyzer>=0.5.1",
+    "pysindy>=1.7.5",
+    "pydmd>=2025.8.1",
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.2.0",
+    "pytest-xdist>=3.5.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-v", "--tb=short", "-ra", "--strict-markers", "--dist=loadfile"]
+markers = [
+    "unit: Pure function unit tests (fast, no external deps)",
+    "integration: Integration tests using demo data",
+    "e2e: End-to-end tests (full pipeline, may be slow)",
+    "slow: Tests that take > 30 seconds",
+    "guardrail: Code quality guardrail tests (file scanning, no data deps)",
+    "data: Tests requiring data/r_data or data/public files",
+    "r_required: Tests requiring R/Rscript installation",
+]
+
+[dependency-groups]
+dev = [
+    "imagehash>=4.3.2",
+    "mypy>=1.8.0",
+    "pillow>=11.0.0",
+    "pytest>=8.3.3",
+    "pytest-xdist>=3.5.0",
+    "types-PyYAML>=6.0.0",
+    "pandas-stubs>=2.0.0",
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.7.1",
+    "mkdocstrings>=1.0.2",
+    "mkdocstrings-python>=2.0.1",
+    "mkdocs-git-revision-date-localized-plugin>=1.5.1",
+    "mkdocs-mermaid2-plugin>=1.2.3",
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_ignores = false
+show_error_codes = true
+check_untyped_defs = true
+no_implicit_optional = true
+exclude = [
+    "tests/",
+    "scripts/",
+    ".venv/",
+    "apps/",
+]
+
+# Ignore missing stubs for third-party libraries
+[[tool.mypy.overrides]]
+module = [
+    "mlflow.*",
+    "prefect.*",
+    "hydra.*",
+    "omegaconf.*",
+    "loguru.*",
+    "catboost.*",
+    "xgboost.*",
+    "polars.*",
+    "pypots.*",
+    "momentfm.*",
+    "sklearn.*",
+    "cupy.*",
+    "prophet.*",
+    "emd.*",
+    "hurst.*",
+    "pyemd.*",
+    "statsmodels.*",
+    "umap.*",
+    "factor_analyzer.*",
+    "pysindy.*",
+    "pydmd.*",
+]
+ignore_missing_imports = true
