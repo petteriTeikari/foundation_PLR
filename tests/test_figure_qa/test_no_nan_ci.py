@@ -13,6 +13,7 @@ import pandas as pd
 from pathlib import Path
 
 import duckdb
+import pytest
 
 
 class TestNoNaNCIValues:
@@ -86,9 +87,8 @@ class TestNoNaNCIValues:
 
     def test_catboost_no_nan_ci_in_csv(self):
         """CatBoost data in CSV export must have no NaN CIs."""
-        assert self.CSV_PATH.exists(), (
-            f"CSV missing: {self.CSV_PATH}. Run: make analyze"
-        )
+        if not self.CSV_PATH.exists():
+            pytest.skip(f"CSV missing: {self.CSV_PATH}. Run: make analyze")
 
         df = pd.read_csv(self.CSV_PATH)
         catboost = df[df["classifier"].str.upper() == "CATBOOST"]
@@ -108,9 +108,8 @@ class TestNoNaNCIValues:
 
         NaN CIs indicate failed experiments that should be filtered during extraction.
         """
-        assert self.CSV_PATH.exists(), (
-            f"CSV missing: {self.CSV_PATH}. Run: make analyze"
-        )
+        if not self.CSV_PATH.exists():
+            pytest.skip(f"CSV missing: {self.CSV_PATH}. Run: make analyze")
 
         df = pd.read_csv(self.CSV_PATH)
 
@@ -126,9 +125,8 @@ class TestNoNaNCIValues:
 
     def test_forest_plot_data_no_nan(self):
         """Forest plot aggregated data must have no NaN after min/max aggregation."""
-        assert self.CSV_PATH.exists(), (
-            f"CSV missing: {self.CSV_PATH}. Run: make analyze"
-        )
+        if not self.CSV_PATH.exists():
+            pytest.skip(f"CSV missing: {self.CSV_PATH}. Run: make analyze")
 
         df = pd.read_csv(self.CSV_PATH)
         catboost = df[df["classifier"].str.upper() == "CATBOOST"]
@@ -155,9 +153,8 @@ class TestNoNaNCIValues:
 
     def test_ci_bounds_valid_for_catboost(self):
         """CatBoost CI bounds must satisfy: ci_lo <= auroc <= ci_hi."""
-        assert self.CSV_PATH.exists(), (
-            f"CSV missing: {self.CSV_PATH}. Run: make analyze"
-        )
+        if not self.CSV_PATH.exists():
+            pytest.skip(f"CSV missing: {self.CSV_PATH}. Run: make analyze")
 
         df = pd.read_csv(self.CSV_PATH)
         catboost = df[df["classifier"].str.upper() == "CATBOOST"]

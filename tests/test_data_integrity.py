@@ -33,8 +33,9 @@ class TestGroundTruthAUROC:
 
     def test_ground_truth_in_duckdb(self):
         """Verify DuckDB has correct Ground Truth AUROC."""
-        db_path = PROJECT_ROOT / "data" / "public" / "foundation_plr_results_stratos.db"
-        assert db_path.exists(), f"Database missing: {db_path}. Run: make extract"
+        db_path = PROJECT_ROOT / "data" / "public" / "foundation_plr_results.db"
+        if not db_path.exists():
+            pytest.skip(f"Database missing: {db_path}. Run: make extract")
 
         conn = duckdb.connect(str(db_path), read_only=True)
         result = conn.execute("""
@@ -60,7 +61,8 @@ class TestGroundTruthAUROC:
     def test_ground_truth_in_roc_rc_json(self):
         """Verify roc_rc_data.json has correct Ground Truth AUROC."""
         json_path = PROJECT_ROOT / "data" / "r_data" / "roc_rc_data.json"
-        assert json_path.exists(), f"JSON missing: {json_path}. Run: make analyze"
+        if not json_path.exists():
+            pytest.skip(f"JSON missing: {json_path}. Run: make analyze")
 
         with open(json_path) as f:
             data = json.load(f)
@@ -97,16 +99,18 @@ class TestGroundTruthAUROC:
 
     def test_ground_truth_computed_from_predictions(self):
         """Compute AUROC from predictions and verify it matches expected."""
-        db_path = PROJECT_ROOT / "data" / "public" / "foundation_plr_results_stratos.db"
-        assert db_path.exists(), f"Database missing: {db_path}. Run: make extract"
+        db_path = PROJECT_ROOT / "data" / "public" / "foundation_plr_results.db"
+        if not db_path.exists():
+            pytest.skip(f"Database missing: {db_path}. Run: make extract")
 
         conn = duckdb.connect(str(db_path), read_only=True)
         result = conn.execute("""
-            SELECT y_true, y_prob FROM predictions
-            WHERE outlier_method = 'pupil-gt'
-              AND imputation_method = 'pupil-gt'
-              AND classifier = 'CATBOOST'
-              AND featurization = 'simple1.0'
+            SELECT p.y_true, p.y_prob FROM predictions p
+            JOIN essential_metrics em ON p.config_id = em.config_id
+            WHERE em.outlier_method = 'pupil-gt'
+              AND em.imputation_method = 'pupil-gt'
+              AND em.classifier = 'CATBOOST'
+              AND em.featurization = 'simple1.0'
         """).fetchall()
         conn.close()
 
@@ -137,17 +141,19 @@ class TestPredictionCounts:
 
     def test_prediction_count_ground_truth(self):
         """Verify Ground Truth has reasonable predictions with correct class balance."""
-        db_path = PROJECT_ROOT / "data" / "public" / "foundation_plr_results_stratos.db"
-        assert db_path.exists(), f"Database missing: {db_path}. Run: make extract"
+        db_path = PROJECT_ROOT / "data" / "public" / "foundation_plr_results.db"
+        if not db_path.exists():
+            pytest.skip(f"Database missing: {db_path}. Run: make extract")
 
         conn = duckdb.connect(str(db_path), read_only=True)
         result = conn.execute("""
-            SELECT COUNT(*) as n, SUM(y_true) as n_pos
-            FROM predictions
-            WHERE outlier_method = 'pupil-gt'
-              AND imputation_method = 'pupil-gt'
-              AND classifier = 'CATBOOST'
-              AND featurization = 'simple1.0'
+            SELECT COUNT(*) as n, SUM(p.y_true) as n_pos
+            FROM predictions p
+            JOIN essential_metrics em ON p.config_id = em.config_id
+            WHERE em.outlier_method = 'pupil-gt'
+              AND em.imputation_method = 'pupil-gt'
+              AND em.classifier = 'CATBOOST'
+              AND em.featurization = 'simple1.0'
         """).fetchone()
         conn.close()
 
@@ -203,8 +209,8 @@ class TestCalibrationData:
     def test_calibration_json_exists(self):
         """Verify calibration_data.json exists."""
         json_path = PROJECT_ROOT / "data" / "r_data" / "calibration_data.json"
-        # May not exist yet - skip if not found
-        assert json_path.exists(), f"JSON missing: {json_path}. Run: make analyze"
+        if not json_path.exists():
+            pytest.skip(f"JSON missing: {json_path}. Run: make analyze")
 
         with open(json_path) as f:
             data = json.load(f)

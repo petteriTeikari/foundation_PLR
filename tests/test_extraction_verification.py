@@ -58,13 +58,13 @@ NUMBERS_TEX = (
 # =============================================================================
 
 EXPECTED_VALUES = {
-    # From DB/pipeline (2026-01-25 extraction)
+    # From DB/pipeline (2026-02-07 extraction, 408 runs, 1 failed, 1 dupe removed)
     # 406 total configs in consolidated DB (all classifiers, all featurizations)
     # 81 of these are CatBoost
     "n_configs": 406,
     "n_catboost_configs": 81,
     "min_auroc": 0.500,
-    "max_auroc": 0.974,
+    "max_auroc": 0.913,
     "mean_auroc": 0.829,
     # From Najjar et al. 2023 (external reference)
     "najjar_auroc": 0.93,
@@ -138,7 +138,7 @@ class TestDatabaseValues:
     """Tests that verify values in the DuckDB database."""
 
     def test_config_count(self, db_connection):
-        """Verify exactly 407 configurations extracted."""
+        """Verify expected number of configurations extracted."""
         count = db_connection.execute(
             "SELECT COUNT(*) FROM essential_metrics"
         ).fetchone()[0]

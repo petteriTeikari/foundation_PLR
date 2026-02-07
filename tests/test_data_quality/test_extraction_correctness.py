@@ -53,7 +53,7 @@ class TestGroundTruthAUROC:
             SELECT MAX(auroc) FROM essential_metrics
             WHERE outlier_method = 'pupil-gt'
               AND imputation_method = 'pupil-gt'
-              AND classifier = 'CatBoost'
+              AND LOWER(classifier) = 'catboost'
               AND featurization NOT LIKE '%embedding%'
             """
         ).fetchone()
@@ -72,7 +72,7 @@ class TestGroundTruthAUROC:
             SELECT auroc FROM essential_metrics
             WHERE outlier_method LIKE 'ensemble%'
               AND imputation_method = 'CSDI'
-              AND classifier = 'CatBoost'
+              AND LOWER(classifier) = 'catboost'
             """
         ).fetchone()
 

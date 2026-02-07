@@ -248,10 +248,12 @@ class TestStreamingDuckDBExporter:
                 "config_id",
                 "auroc",
                 "calibration_slope",
-                "brier_score",
+                "brier",
                 "outlier_method",
                 "imputation_method",
                 "classifier",
+                "featurization",
+                "run_id",
             }
             assert required.issubset(column_names)
 
