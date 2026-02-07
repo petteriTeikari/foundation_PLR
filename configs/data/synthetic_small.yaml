@@ -1,0 +1,40 @@
+_version: "1.0.0"
+# Data Configuration: Synthetic Small
+#
+# Configuration for the synthetic PLR dataset used in testing.
+# This is a small dataset for quick CI/CD runs.
+
+data:
+  name: "Synthetic PLR Demo"
+  version: "1.0.0"
+  source: "synthetic_generator"
+
+  # Database location
+  database:
+    path: "data/synthetic"
+    filename: "SYNTH_PLR_DEMO.db"
+    format: "duckdb"
+
+  # Subject counts (synthetic)
+  subjects:
+    total: 32  # Small for testing
+    labeled: 32
+    control: 16
+    glaucoma: 16
+
+  # Signal characteristics (matching real data)
+  signal:
+    length: 1981
+    sampling_rate_hz: 60
+    duration_seconds: 33
+
+  # Columns (same as real data)
+  required_columns:
+    - time
+    - pupil_raw
+    - outlier_mask
+    - class_label
+    - subject_code
+
+# Note: Synthetic data is generated with random noise
+# and is NOT suitable for scientific analysis.

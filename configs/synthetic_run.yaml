@@ -1,0 +1,82 @@
+_version: "1.0.0"
+# Configuration for running pipeline with SYNTHETIC data
+#
+# This config uses the synthetic PLR database (SYNTH_PLR_DEMO.db) instead
+# of the real SERI_PLR_GLAUCOMA.db. Use this for:
+# - CI/CD pipeline testing
+# - Demonstration without access to real patient data
+# - Validating pipeline functionality
+#
+# Usage:
+#   python src/pipeline_PLR.py --config-name=synthetic_run
+#   # Or override defaults:
+#   python src/pipeline_PLR.py +experiment=synthetic DATA.filename_DuckDB=SYNTH_PLR_DEMO.db
+#
+# IMPORTANT: Results from synthetic data are NOT comparable to real data.
+# Synthetic data is for testing pipeline functionality only.
+
+defaults:
+  - defaults
+  - override OUTLIER_MODELS: LOF_only  # Override to use only LOF for synthetic runs
+  - _self_
+
+# Override DATA section for synthetic database
+DATA:
+  data_path: 'data/synthetic'  # Point to synthetic data directory
+  filename_DuckDB: 'SYNTH_PLR_DEMO.db'  # Use synthetic database
+  import_from_DuckDB: True
+  PLR_length: 1981
+
+# Debug mode settings
+# Since synthetic data has 8 subjects per label per split (16 per split total),
+# we set debug_n_subjects to 4 to use half of them
+DEBUG:
+  debug_n_subjects: 4  # Use 4 per label
+  # Pick random subjects instead of filtering by outlier count
+  # (synthetic data doesn't have meaningful outlier distribution for filtering)
+  pick_random: True
+
+# Experiment settings
+# Part of 4-gate isolation architecture - see src/utils/data_mode.py
+EXPERIMENT:
+  experiment_prefix: "synth_"  # Prefix to identify synthetic runs in MLflow
+  is_synthetic: True  # CRITICAL: Marks this as synthetic data for isolation
+  debug: True  # Enable debug mode for faster testing
+
+# MLflow settings for synthetic runs
+MLFLOW:
+  # Use file-based backend for CI (no server required)
+  tracking_uri: "mlruns/"
+  experiment_name: "synth_PLR_Classification"
+
+# Reduce training iterations for faster testing
+CLASSIFICATION:
+  # CatBoost settings for quick testing
+  CatBoost:
+    iterations: 50  # Reduced from 1000
+    early_stopping_rounds: 10
+
+# Outlier models configured via defaults: LOF_only (see OUTLIER_MODELS/LOF_only.yaml)
+# This avoids the multi-model detection issue when hyperparam_search is disabled
+
+# Force recomputation for fresh synthetic runs
+OUTLIER_DETECTION:
+  re_compute: True  # Always recompute - no cached runs to use
+
+# Limit imputation methods for faster testing
+IMPUTATION:
+  methods:
+    - linear  # Fast, CPU-only
+
+# Note: For full pipeline testing, enable more methods but expect longer runtime
+
+# Enable actual computation flows for initial synthetic runs
+# Summarization requires prior runs to exist, so disable for first run
+PREFECT:
+  PROCESS_FLOWS:
+    OUTLIER_DETECTION: True  # Run outlier detection
+    IMPUTATION: True  # Run imputation
+    FEATURIZATION: True  # Run featurization
+    CLASSIFICATION: True  # Run classification
+    SUMMARIZATION: False  # Disable - no prior data to summarize
+    DEPLOYMENT: False

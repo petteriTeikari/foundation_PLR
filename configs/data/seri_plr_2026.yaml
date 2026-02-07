@@ -1,0 +1,53 @@
+_version: "1.0.0"
+# Data Configuration: SERI PLR 2026
+#
+# Configuration for the Singapore Eye Research Institute (SERI) PLR dataset
+# used in the Foundation PLR paper.
+
+data:
+  name: "SERI PLR Glaucoma Dataset"
+  version: "2026.1"
+  source: "Najjar et al. 2023, Br J Ophthalmol"
+
+  # Database location
+  database:
+    path: "data"
+    filename: "SERI_PLR_GLAUCOMA.db"
+    format: "duckdb"
+
+  # Subject counts
+  subjects:
+    total: 507  # All subjects with ground truth masks
+    labeled: 208  # Subjects with classification labels
+    control: 152
+    glaucoma: 56
+    unlabeled: 299  # Have masks but no class labels
+
+  # Signal characteristics
+  signal:
+    length: 1981  # Time points per subject
+    sampling_rate_hz: 60
+    duration_seconds: 33
+
+  # Data splits
+  splits:
+    train:
+      ratio: 0.7
+      stratify_by: ["class_label", "no_outliers_bins"]
+    test:
+      ratio: 0.3
+      stratify_by: ["class_label", "no_outliers_bins"]
+
+  # Columns required for pipeline
+  required_columns:
+    - time
+    - pupil_raw
+    - pupil_gt
+    - outlier_mask
+    - imputation_mask
+    - class_label
+    - subject_code
+
+# Note: This config is referenced by experiment configs via:
+#   defaults:
+#     - /data: seri_plr_2026

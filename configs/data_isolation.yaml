@@ -1,0 +1,110 @@
+# Data Isolation Configuration
+# =============================
+# Configuration for synthetic vs production data isolation.
+# Part of the 4-gate isolation architecture.
+#
+# See: src/utils/data_mode.py for implementation
+# See: CRITICAL-FAILURE-001 for why this exists
+
+_version: "1.0.0"
+
+# =============================================================================
+# Gate 0: Data Mode Detection
+# =============================================================================
+# Detection triggers (ANY match = synthetic mode):
+# 1. Environment: FOUNDATION_PLR_SYNTHETIC=1/true/yes
+# 2. Config: EXPERIMENT.is_synthetic=true
+# 3. Config: EXPERIMENT.experiment_prefix="synth_"
+# 4. Config: DATA.data_path contains "synthetic"
+# 5. Filename: contains "SYNTH_" or "synthetic"
+
+detection:
+  # Environment variable name for forcing synthetic mode
+  env_var: "FOUNDATION_PLR_SYNTHETIC"
+
+  # Values that trigger synthetic mode (case-insensitive)
+  truthy_values:
+    - "1"
+    - "true"
+    - "yes"
+
+# =============================================================================
+# Gate 1: MLflow Isolation
+# =============================================================================
+mlflow:
+  # Prefix for synthetic run names
+  # Applied: __SYNTHETIC_LOF, __SYNTHETIC_MOMENT-gt-finetune, etc.
+  run_prefix: "__SYNTHETIC_"
+
+  # Prefix for synthetic experiment names
+  # Applied: synth_PLR_Classification, synth_PLR_Imputation, etc.
+  experiment_prefix: "synth_"
+
+  # Mandatory tags for all runs
+  tags:
+    synthetic:
+      is_synthetic: "true"
+      data_source: "synthetic"
+    production:
+      is_synthetic: "false"
+      data_source: "production"
+
+# =============================================================================
+# Gate 2: Extraction Isolation
+# =============================================================================
+extraction:
+  # Rejection criteria for production extraction
+  # ANY match = run rejected from production database
+  rejection_criteria:
+    - run_name_prefix: "__SYNTHETIC_"
+    - experiment_name_prefix: "synth_"
+    - tag_is_synthetic: "true"
+    - tag_data_source: "synthetic"
+
+  # Database naming
+  database:
+    production: "foundation_plr_results.db"
+    synthetic: "synthetic_foundation_plr_results.db"
+
+# =============================================================================
+# Gate 3: Output Paths
+# =============================================================================
+paths:
+  # Output directories (relative to project root)
+  outputs:
+    production: "outputs/"
+    synthetic: "outputs/synthetic/"
+
+  # Database directories
+  database:
+    production: "data/public/"
+    synthetic: "outputs/synthetic/"
+
+  # Figure directories
+  figures:
+    production: "figures/generated/"
+    synthetic: "figures/synthetic/"
+
+# =============================================================================
+# Gate 4: JSON Metadata
+# =============================================================================
+json_metadata:
+  # Fields added to JSON figure data
+  synthetic:
+    _synthetic_warning: true
+    _data_source: "synthetic"
+    _do_not_publish: true
+  production:
+    _synthetic_warning: false
+    _data_source: "production"
+    _do_not_publish: false
+
+# =============================================================================
+# Git Ignore Patterns
+# =============================================================================
+# These patterns should be in .gitignore to prevent committing synthetic data
+gitignore_patterns:
+  - "outputs/synthetic/"
+  - "figures/synthetic/"
+  - "**/synthetic_*.db"
+  - "**/SYNTH_*.db"
