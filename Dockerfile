@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install uv
 # Pin uv version for reproducibility
-COPY --from=ghcr.io/astral-sh/uv:0.5.14 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /usr/local/bin/uv
 
 WORKDIR /project
 
@@ -82,7 +82,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # =============================================================================
 # Copy uv for package management
 # Pin uv version for reproducibility
-COPY --from=ghcr.io/astral-sh/uv:0.5.14 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /usr/local/bin/uv
 
 # Copy the pre-built Python virtual environment
 COPY --from=python-builder /opt/venv /opt/venv
@@ -133,7 +133,7 @@ COPY pyproject.toml uv.lock ./
 # =============================================================================
 COPY apps/visualization/package*.json apps/visualization/
 # Install Node.js packages for visualization app
-RUN cd apps/visualization && npm ci --production
+RUN cd apps/visualization && npm ci --omit=dev
 
 # =============================================================================
 # Application code
