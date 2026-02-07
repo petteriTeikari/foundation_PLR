@@ -1,0 +1,992 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CRASH-RESISTANT ACTION PLAN: R Dependency Management + Docker
+
+  Related Issue: #3 - Dockerize development environment for maximum reproducibility
+  Planning Doc: docs/planning/production-grade-R-visualization-and-stats.md
+
+  CONTEXT RECOVERY INSTRUCTIONS:
+  If context is lost, read these files in order:
+  1. This file (action plan)
+  2. docs/planning/production-grade-R-visualization-and-stats.md (research)
+  3. Issue #3 via: gh issue view 3 --json title,body
+  4. Current R scripts: src/r/figures/*.R
+
+  PROGRESS TRACKING:
+  - Each phase has explicit success criteria
+  - Tests are written BEFORE implementation (TDD)
+  - Reviewer checkpoints prevent drift
+-->
+<action-plan version="1.0" created="2026-01-25">
+  <metadata>
+    <title>Production-Grade R Dependency Management with Docker</title>
+    <issue>3</issue>
+    <branch>chore/publication-polish</branch>
+    <approach>TDD/Evals-Driven with Reviewer Agents</approach>
+    <estimated-phases>6</estimated-phases>
+  </metadata>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 0: REVIEWER AGENT VALIDATION OF PLAN                         -->
+  <!-- ================================================================== -->
+  <phase id="0" name="Plan Validation" status="pending">
+    <description>
+      Before execution, validate the action plan with methodological reviewer agents
+      to ensure optimal implementation strategy.
+    </description>
+
+    <reviewer-checklist>
+      <check id="R0.1" category="completeness">
+        Does the plan cover all requirements from Issue #3?
+        - [ ] Docker build completes
+        - [ ] Python packages (275) install via uv
+        - [ ] R packages (8 pinned) install via renv
+        - [ ] Node.js packages (246) install via npm
+        - [ ] GPU accessible in container
+        - [ ] Can reproduce AUROC=0.913 result
+      </check>
+
+      <check id="R0.2" category="tdd">
+        Are tests defined BEFORE implementation for each phase?
+        - [ ] Phase 1: renv initialization tests
+        - [ ] Phase 2: Dockerfile build tests
+        - [ ] Phase 3: Integration tests
+        - [ ] Phase 4: CI/CD tests
+      </check>
+
+      <check id="R0.3" category="risk">
+        Are failure modes and rollback strategies defined?
+        - [ ] renv::init failure → manual package list
+        - [ ] Docker build failure → layer-by-layer debugging
+        - [ ] CI timeout → caching strategy
+      </check>
+
+      <check id="R0.4" category="efficiency">
+        Is the execution order optimal for caching?
+        - [ ] System deps first (rarely change)
+        - [ ] renv.lock second (changes with package updates)
+        - [ ] Application code last (changes frequently)
+      </check>
+    </reviewer-checklist>
+
+    <success-criteria>
+      All reviewer checks pass before proceeding to Phase 1.
+    </success-criteria>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 1: RENV INITIALIZATION (TDD)                                 -->
+  <!-- ================================================================== -->
+  <phase id="1" name="renv Initialization" status="pending">
+    <description>
+      Initialize renv for R package management with version pinning.
+      Write tests FIRST, then implement.
+    </description>
+
+    <prerequisite-context>
+      <file>src/r/setup.R</file>
+      <file>src/r/figures/*.R</file>
+      <file>scripts/setup-dev-environment.sh (PINNED_VERSIONS dict)</file>
+    </prerequisite-context>
+
+    <!-- TDD: Write tests first -->
+    <step id="1.1" type="test-first">
+      <name>Write renv validation test</name>
+      <command>Write tests/test_r_environment.py</command>
+      <test-code><![CDATA[
+"""Test R environment setup with renv."""
+import subprocess
+import json
+from pathlib import Path
+
+def test_renv_lock_exists():
+    """renv.lock must exist after initialization."""
+    assert Path("renv.lock").exists(), "renv.lock not found"
+
+def test_renv_lock_valid_json():
+    """renv.lock must be valid JSON."""
+    with open("renv.lock") as f:
+        data = json.load(f)
+    assert "R" in data, "Missing R section"
+    assert "Packages" in data, "Missing Packages section"
+
+def test_critical_packages_pinned():
+    """Critical packages must be in renv.lock with correct versions."""
+    critical_packages = {
+        "ggplot2": None,  # Any version
+        "pminternal": "0.1.0",  # Exact version required
+        "pROC": "1.18.5",
+        "dcurves": "0.5.0",
+    }
+
+    with open("renv.lock") as f:
+        data = json.load(f)
+
+    packages = data.get("Packages", {})
+    for pkg, version in critical_packages.items():
+        assert pkg in packages, f"Critical package {pkg} missing from renv.lock"
+        if version:
+            assert packages[pkg]["Version"] == version, \
+                f"Package {pkg} version mismatch: expected {version}"
+
+def test_renv_restore_succeeds():
+    """renv::restore() must complete without errors."""
+    result = subprocess.run(
+        ["Rscript", "-e", "renv::restore(prompt=FALSE)"],
+        capture_output=True,
+        text=True,
+        timeout=600
+    )
+    assert result.returncode == 0, f"renv::restore failed: {result.stderr}"
+]]></test-code>
+    </step>
+
+    <!-- Implementation -->
+    <step id="1.2" type="implementation">
+      <name>Create .Rprofile for renv activation</name>
+      <file>.Rprofile</file>
+      <content><![CDATA[
+# Activate renv for project isolation
+source("renv/activate.R")
+]]></content>
+    </step>
+
+    <step id="1.3" type="implementation">
+      <name>Initialize renv in R</name>
+      <command><![CDATA[
+Rscript -e "
+  # Initialize renv
+  renv::init(bare = TRUE)
+
+  # Install packages from PINNED_VERSIONS in setup script
+  packages <- c(
+    'ggplot2', 'dplyr', 'tidyr', 'readr', 'purrr',
+    'scales', 'patchwork', 'ggtext', 'ggdist', 'ggrepel',
+    'cowplot', 'RColorBrewer', 'viridis',
+    'Hmisc', 'survival', 'MASS', 'mgcv',
+    'pROC', 'dcurves', 'pmcalibration'
+  )
+
+  # Install from CRAN
+  renv::install(packages)
+
+  # Install pminternal from GitHub (not on CRAN)
+  renv::install('stephenrho/pminternal')
+
+  # Snapshot
+  renv::snapshot()
+"
+]]></command>
+    </step>
+
+    <step id="1.4" type="verification">
+      <name>Run renv tests</name>
+      <command>pytest tests/test_r_environment.py -v</command>
+      <expected-outcome>All tests pass</expected-outcome>
+    </step>
+
+    <step id="1.5" type="git">
+      <name>Commit renv initialization</name>
+      <files>
+        <file>.Rprofile</file>
+        <file>renv.lock</file>
+        <file>renv/activate.R</file>
+        <file>renv/settings.json</file>
+        <file>renv/.gitignore</file>
+        <file>tests/test_r_environment.py</file>
+      </files>
+      <message>feat(r): Initialize renv for reproducible R environment</message>
+    </step>
+
+    <success-criteria>
+      <criterion>renv.lock exists and is valid JSON</criterion>
+      <criterion>All 8 pinned R packages at correct versions</criterion>
+      <criterion>renv::restore() succeeds in fresh environment</criterion>
+      <criterion>All tests in test_r_environment.py pass</criterion>
+    </success-criteria>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 2: DOCKERFILE FOR R (TDD)                                    -->
+  <!-- ================================================================== -->
+  <phase id="2" name="R Dockerfile" status="pending">
+    <description>
+      Create Docker image for R figure generation.
+      Tests verify image builds and R scripts execute.
+    </description>
+
+    <prerequisite-context>
+      <file>renv.lock (from Phase 1)</file>
+      <file>src/r/figures/*.R</file>
+      <file>outputs/r_data/*.csv (input data for R)</file>
+    </prerequisite-context>
+
+    <!-- TDD: Write tests first -->
+    <step id="2.1" type="test-first">
+      <name>Write Docker build test</name>
+      <command>Write tests/test_docker_r.py</command>
+      <test-code><![CDATA[
+"""Test R Docker image build and execution."""
+import subprocess
+import pytest
+from pathlib import Path
+
+IMAGE_NAME = "foundation-plr-r:test"
+
+@pytest.fixture(scope="module")
+def docker_image():
+    """Build Docker image for testing."""
+    result = subprocess.run(
+        ["docker", "build", "-t", IMAGE_NAME, "-f", "Dockerfile.r", "."],
+        capture_output=True,
+        text=True,
+        timeout=1800  # 30 min timeout for initial build
+    )
+    assert result.returncode == 0, f"Docker build failed: {result.stderr}"
+    yield IMAGE_NAME
+    # Cleanup
+    subprocess.run(["docker", "rmi", IMAGE_NAME], capture_output=True)
+
+def test_docker_build_succeeds(docker_image):
+    """Docker image builds successfully."""
+    result = subprocess.run(
+        ["docker", "images", "-q", docker_image],
+        capture_output=True,
+        text=True
+    )
+    assert result.stdout.strip(), "Docker image not found"
+
+def test_r_version_pinned(docker_image):
+    """R version matches expected."""
+    result = subprocess.run(
+        ["docker", "run", "--rm", docker_image, "R", "--version"],
+        capture_output=True,
+        text=True
+    )
+    assert "R version 4.4" in result.stdout, f"Wrong R version: {result.stdout}"
+
+def test_renv_packages_installed(docker_image):
+    """renv packages are installed correctly."""
+    result = subprocess.run(
+        ["docker", "run", "--rm", docker_image,
+         "Rscript", "-e", "library(ggplot2); library(pminternal); cat('OK')"],
+        capture_output=True,
+        text=True
+    )
+    assert "OK" in result.stdout, f"Package load failed: {result.stderr}"
+
+def test_figure_script_runs(docker_image):
+    """A figure script executes without error."""
+    result = subprocess.run(
+        ["docker", "run", "--rm",
+         "-v", f"{Path.cwd()}/outputs/r_data:/project/outputs/r_data:ro",
+         docker_image,
+         "Rscript", "src/r/figures/fig_vif_analysis.R"],
+        capture_output=True,
+        text=True,
+        timeout=120
+    )
+    # May fail if data doesn't exist, but should not fail on R errors
+    if result.returncode != 0:
+        assert "Error in" not in result.stderr, f"R error: {result.stderr}"
+]]></test-code>
+    </step>
+
+    <!-- Implementation -->
+    <step id="2.2" type="implementation">
+      <name>Create Dockerfile.r</name>
+      <file>Dockerfile.r</file>
+      <content><![CDATA[
+# Dockerfile.r - R environment for figure generation
+#
+# Build: docker build -t foundation-plr-r -f Dockerfile.r .
+# Run:   docker run --rm -v $(pwd)/figures/generated/ggplot2:/project/figures/generated/ggplot2 foundation-plr-r
+
+FROM rocker/r-ver:4.4.0
+
+LABEL maintainer="Foundation PLR Team"
+LABEL description="R environment for ggplot2 figure generation"
+LABEL version="1.0.0"
+
+# System dependencies for R packages
+# These are required by: Hmisc, pROC, ggplot2, etc.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libjpeg-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install renv
+ENV RENV_VERSION=1.0.7
+RUN R -e "install.packages('renv', repos = 'https://cloud.r-project.org')"
+
+# Set working directory
+WORKDIR /project
+
+# Copy renv files FIRST for layer caching
+# These change less frequently than source code
+COPY renv.lock renv.lock
+COPY .Rprofile .Rprofile
+COPY renv/activate.R renv/activate.R
+COPY renv/settings.json renv/settings.json
+
+# Restore R packages (cached unless renv.lock changes)
+# Use --clean to ensure exact versions
+RUN R -e "renv::restore(prompt = FALSE, clean = TRUE)"
+
+# Copy R source code
+COPY src/r/ src/r/
+
+# Copy configs needed by R scripts
+COPY configs/ configs/
+
+# Create output directories
+RUN mkdir -p figures/generated/ggplot2 \
+    && mkdir -p outputs/r_data
+
+# Set locale for proper font rendering
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Default: run all R figures
+CMD ["Rscript", "-e", "source('src/r/setup.R'); for(f in list.files('src/r/figures', pattern='*.R$', full.names=TRUE)) source(f)"]
+]]></content>
+    </step>
+
+    <step id="2.3" type="implementation">
+      <name>Create .dockerignore</name>
+      <file>.dockerignore</file>
+      <append>true</append>
+      <content><![CDATA[
+# R-specific ignores for Docker
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
+.Rhistory
+.RData
+*.Rproj.user
+]]></content>
+    </step>
+
+    <step id="2.4" type="implementation">
+      <name>Add Makefile targets</name>
+      <file>Makefile</file>
+      <append-section>
+        <marker># R Docker targets</marker>
+        <content><![CDATA[
+# R Docker targets
+R_DOCKER_IMAGE := foundation-plr-r:latest
+
+.PHONY: r-docker-build r-docker-run r-docker-test
+
+r-docker-build: ## Build R Docker image
+	docker build -t $(R_DOCKER_IMAGE) -f Dockerfile.r .
+
+r-docker-run: r-docker-build ## Run R figure generation in Docker
+	docker run --rm \
+		-v $(PWD)/figures/generated/ggplot2:/project/figures/generated/ggplot2 \
+		-v $(PWD)/outputs/r_data:/project/outputs/r_data:ro \
+		$(R_DOCKER_IMAGE)
+
+r-docker-test: r-docker-build ## Test R Docker image
+	docker run --rm $(R_DOCKER_IMAGE) Rscript -e "library(ggplot2); library(pminternal); cat('SUCCESS\n')"
+]]></content>
+      </append-section>
+    </step>
+
+    <step id="2.5" type="verification">
+      <name>Run Docker tests</name>
+      <command>pytest tests/test_docker_r.py -v --timeout=1800</command>
+      <expected-outcome>All tests pass</expected-outcome>
+    </step>
+
+    <step id="2.6" type="git">
+      <name>Commit Dockerfile</name>
+      <files>
+        <file>Dockerfile.r</file>
+        <file>.dockerignore</file>
+        <file>Makefile</file>
+        <file>tests/test_docker_r.py</file>
+      </files>
+      <message>feat(docker): Add R Dockerfile with renv for reproducible figures</message>
+    </step>
+
+    <success-criteria>
+      <criterion>docker build -f Dockerfile.r . succeeds</criterion>
+      <criterion>R 4.4.x in container</criterion>
+      <criterion>All renv packages load (ggplot2, pminternal, etc.)</criterion>
+      <criterion>make r-docker-test passes</criterion>
+    </success-criteria>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 3: FULL DEVELOPMENT DOCKERFILE                               -->
+  <!-- ================================================================== -->
+  <phase id="3" name="Full Dev Dockerfile" status="pending">
+    <description>
+      Create comprehensive development Dockerfile with Python, R, and Node.js.
+      This satisfies Issue #3 requirements.
+    </description>
+
+    <prerequisite-context>
+      <file>Dockerfile.r (from Phase 2)</file>
+      <file>uv.lock</file>
+      <file>apps/visualization/package-lock.json</file>
+      <file>Issue #3 requirements</file>
+    </prerequisite-context>
+
+    <!-- TDD: Write tests first -->
+    <step id="3.1" type="test-first">
+      <name>Write full environment test</name>
+      <command>Write tests/test_docker_full.py</command>
+      <test-code><![CDATA[
+"""Test full development Docker environment."""
+import subprocess
+import pytest
+
+IMAGE_NAME = "foundation-plr:test"
+
+@pytest.fixture(scope="module")
+def docker_image():
+    """Build full Docker image."""
+    result = subprocess.run(
+        ["docker", "build", "-t", IMAGE_NAME, "."],
+        capture_output=True,
+        text=True,
+        timeout=3600  # 1 hour for full build
+    )
+    assert result.returncode == 0, f"Docker build failed: {result.stderr}"
+    yield IMAGE_NAME
+    subprocess.run(["docker", "rmi", IMAGE_NAME], capture_output=True)
+
+def test_python_environment(docker_image):
+    """Python packages from uv.lock installed."""
+    result = subprocess.run(
+        ["docker", "run", "--rm", docker_image,
+         "python", "-c", "import numpy, pandas, torch; print('OK')"],
+        capture_output=True,
+        text=True
+    )
+    assert "OK" in result.stdout, f"Python import failed: {result.stderr}"
+
+def test_r_environment(docker_image):
+    """R packages from renv.lock installed."""
+    result = subprocess.run(
+        ["docker", "run", "--rm", docker_image,
+         "Rscript", "-e", "library(ggplot2); library(pminternal); cat('OK')"],
+        capture_output=True,
+        text=True
+    )
+    assert "OK" in result.stdout, f"R package load failed: {result.stderr}"
+
+def test_node_environment(docker_image):
+    """Node.js packages installed."""
+    result = subprocess.run(
+        ["docker", "run", "--rm", docker_image,
+         "bash", "-c", "cd apps/visualization && npm list --depth=0"],
+        capture_output=True,
+        text=True
+    )
+    assert result.returncode == 0, f"npm list failed: {result.stderr}"
+
+def test_gpu_available(docker_image):
+    """GPU accessible if available."""
+    result = subprocess.run(
+        ["docker", "run", "--rm", "--gpus", "all", docker_image,
+         "python", "-c", "import torch; print(torch.cuda.is_available())"],
+        capture_output=True,
+        text=True
+    )
+    # Don't fail if no GPU, just check it doesn't crash
+    assert result.returncode == 0 or "no NVIDIA GPU" in result.stderr.lower()
+]]></test-code>
+    </step>
+
+    <!-- Implementation -->
+    <step id="3.2" type="implementation">
+      <name>Create main Dockerfile</name>
+      <file>Dockerfile</file>
+      <content><![CDATA[
+# Dockerfile - Full development environment for Foundation PLR
+#
+# Multi-stage build:
+# 1. Python environment (uv)
+# 2. R environment (renv)
+# 3. Node.js environment (npm)
+# 4. Final research image
+#
+# Build: docker build -t foundation-plr .
+# Run:   docker compose up
+
+# ==============================================================================
+# Stage 1: Base with CUDA
+# ==============================================================================
+FROM nvidia/cuda:12.4.0-cudnn9-runtime-ubuntu22.04 AS base
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# System packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Build essentials
+    build-essential \
+    git \
+    curl \
+    wget \
+    ca-certificates \
+    # Python build deps
+    python3.11 \
+    python3.11-venv \
+    python3.11-dev \
+    # R deps (will install R later)
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libjpeg-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    # Locale
+    locales \
+    && rm -rf /var/lib/apt/lists/* \
+    && locale-gen en_US.UTF-8
+
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+
+# ==============================================================================
+# Stage 2: Python with uv
+# ==============================================================================
+FROM base AS python-env
+
+# Install uv
+ENV UV_VERSION=0.5.14
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+WORKDIR /project
+
+# Copy Python dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install Python packages (frozen from lockfile)
+RUN uv sync --frozen
+
+# ==============================================================================
+# Stage 3: R with renv
+# ==============================================================================
+FROM python-env AS r-env
+
+# Install R 4.4 from CRAN
+RUN wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc \
+    && echo "deb https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/" >> /etc/apt/sources.list.d/cran.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends r-base r-base-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install renv
+ENV RENV_VERSION=1.0.7
+RUN R -e "install.packages('renv', repos = 'https://cloud.r-project.org')"
+
+# Copy renv files
+COPY renv.lock .Rprofile ./
+COPY renv/activate.R renv/settings.json renv/
+
+# Restore R packages
+RUN R -e "renv::restore(prompt = FALSE, clean = TRUE)"
+
+# ==============================================================================
+# Stage 4: Node.js
+# ==============================================================================
+FROM r-env AS node-env
+
+# Install Node.js 20 LTS
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy visualization app
+COPY apps/visualization/package*.json apps/visualization/
+RUN cd apps/visualization && npm ci
+
+# ==============================================================================
+# Stage 5: Final image
+# ==============================================================================
+FROM node-env AS final
+
+# Copy all source code
+COPY . .
+
+# Create output directories
+RUN mkdir -p \
+    figures/generated/ggplot2 \
+    figures/generated/images \
+    outputs/tables \
+    outputs/latex \
+    outputs/r_data
+
+# Default shell
+CMD ["/bin/bash"]
+]]></content>
+    </step>
+
+    <step id="3.3" type="implementation">
+      <name>Create docker-compose.yml</name>
+      <file>docker-compose.yml</file>
+      <content><![CDATA[
+# docker-compose.yml - Development environment
+#
+# Usage:
+#   docker compose up -d       # Start container
+#   docker compose exec dev bash  # Enter container
+#   docker compose down        # Stop container
+
+services:
+  dev:
+    build: .
+    image: foundation-plr:latest
+    container_name: foundation-plr-dev
+
+    # Mount project directory
+    volumes:
+      - .:/project
+      - ~/.gitconfig:/root/.gitconfig:ro
+
+    # GPU support (optional)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    # Keep container running
+    tty: true
+    stdin_open: true
+
+    # Working directory
+    working_dir: /project
+
+    # Environment
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - MLFLOW_TRACKING_URI=file:///project/mlruns
+
+  # R-only service for figure generation
+  r-figures:
+    build:
+      context: .
+      dockerfile: Dockerfile.r
+    volumes:
+      - ./figures/generated/ggplot2:/project/figures/generated/ggplot2
+      - ./outputs/r_data:/project/outputs/r_data:ro
+      - ./configs:/project/configs:ro
+]]></content>
+    </step>
+
+    <step id="3.4" type="verification">
+      <name>Run full environment tests</name>
+      <command>pytest tests/test_docker_full.py -v --timeout=3600</command>
+      <expected-outcome>All tests pass</expected-outcome>
+    </step>
+
+    <step id="3.5" type="git">
+      <name>Commit full Dockerfile</name>
+      <files>
+        <file>Dockerfile</file>
+        <file>docker-compose.yml</file>
+        <file>tests/test_docker_full.py</file>
+      </files>
+      <message>feat(docker): Add full development environment Dockerfile
+
+Implements Issue #3 requirements:
+- Python 3.11 with uv (275 packages)
+- R 4.4 with renv (8 pinned packages)
+- Node.js 20 with npm
+- CUDA/GPU support
+- docker-compose for easy development</message>
+    </step>
+
+    <success-criteria>
+      <criterion>docker build succeeds</criterion>
+      <criterion>Python packages (275) from uv.lock</criterion>
+      <criterion>R packages (8 pinned) from renv.lock</criterion>
+      <criterion>Node.js packages from package-lock.json</criterion>
+      <criterion>docker compose up works</criterion>
+    </success-criteria>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 4: CI/CD INTEGRATION                                         -->
+  <!-- ================================================================== -->
+  <phase id="4" name="CI/CD Integration" status="pending">
+    <description>
+      Add GitHub Actions workflow to build and cache Docker images.
+    </description>
+
+    <step id="4.1" type="implementation">
+      <name>Create GitHub Actions workflow</name>
+      <file>.github/workflows/docker.yml</file>
+      <content><![CDATA[
+name: Docker Build
+
+on:
+  push:
+    paths:
+      - 'Dockerfile*'
+      - 'docker-compose.yml'
+      - 'renv.lock'
+      - 'uv.lock'
+      - 'apps/visualization/package-lock.json'
+  pull_request:
+    paths:
+      - 'Dockerfile*'
+      - 'docker-compose.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-r-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push R image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.r
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-r:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-r:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test R image
+        run: |
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-r:latest \
+            Rscript -e "library(ggplot2); library(pminternal); cat('SUCCESS\n')"
+
+  build-full-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push full image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+]]></content>
+    </step>
+
+    <step id="4.2" type="git">
+      <name>Commit CI/CD workflow</name>
+      <files>
+        <file>.github/workflows/docker.yml</file>
+      </files>
+      <message>ci: Add GitHub Actions workflow for Docker builds</message>
+    </step>
+
+    <success-criteria>
+      <criterion>Workflow file is valid YAML</criterion>
+      <criterion>Builds trigger on relevant file changes</criterion>
+      <criterion>Uses GHA cache for faster builds</criterion>
+    </success-criteria>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 5: DOCUMENTATION AND ISSUE CLOSURE                           -->
+  <!-- ================================================================== -->
+  <phase id="5" name="Documentation and Closure" status="pending">
+    <description>
+      Update documentation and close Issue #3.
+    </description>
+
+    <step id="5.1" type="implementation">
+      <name>Update README with Docker instructions</name>
+      <file>README.md</file>
+      <section>## Quick Start with Docker</section>
+      <content><![CDATA[
+## Quick Start with Docker
+
+The fastest way to get started is with Docker:
+
+```bash
+# Build the development environment
+docker compose build
+
+# Start the container
+docker compose up -d
+
+# Enter the container
+docker compose exec dev bash
+
+# Run R figures
+docker compose run r-figures
+```
+
+### Pre-built Images
+
+Pre-built images are available from GitHub Container Registry:
+
+```bash
+# Full development environment
+docker pull ghcr.io/yourusername/foundation_plr:latest
+
+# R-only for figures
+docker pull ghcr.io/yourusername/foundation_plr-r:latest
+```
+]]></content>
+    </step>
+
+    <step id="5.2" type="verification">
+      <name>Final reproducibility test</name>
+      <command><![CDATA[
+# Full reproducibility check
+docker compose build
+docker compose run dev pytest tests/ -v
+docker compose run r-figures
+# Verify figures generated
+ls -la figures/generated/ggplot2/
+]]></command>
+    </step>
+
+    <step id="5.3" type="git">
+      <name>Final commit</name>
+      <message>docs: Add Docker quick start to README
+
+Closes #3</message>
+    </step>
+
+    <step id="5.4" type="issue">
+      <name>Close Issue #3</name>
+      <command>gh issue close 3 --comment "Implemented Docker environment with renv for R reproducibility. See Dockerfile, Dockerfile.r, and docker-compose.yml."</command>
+    </step>
+
+    <success-criteria>
+      <criterion>README has Docker instructions</criterion>
+      <criterion>Issue #3 closed</criterion>
+      <criterion>All acceptance criteria from Issue #3 met</criterion>
+    </success-criteria>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- REVIEWER CHECKPOINT                                                -->
+  <!-- ================================================================== -->
+  <reviewer-checkpoint>
+    <description>
+      After each phase, verify against Issue #3 acceptance criteria:
+    </description>
+
+    <checklist>
+      <item phase="1">renv.lock created with pinned versions</item>
+      <item phase="2">Dockerfile.r builds and R packages load</item>
+      <item phase="3">Full Dockerfile builds with Python+R+Node</item>
+      <item phase="4">CI/CD workflow added</item>
+      <item phase="5">Issue #3 closed with all criteria met</item>
+    </checklist>
+
+    <issue-3-acceptance>
+      <must-have>
+        <item>docker build completes successfully</item>
+        <item>All 275 Python packages installed (uv sync works)</item>
+        <item>All 8 R packages installed at pinned versions</item>
+        <item>All 246 Node.js packages installed (npm ci works)</item>
+        <item>GPU accessible in container (nvidia-smi works)</item>
+        <item>Can reproduce AUROC=0.913 result</item>
+      </must-have>
+      <should-have>
+        <item>Multi-stage build (smaller final image)</item>
+        <item>Pre-built image on GHCR</item>
+        <item>just docker-build and docker-run commands</item>
+      </should-have>
+    </issue-3-acceptance>
+  </reviewer-checkpoint>
+
+  <!-- ================================================================== -->
+  <!-- RECOVERY INSTRUCTIONS                                              -->
+  <!-- ================================================================== -->
+  <recovery-instructions>
+    <context-loss>
+      If context is lost mid-execution:
+      1. Read this file to understand current phase
+      2. Check git log to see which commits completed
+      3. Run tests for completed phases to verify state
+      4. Resume from current phase's next incomplete step
+    </context-loss>
+
+    <phase-status-check>
+      <command><![CDATA[
+# Check which phases are complete by looking at files
+echo "Phase 1 (renv): $(test -f renv.lock && echo DONE || echo PENDING)"
+echo "Phase 2 (Dockerfile.r): $(test -f Dockerfile.r && echo DONE || echo PENDING)"
+echo "Phase 3 (Dockerfile): $(test -f Dockerfile && echo DONE || echo PENDING)"
+echo "Phase 4 (CI): $(test -f .github/workflows/docker.yml && echo DONE || echo PENDING)"
+echo "Phase 5 (Closure): $(gh issue view 3 --json state -q .state)"
+]]></command>
+    </phase-status-check>
+
+    <rollback>
+      If a phase fails:
+      1. git stash (save any changes)
+      2. Fix the issue
+      3. Re-run the phase's tests
+      4. git stash pop (restore changes)
+      5. Continue execution
+    </rollback>
+  </recovery-instructions>
+</action-plan>

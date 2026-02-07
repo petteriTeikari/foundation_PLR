@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Action Plan: Fix Python Visualization Code Violations
+  Generated: 2026-01-27
+  Updated: 2026-01-27 (Reviewer #2 feedback incorporated)
+
+  Key Changes from Review:
+  - Added Phase 0 for COLORS dict extension (blocking dependency)
+  - Fixed reference to colors.yaml (not figure_colors.yaml)
+  - Added verification step for current line numbers
+  - Added missing named color mappings
+  - Added rollback strategy
+-->
+<action-plan version="2.0">
+  <metadata>
+    <title>Python Viz Code Hardcoding Violations Fix Plan</title>
+    <created>2026-01-27</created>
+    <updated>2026-01-27</updated>
+    <priority>HIGH</priority>
+    <estimated-files>18</estimated-files>
+    <note>Run validator to get accurate violation count before execution</note>
+  </metadata>
+
+  <context>
+    <problem>
+      Python visualization code contains hardcoded colors, paths, and direct savefig() calls
+      that bypass the figure system. This violates the project's config-driven architecture.
+    </problem>
+    <solution>
+      Replace hardcoded values with config-driven alternatives:
+      - Hex colors → COLORS dict from plot_config.py
+      - Output paths → save_figure() function
+      - Direct savefig() → save_figure() with data export
+    </solution>
+    <references>
+      <ref>.claude/CLAUDE.md (Anti-Hardcoding section)</ref>
+      <ref>src/viz/plot_config.py (COLORS dict, save_figure function)</ref>
+      <ref>configs/VISUALIZATION/colors.yaml</ref>
+    </references>
+  </context>
+
+  <rollback-strategy>
+    <description>If fixes break the codebase mid-execution:</description>
+    <step>1. git checkout -- src/viz/  # Restore all viz files</step>
+    <step>2. Review error messages</step>
+    <step>3. Fix specific issue</step>
+    <step>4. Re-run from Phase 0</step>
+    <note>Consider: git checkout -b fix/viz-code-violations before starting</note>
+  </rollback-strategy>
+
+  <phases>
+    <!-- PHASE 0: Prerequisites and COLORS dict extension (BLOCKING) -->
+    <phase id="0" name="Prerequisites and COLORS Extension" priority="blocking">
+      <description>MUST complete before any other phases - extends COLORS dict with new semantic colors</description>
+
+      <task id="0.1" name="Verify clean git state">
+        <command>git status --porcelain | grep -q "." &amp;&amp; echo "WARN: Working tree not clean" || echo "OK"</command>
+      </task>
+
+      <task id="0.2" name="Get current violation count and line numbers">
+        <command>uv run python scripts/validate_python_hardcoding.py 2>&amp;1 | head -100</command>
+        <description>Get CURRENT violation line numbers before any edits</description>
+      </task>
+
+      <task id="0.3" file="src/viz/plot_config.py" name="Extend COLORS dict">
+        <description>Add all missing semantic colors BEFORE fixing any other files</description>
+        <colors-to-add>
+          <!-- Outcome class colors -->
+          <color key="glaucoma" value="#E74C3C" usage="Glaucoma outcome class"/>
+          <color key="control" value="#3498DB" usage="Control outcome class"/>
+          <!-- Light protocol colors -->
+          <color key="blue_stimulus" value="#1f77b4" usage="Blue light stimulus"/>
+          <color key="red_stimulus" value="#d62728" usage="Red light stimulus"/>
+          <color key="background_light" value="#f0f0f0" usage="Light background zones"/>
+          <color key="blue_zone" value="#cce5ff" usage="Blue response zone"/>
+          <color key="red_zone" value="#ffcccc" usage="Red response zone"/>
+          <!-- CD diagram rank colors -->
+          <color key="cd_rank1" value="#2ecc71" usage="CD diagram rank 1"/>
+          <color key="cd_rank2" value="#3498db" usage="CD diagram rank 2"/>
+          <color key="cd_rank3" value="#e74c3c" usage="CD diagram rank 3"/>
+          <color key="cd_rank4" value="#9b59b6" usage="CD diagram rank 4"/>
+          <color key="cd_rank5" value="#f39c12" usage="CD diagram rank 5"/>
+          <!-- Text colors -->
+          <color key="text_primary" value="#333333" usage="Primary text"/>
+          <color key="text_secondary" value="#666666" usage="Secondary text, grid"/>
+          <!-- Background colors -->
+          <color key="background_neutral" value="#F5F5F5" usage="Neutral background"/>
+          <color key="grid" value="#CCCCCC" usage="Grid lines"/>
+        </colors-to-add>
+      </task>
+
+      <task id="0.4" name="Verify colors added">
+        <command>uv run python -c "
+from src.viz.plot_config import COLORS
+required = ['glaucoma', 'control', 'cd_rank1', 'blue_stimulus', 'text_primary']
+for key in required:
+    assert key in COLORS, f'Missing COLORS[{key!r}]'
+print('All required colors present')
+"</command>
+      </task>
+    </phase>
+
+    <!-- PHASE 1: High-impact files with many violations -->
+    <phase id="1" name="High-Impact Files" priority="critical">
+      <description>Fix files with 5+ violations for maximum impact</description>
+
+      <task id="1.1" file="src/viz/stratos_figures.py">
+        <description>Main STRATOS visualization module - most violations (paths + savefig)</description>
+        <fix-pattern type="path">
+          Replace all "figures/generated" path strings with save_figure() calls
+        </fix-pattern>
+        <fix-pattern type="savefig">
+          Replace fig.savefig(pdf_path, ...) and fig.savefig(png_path, ...) with:
+          save_figure(fig, figure_name, data=data_dict)
+        </fix-pattern>
+      </task>
+
+      <task id="1.2" file="src/viz/prob_distribution.py">
+        <description>Probability distribution plots - colors + paths + savefig</description>
+        <fix-pattern type="color">
+          Replace case_color="#E74C3C" with COLORS["glaucoma"]
+          Replace control_color="#3498DB" with COLORS["control"]
+        </fix-pattern>
+        <fix-pattern type="savefig">
+          Replace fig.savefig() with save_figure()
+        </fix-pattern>
+      </task>
+
+      <task id="1.3" file="src/viz/retained_metric.py">
+        <description>Retention metric curves - paths + savefig</description>
+        <fix-pattern type="path">Replace output_dir hardcoding</fix-pattern>
+        <fix-pattern type="savefig">Replace fig.savefig() with save_figure()</fix-pattern>
+      </task>
+
+      <task id="1.4" file="src/viz/uncertainty_scatter.py">
+        <description>Uncertainty scatter plots - colors + paths + savefig</description>
+        <fix-pattern type="color">Replace hardcoded colors with COLORS dict</fix-pattern>
+      </task>
+
+      <task id="1.5" file="src/viz/light_protocol_plot.py">
+        <description>Light protocol visualization - many colors in phases list</description>
+        <fix-pattern type="color">
+          Reference COLORS dict for stimulus colors and zone colors
+        </fix-pattern>
+      </task>
+
+      <task id="1.6" file="src/viz/cd_diagram.py" fix-locations="1">
+        <description>CD diagram - 5 colors in one list (clique_colors)</description>
+        <fix-pattern type="color">
+          Replace: clique_colors = ["#2ecc71", "#3498db", ...]
+          With: clique_colors = [COLORS["cd_rank1"], COLORS["cd_rank2"], ...]
+        </fix-pattern>
+      </task>
+    </phase>
+
+    <!-- PHASE 2: Medium-impact files -->
+    <phase id="2" name="Medium-Impact Files" priority="high">
+      <description>Fix files with 2-4 violations</description>
+
+      <task id="2.1" file="src/viz/dca_plot.py">
+        <fix-pattern type="path">Replace hardcoded paths</fix-pattern>
+        <fix-pattern type="savefig">Replace savefig() calls</fix-pattern>
+      </task>
+
+      <task id="2.2" file="src/viz/calibration_plot.py">
+        <fix-pattern type="path">Replace hardcoded paths</fix-pattern>
+        <fix-pattern type="savefig">Replace savefig() calls</fix-pattern>
+      </task>
+
+      <task id="2.3" file="src/viz/metric_vs_cohort.py">
+        <fix-pattern type="path">Replace hardcoded paths</fix-pattern>
+        <fix-pattern type="savefig">Replace savefig() calls</fix-pattern>
+      </task>
+
+      <task id="2.4" file="src/viz/fig_instability_plots.py">
+        <fix-pattern type="color">Replace #666666 with COLORS["text_secondary"]</fix-pattern>
+        <fix-pattern type="savefig">Replace savefig() calls</fix-pattern>
+      </task>
+
+      <task id="2.5" file="src/viz/figure_data.py">
+        <fix-pattern type="path">Replace hardcoded figure paths</fix-pattern>
+      </task>
+
+      <task id="2.6" file="src/viz/parallel_coordinates_preprocessing.py">
+        <fix-pattern type="color">Replace #333333 and #666666 with COLORS refs</fix-pattern>
+      </task>
+
+      <task id="2.7" file="src/viz/utility_matrix.py">
+        <fix-pattern type="color">Replace #F5F5F5 and #CCCCCC with COLORS refs</fix-pattern>
+      </task>
+
+      <task id="2.8" file="src/viz/viz_utils.py">
+        <fix-pattern type="savefig">Replace savefig() calls</fix-pattern>
+      </task>
+
+      <task id="2.9" file="src/viz/figure_export.py">
+        <fix-pattern type="savefig">Replace savefig() calls</fix-pattern>
+      </task>
+    </phase>
+
+    <!-- PHASE 3: Low-impact files -->
+    <phase id="3" name="Low-Impact Files" priority="medium">
+      <description>Fix remaining single-violation files</description>
+
+      <task id="3.1" file="src/viz/viz_data_import.py">
+        <fix-pattern type="savefig">Replace plt.savefig()</fix-pattern>
+      </task>
+
+      <task id="3.2" file="src/viz/viz_imputations.py">
+        <fix-pattern type="savefig">Replace fig.savefig()</fix-pattern>
+      </task>
+
+      <task id="3.3" file="src/viz/viz_features.py">
+        <fix-pattern type="savefig">Replace fig.savefig()</fix-pattern>
+      </task>
+
+      <task id="3.4" file="src/viz/config_loader.py" status="EXCEPTION">
+        <description>
+          Line 155 uses "#000000" as fallback default in config loader.
+          ACCEPTABLE: Config loaders may define fallback defaults.
+          Optional: Move to colors.yaml as 'default_fallback' key.
+        </description>
+      </task>
+    </phase>
+
+    <!-- PHASE 4: Validation -->
+    <phase id="4" name="Validation" priority="high">
+      <description>Verify all fixes</description>
+
+      <task id="4.1" name="Run Python validator">
+        <command>uv run python scripts/validate_python_hardcoding.py</command>
+        <expected>All Python files pass validation!</expected>
+      </task>
+
+      <task id="4.2" name="Run import tests">
+        <command>uv run python -c "from src.viz import *"</command>
+        <expected>No import errors</expected>
+      </task>
+
+      <task id="4.3" name="Check for named colors (not caught by validator)">
+        <command>grep -rn "color=['\"]blue['\"]\\|color=['\"]red['\"]\\|color=['\"]gray['\"]" src/viz/ --include="*.py" | grep -v test | head -20</command>
+        <description>Manual check for named colors like "blue", "red", "gray"</description>
+      </task>
+    </phase>
+  </phases>
+
+  <execution-notes>
+    <note priority="1">
+      BLOCKING: Phase 0 MUST complete before any other phases.
+      All files depend on COLORS dict being extended first.
+    </note>
+    <note priority="2">
+      For save_figure() replacements, ensure data dict is passed for reproducibility.
+    </note>
+    <note priority="3">
+      Run validation after each phase to catch regressions early.
+    </note>
+    <note priority="4">
+      config_loader.py violation is marked as EXCEPTION - fallback defaults are acceptable there.
+    </note>
+  </execution-notes>
+</action-plan>

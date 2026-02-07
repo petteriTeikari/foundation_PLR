@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EXECUTION PLAN 02: Data Verification and Report Fixes
+  Priority: P1-HIGH
+  Purpose: Ensure all AUROC values and metrics match DuckDB source of truth
+
+  Cold-Start Context:
+  - Expert review v1 contained hallucinated AUROC values (0.831 vs 0.792)
+  - Actual verified values: GT=0.9110, best=0.9130
+  - EPV should be 7.0 (8 features), not a range
+  - All metrics MUST be sourced from DuckDB queries
+
+  Self-Contained: This plan has ALL context needed for execution from cold start.
+-->
+<execution-plan id="02-data-verification" version="1.0">
+  <metadata>
+    <created>2026-01-29</created>
+    <priority>P1-HIGH</priority>
+    <estimated-effort>2-3 hours</estimated-effort>
+    <database>data/public/foundation_plr_results_stratos.db</database>
+  </metadata>
+
+  <context>
+    <failure-background>
+      Expert review v1 used unverified AUROC values that did not match database.
+      This violated data provenance requirements from CLAUDE.md.
+    </failure-background>
+    <verified-values>
+      <value metric="GT AUROC">0.9110 (CI: 0.9028-0.9182)</value>
+      <value metric="Best AUROC">0.9130 (Ensemble+CSDI+CatBoost)</value>
+      <value metric="Handcrafted mean">0.8304</value>
+      <value metric="MOMENT-embedding mean">0.7040</value>
+      <value metric="EPV handcrafted">7.0 (56 events / 8 features)</value>
+      <value metric="EPV embeddings">0.58 (56 events / 96 features)</value>
+    </verified-values>
+  </context>
+
+  <!-- PHASE 1: VERIFICATION QUERIES -->
+  <phase id="1-queries" name="Verify All Values Against DuckDB">
+
+    <step id="1.1">
+      <task>Run ground truth AUROC verification query</task>
+      <query><![CDATA[
+SELECT outlier_method, imputation_method, auroc, auroc_ci_lo, auroc_ci_hi
+FROM essential_metrics
+WHERE outlier_method = 'pupil-gt'
+  AND imputation_method = 'pupil-gt'
+  AND classifier = 'CATBOOST'
+  AND featurization LIKE 'simple%'
+      ]]></query>
+      <expected>auroc = 0.9110 ± 0.002</expected>
+    </step>
+
+    <step id="1.2">
+      <task>Run best config verification query</task>
+      <query><![CDATA[
+SELECT outlier_method, imputation_method, auroc, auroc_ci_lo, auroc_ci_hi
+FROM essential_metrics
+WHERE featurization LIKE 'simple%' AND classifier = 'CATBOOST'
+ORDER BY auroc DESC
+LIMIT 5
+      ]]></query>
+      <expected>Top = 0.9130 (Ensemble + CSDI)</expected>
+    </step>
+
+    <step id="1.3">
+      <task>Run featurization comparison query</task>
+      <query><![CDATA[
+SELECT featurization, AVG(auroc) as mean_auroc, COUNT(*) as n_configs
+FROM essential_metrics
+GROUP BY featurization
+ORDER BY mean_auroc DESC
+      ]]></query>
+      <expected>
+        simple1.0: ~0.8304
+        MOMENT-embedding: ~0.7040
+        Gap: ~12.6pp
+      </expected>
+    </step>
+
+    <step id="1.4">
+      <task>Create verification script</task>
+      <output>scripts/verify_report_metrics.py</output>
+      <purpose>Automated check that can be run before any report generation</purpose>
+    </step>
+  </phase>
+
+  <!-- PHASE 2: JSON DATA FILE VERIFICATION -->
+  <phase id="2-json-audit" name="Audit JSON Data Files">
+
+    <step id="2.1">
+      <task>List all JSON data files</task>
+      <location>data/r_data/*.json</location>
+      <files>
+        - roc_rc_data.json
+        - calibration_data.json
+        - top10_configs.json
+        - shap_feature_importance.json
+      </files>
+    </step>
+
+    <step id="2.2">
+      <task>Verify roc_rc_data.json configs</task>
+      <check>All 9 configs present with correct outlier/imputation methods</check>
+      <check>No duplicate configs</check>
+      <check>All from simple (handcrafted) featurization</check>
+    </step>
+
+    <step id="2.3">
+      <task>Verify calibration_data.json</task>
+      <check>Calibration slope present for key configs</check>
+      <check>Values match DuckDB</check>
+    </step>
+
+    <step id="2.4">
+      <task>Add data source hash to all JSON files</task>
+      <purpose>Audit trail for data provenance</purpose>
+      <field>"data_source": {"file": "foundation_plr_results_stratos.db", "hash": "ad48364eef315a58"}</field>
+    </step>
+  </phase>
+
+  <!-- PHASE 3: FIGURE DATA CROSS-CHECK -->
+  <phase id="3-figure-crosscheck" name="Cross-Check Figure Data">
+
+    <step id="3.1">
+      <task>Check fig_roc_rc_combined.png AUROC values</task>
+      <expected>Ground Truth shows AUROC ~0.911 in legend/annotation</expected>
+      <action>View PNG and verify</action>
+    </step>
+
+    <step id="3.2">
+      <task>Check fig_calibration_dca_combined.png</task>
+      <expected>Calibration slope annotation shows ~0.52 for GT</expected>
+    </step>
+
+    <step id="3.3">
+      <task>Check fig_multi_metric_raincloud.png</task>
+      <expected>No overlapping densities (fixed in previous session)</expected>
+    </step>
+  </phase>
+
+  <!-- PHASE 4: REPORT FIXES -->
+  <phase id="4-report-fixes" name="Apply Verified Values to Reports">
+
+    <step id="4.1">
+      <task>Verify v2 reports have correct values</task>
+      <files>
+        - figures/generated/figure-reports-expert-review-v2.md
+        - figures/generated/figure-reports-expert-review-deeper-discussion-v2.md
+      </files>
+      <check>GT AUROC = 0.9110</check>
+      <check>Best AUROC = 0.9130</check>
+      <check>EPV = 7.0 (not range)</check>
+      <check>Embedding mean = 0.7040</check>
+    </step>
+
+    <step id="4.2">
+      <task>Remove/archive v1 reports if v2 verified correct</task>
+      <action>Keep v1 for history, mark as superseded</action>
+    </step>
+
+    <step id="4.3">
+      <task>Add data provenance section to reports</task>
+      <content><![CDATA[
+## Data Provenance
+
+All metrics in this report are sourced from:
+- **Database**: `data/public/foundation_plr_results_stratos.db`
+- **Hash**: `ad48364eef315a58`
+- **Verification script**: `scripts/verify_report_metrics.py`
+
+Verified values:
+- Ground Truth AUROC: 0.9110 (CI: 0.9028-0.9182)
+- Best AUROC: 0.9130 (Ensemble + CSDI + CatBoost)
+- Handcrafted mean: 0.8304
+- MOMENT-embedding mean: 0.7040
+      ]]></content>
+    </step>
+  </phase>
+
+  <!-- PHASE 5: TEST CREATION -->
+  <phase id="5-tests" name="Create Verification Tests">
+
+    <step id="5.1">
+      <task>Create test for report metric verification</task>
+      <output>tests/test_report_metrics.py</output>
+      <tests>
+        <test>test_gt_auroc_in_expected_range</test>
+        <test>test_best_auroc_in_expected_range</test>
+        <test>test_epv_calculation_correct</test>
+        <test>test_no_hallucinated_values_in_reports</test>
+      </tests>
+    </step>
+
+    <step id="5.2">
+      <task>Add to CI/pre-commit</task>
+      <purpose>Prevent future hallucination of metrics</purpose>
+    </step>
+  </phase>
+
+  <!-- SUCCESS CRITERIA -->
+  <success-criteria>
+    <criterion>All AUROC values in reports match DuckDB queries</criterion>
+    <criterion>EPV correctly stated as 7.0, not a range</criterion>
+    <criterion>JSON data files have data source hashes</criterion>
+    <criterion>Verification script created and passing</criterion>
+    <criterion>No hallucinated values remain in v2 reports</criterion>
+  </success-criteria>
+</execution-plan>

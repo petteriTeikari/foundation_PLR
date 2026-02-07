@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Figure Reports Execution Plan
+  Generated: 2026-01-29
+  Purpose: Actionable items derived from expert reviews and user annotations
+
+  Sources:
+  - figure-reports-expert-review.md (with Petteri annotations)
+  - figure-reports-expert-review-deeper-discussion.md (with Petteri annotations)
+-->
+<execution-plan version="1.0">
+  <metadata>
+    <created>2026-01-29</created>
+    <status>pending-review</status>
+    <verified-auroc-gt>0.9110</verified-auroc-gt>
+    <verified-auroc-best>0.9130</verified-auroc-best>
+  </metadata>
+
+  <!-- CRITICAL: Data Verification -->
+  <section id="data-verification" priority="P0-CRITICAL">
+    <title>Data Source Verification</title>
+    <description>
+      CRITICAL-FAILURE reported: Expert review used hallucinated AUROC values (0.831 vs 0.792)
+      instead of actual verified values (GT=0.911, best=0.913).
+
+      ROOT CAUSE: Reports generated without querying DuckDB directly.
+    </description>
+
+    <action id="verify-all-figures">
+      <task>Double-check ALL figure data against foundation_plr_results_stratos.db</task>
+      <verification-query><![CDATA[
+SELECT outlier_method, imputation_method, auroc, auroc_ci_lo, auroc_ci_hi
+FROM essential_metrics
+WHERE featurization LIKE 'simple%' AND classifier = 'CATBOOST'
+ORDER BY auroc DESC
+      ]]></verification-query>
+      <expected-gt-auroc>0.9110 ± 0.008</expected-gt-auroc>
+      <expected-best-auroc>0.9130 ± 0.008</expected-best-auroc>
+    </action>
+
+    <action id="audit-json-sources">
+      <task>Verify all data/r_data/*.json files contain correct metrics</task>
+      <files>
+        <file>roc_rc_data.json</file>
+        <file>calibration_data.json</file>
+        <file>top10_configs.json</file>
+        <file>shap_feature_importance.json</file>
+      </files>
+    </action>
+  </section>
+
+  <!-- P1: pminternal Implementation -->
+  <section id="pminternal-figures" priority="P1-HIGH">
+    <title>pminternal Prediction Instability Plots</title>
+    <description>
+      User strongly requested (mentioned 3+ times): Need pminternal instability plots
+      in ggplot2 for supplementary materials.
+
+      Reference: Riley RD et al. (2023) "Clinical prediction models and the multiverse of madness"
+    </description>
+
+    <action id="check-bootstrap-data">
+      <task>Verify if per-bootstrap predictions exist in MLflow</task>
+      <path>/home/petteri/mlruns/253031330985650090/*/artifacts/</path>
+      <required-data>
+        <item>y_prob_original: predictions from developed model</item>
+        <item>y_prob_bootstrap: matrix (n_bootstrap × n_patients)</item>
+      </required-data>
+    </action>
+
+    <action id="extract-bootstrap-predictions">
+      <task>Create extraction script if bootstrap predictions not available</task>
+      <script>scripts/extract_bootstrap_predictions.py</script>
+      <output>outputs/r_data/bootstrap_predictions.json</output>
+    </action>
+
+    <action id="implement-ggplot2-instability">
+      <task>Create ggplot2 instability plot with Economist styling</task>
+      <script>src/r/figures/fig_instability_combined.R</script>
+      <panels>
+        <panel>A: Ground Truth preprocessing (baseline)</panel>
+        <panel>B: Best automated preprocessing</panel>
+      </panels>
+      <reference-implementation>
+        <package>pminternal</package>
+        <function>plot_pred_instability()</function>
+      </reference-implementation>
+    </action>
+
+    <planning-doc>docs/planning/pminternal-instability.md</planning-doc>
+  </section>
+
+  <!-- P1: Text Corrections -->
+  <section id="text-corrections" priority="P1-HIGH">
+    <title>Critical Text Corrections for v2</title>
+
+    <action id="fix-calibration-interpretation">
+      <task>Correct calibration slope interpretation in expert review</task>
+      <location>figure-reports-expert-review.md, ERROR 1</location>
+      <wrong>slope 0.52 indicates underconfidence</wrong>
+      <correct>slope 0.52 indicates overfitting/overconfidence (predictions more extreme than warranted)</correct>
+      <user-note>
+        Add context: "With such extreme small classifier sample sizes (N=208, 56 events),
+        poor calibration is expected. The 507-subject preprocessing evaluation is more meaningful
+        than the 208-subject classification, which serves as a downstream proxy/toy problem."
+      </user-note>
+    </action>
+
+    <action id="fix-epv-calculation">
+      <task>Correct EPV calculation to use EXACT feature count</task>
+      <location>figure-reports-expert-review-deeper-discussion.md, Section 1.1</location>
+      <wrong>EPV = 4.7-14 (range for 4-12 features)</wrong>
+      <correct>EPV = 7.0 (exactly 8 features: 4 per color from featuresSimple.yaml)</correct>
+      <calculation>56 events / 8 features = 7.0 EPV</calculation>
+    </action>
+
+    <action id="fix-auroc-values">
+      <task>Replace all hallucinated AUROC values with verified DuckDB values</task>
+      <replacements>
+        <replace>
+          <wrong>0.831 vs 0.792 (Ground Truth Paradox section)</wrong>
+          <correct>Use actual values from DuckDB: GT=0.911, best=0.913</correct>
+        </replace>
+        <replace>
+          <wrong>0.830 vs 0.740 (embedding vs handcrafted)</wrong>
+          <verify>Query DuckDB for MOMENT-embedding vs simple featurization</verify>
+        </replace>
+      </replacements>
+    </action>
+  </section>
+
+  <!-- P2: Study Framing -->
+  <section id="study-framing" priority="P2-MEDIUM">
+    <title>Pilot Study Framing Clarifications</title>
+    <description>
+      User emphasized: This is NOT a classifier study. TSFM preprocessing is the CORE message.
+      Classification is a downstream proxy to measure preprocessing quality.
+    </description>
+
+    <action id="add-pilot-framing">
+      <task>Add explicit pilot study framing to both reports</task>
+      <text><![CDATA[
+This proof-of-concept study evaluates preprocessing methods (N=507 subjects, ~1M timepoints)
+using glaucoma classification as a downstream proxy (N=208 labeled subjects).
+The classification task serves to measure preprocessing quality impact, not to develop
+a clinical-grade classifier. With 56 glaucoma events and 8 features (EPV=7.0),
+calibration instability is expected and does not diminish the preprocessing findings.
+      ]]></text>
+    </action>
+
+    <action id="emphasize-preprocessing-focus">
+      <task>Add supplementary figures on outlier detection and imputation quality</task>
+      <rationale>
+        Make clear that TSFM preprocessing is the main contribution,
+        not the downstream classification performance.
+      </rationale>
+      <suggested-figures>
+        <figure>Outlier detection precision/recall by method</figure>
+        <figure>Imputation MAE/RMSE by method</figure>
+        <figure>Signal reconstruction examples (before/after)</figure>
+      </suggested-figures>
+    </action>
+  </section>
+
+  <!-- P2: Embedding Gap Discussion -->
+  <section id="embedding-gap" priority="P2-MEDIUM">
+    <title>Embedding vs Handcrafted Feature Discussion</title>
+    <description>
+      Cannot derive generalizable insights without systematic dimensionality reduction study.
+      Need to explicitly acknowledge this limitation.
+    </description>
+
+    <action id="add-dimensionality-caveat">
+      <task>Add explicit caveat about embedding dimensionality</task>
+      <text><![CDATA[
+The observed performance gap between MOMENT embeddings (96 dimensions) and handcrafted
+features (8 dimensions) cannot be definitively attributed to representation quality
+without controlling for dimensionality. Future research should systematically compare:
+- Dimensionality reduction methods (PCA, UMAP, t-SNE, NMF)
+- Various feature lengths (4, 8, 16, 32, 64, 96)
+- LoRA-like adapters for embedding compression
+
+This initial approach was quick prototyping; rigorous embedding evaluation requires
+matching feature dimensionalities between methods.
+      ]]></text>
+    </action>
+
+    <action id="add-counter-hypothesis">
+      <task>Add domain expert counter-hypothesis</task>
+      <text><![CDATA[
+Counter-hypothesis: The canonical photoreceptor contributions (phasic, sustained, PIPR)
+should be relatively straightforward to learn even with traditional PCA, as these
+represent well-defined temporal patterns. For a domain expert, this does not appear
+to be an inherently challenging task like sarcasm detection or other tasks requiring
+extensive human knowledge. The embedding underperformance may reflect sample size
+constraints rather than fundamental representational limitations.
+      ]]></text>
+    </action>
+  </section>
+
+  <!-- P2: Citation Additions -->
+  <section id="citations" priority="P2-MEDIUM">
+    <title>Missing Citations to Add</title>
+
+    <citation id="mure-2009">
+      <bibtex>Mure et al. 2009 "Melanopsin Bistability" PLoS ONE</bibtex>
+      <context>Example of PLR study brushing preprocessing uncertainty under the rug</context>
+    </citation>
+
+    <citation id="allen-2019">
+      <bibtex>Allen et al. 2019 "Raincloud plots" Wellcome Open Research</bibtex>
+      <context>Methodology for raincloud visualizations</context>
+    </citation>
+
+    <citation id="demsar-2006">
+      <bibtex>Demšar 2006 "Statistical Comparisons of Classifiers" JMLR</bibtex>
+      <context>Critical difference diagram methodology</context>
+    </citation>
+
+    <citation id="simonsohn-2020">
+      <bibtex>Simonsohn et al. 2020 "Specification Curve Analysis" Nature Human Behaviour</bibtex>
+      <context>Multiverse/specification curve methodology</context>
+    </citation>
+
+    <citation id="vickers-2006">
+      <bibtex>Vickers &amp; Elkin 2006 "Decision Curve Analysis" Medical Decision Making</bibtex>
+      <context>DCA methodology</context>
+    </citation>
+  </section>
+
+  <!-- P3: Deferred Actions -->
+  <section id="deferred" priority="P3-DEFERRED">
+    <title>Deferred Actions</title>
+
+    <deferred-item id="supp-figure-pruning">
+      <description>Supplementary figure pruning (Fig S4 redundancy)</description>
+      <user-decision>No pruning at this point - defer decisions</user-decision>
+    </deferred-item>
+
+    <deferred-item id="recalibration">
+      <description>Post-hoc recalibration (temperature/isotonic scaling)</description>
+      <user-decision>Do not recalibrate - highlight data problem instead</user-decision>
+    </deferred-item>
+  </section>
+
+  <!-- LaTeX Updates -->
+  <section id="latex-updates" priority="P1-HIGH">
+    <title>LaTeX File Updates Required</title>
+
+    <action id="update-methods-epv">
+      <task>Add EPV calculation to Methods section</task>
+      <file>/home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR/latent-methods-results/*.tex</file>
+      <text>"With 56 glaucoma events and 8 handcrafted features, EPV = 7.0"</text>
+    </action>
+
+    <action id="update-discussion-pilot">
+      <task>Add pilot study framing to Discussion</task>
+      <key-points>
+        <point>507 subjects for preprocessing (main focus)</point>
+        <point>208 subjects for classification (downstream proxy)</point>
+        <point>Calibration issues expected with small N</point>
+      </key-points>
+    </action>
+
+    <action id="update-discussion-embedding">
+      <task>Add embedding dimensionality caveat to Discussion</task>
+      <text>Cannot derive generalizable insights without systematic dimensionality reduction study</text>
+    </action>
+
+    <action id="add-instability-reference">
+      <task>Add reference to pminternal instability analysis</task>
+      <citation>Riley RD et al. (2023) BMC Medicine</citation>
+      <supplementary-ref>Figure SX: Prediction instability plots</supplementary-ref>
+    </action>
+  </section>
+
+  <!-- Validation Checklist -->
+  <section id="validation-checklist" priority="P0-CRITICAL">
+    <title>Pre-Commit Validation Checklist</title>
+
+    <check id="auroc-verification">
+      <description>All AUROC values match DuckDB (GT=0.911, best=0.913)</description>
+      <command>uv run python scripts/verify_report_metrics.py</command>
+    </check>
+
+    <check id="epv-correct">
+      <description>EPV calculation uses 8 features, not range</description>
+      <expected>EPV = 56/8 = 7.0</expected>
+    </check>
+
+    <check id="calibration-interpretation">
+      <description>Slope &lt; 1 correctly interpreted as overfitting</description>
+    </check>
+
+    <check id="figure-qa-tests">
+      <description>All figure QA tests pass</description>
+      <command>pytest tests/test_figure_qa/ -v</command>
+    </check>
+  </section>
+
+</execution-plan>

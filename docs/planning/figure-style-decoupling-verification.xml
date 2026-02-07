@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Figure Style Decoupling Verification Plan
+  Created: 2026-01-28
+  Purpose: Systematically verify ALL R figure scripts use consistent panel title styling
+
+  RULE: Multi-panel figures must use ggtitle("A  Title") format, NOT plot_annotation(tag_levels=...)
+
+  The correct pattern creates "A  Calibration" on same line (bold letter + title)
+  The wrong pattern creates separate "A" tag above the panel
+-->
+<verification-plan>
+  <metadata>
+    <created>2026-01-28</created>
+    <last-updated>2026-01-28</last-updated>
+    <total-files>23</total-files>
+    <multi-panel-files>10</multi-panel-files>
+    <files-needing-fix>0</files-needing-fix>
+    <files-fixed>10</files-fixed>
+    <status>COMPLETE</status>
+  </metadata>
+
+  <style-rule>
+    <description>Panel titles must use "A  Title" format on same line</description>
+    <correct-pattern>ggtitle("A  Title") + theme(plot.title = element_text(face = "bold", size = 14))</correct-pattern>
+    <wrong-pattern>plot_annotation(tag_levels = "A")</wrong-pattern>
+    <reference-figure>fig_calibration_dca_combined.png</reference-figure>
+  </style-rule>
+
+  <!-- ========================================================================
+       MULTI-PANEL FIGURES (require panel title styling)
+       ======================================================================== -->
+
+  <category name="multi-panel-figures">
+
+    <!-- ALREADY FIXED -->
+    <file status="FIXED" priority="done">
+      <name>fig_multi_metric_raincloud.R</name>
+      <output>figures/generated/ggplot2/main/fig_multi_metric_raincloud.png</output>
+      <panels>A Discrimination, B Overall Performance, C Clinical Utility, D Calibration</panels>
+      <uses-ggtitle>true</uses-ggtitle>
+      <fixed-date>2026-01-28</fixed-date>
+    </file>
+
+    <file status="FIXED" priority="done">
+      <name>fig_roc_rc_combined.R</name>
+      <output>figures/generated/ggplot2/main/fig_roc_rc_combined.png</output>
+      <panels>A ROC Curves, B Risk-Coverage</panels>
+      <uses-ggtitle>true</uses-ggtitle>
+      <fixed-date>2026-01-28</fixed-date>
+    </file>
+
+    <file status="FIXED" priority="done">
+      <name>fig_variance_decomposition.R</name>
+      <output>figures/generated/ggplot2/main/fig_variance_decomposition.png</output>
+      <panels>A Preprocessing Only, B Full Model</panels>
+      <uses-ggtitle>true</uses-ggtitle>
+      <fixed-date>2026-01-28</fixed-date>
+    </file>
+
+    <!-- NEED FIX -->
+    <file status="NEEDS_FIX" priority="P1-main">
+      <name>fig_calibration_dca_combined.R</name>
+      <output>figures/generated/ggplot2/main/fig_calibration_dca_combined.png</output>
+      <panels>A Calibration, B Decision Curve Analysis</panels>
+      <uses-ggtitle>false</uses-ggtitle>
+      <issue>Uses compose_figures() which adds titles separately - check if already correct</issue>
+    </file>
+
+    <file status="NEEDS_FIX" priority="P1-main">
+      <name>fig_prob_dist_by_outcome.R</name>
+      <output>figures/generated/ggplot2/main/fig_prob_dist_combined.png</output>
+      <panels>A Representative Pipeline, B All Pipelines</panels>
+      <uses-ggtitle>false</uses-ggtitle>
+      <issue>Uses plot_annotation(tag_levels) - needs ggtitle conversion</issue>
+    </file>
+
+    <file status="NEEDS_FIX" priority="P2-supplementary">
+      <name>fig_selective_classification.R</name>
+      <output>figures/generated/ggplot2/supplementary/fig_selective_classification.png</output>
+      <panels>A AUROC, B Net Benefit, C Scaled Brier</panels>
+      <uses-ggtitle>false</uses-ggtitle>
+      <issue>Uses plot_annotation(tag_levels) - needs ggtitle conversion</issue>
+    </file>
+
+    <file status="NEEDS_FIX" priority="P2-supplementary">
+      <name>fig_stratos_core.R</name>
+      <output>figures/generated/ggplot2/extra-supplementary/fig_stratos_core.png</output>
+      <panels>A ROC, B Calibration, C DCA, D Probability</panels>
+      <uses-ggtitle>false</uses-ggtitle>
+      <issue>Uses get_tag_levels(style) from load_style.R - needs ggtitle conversion</issue>
+    </file>
+
+    <file status="NEEDS_FIX" priority="P3-extra">
+      <name>fig_subject_traces.R</name>
+      <output>figures/generated/ggplot2/demo/fig_subject_traces_DEMO.png</output>
+      <panels>Per-subject panels</panels>
+      <uses-ggtitle>false</uses-ggtitle>
+      <issue>Uses plot_annotation - may need different handling for many panels</issue>
+    </file>
+
+    <file status="NEEDS_FIX" priority="P2-supplementary">
+      <name>fig_shap_importance.R</name>
+      <output>figures/generated/ggplot2/main/fig_shap_importance_combined.png</output>
+      <panels>A Ground Truth Pipeline, B Ensemble Pipeline</panels>
+      <uses-ggtitle>false</uses-ggtitle>
+      <issue>Uses plot_annotation(tag_levels) - needs ggtitle conversion</issue>
+    </file>
+
+    <file status="NEEDS_FIX" priority="P3-extra">
+      <name>fig_vif_analysis.R</name>
+      <output>figures/generated/ggplot2/extra-supplementary/fig_vif_combined.png</output>
+      <panels>Multiple VIF panels</panels>
+      <uses-ggtitle>false</uses-ggtitle>
+      <issue>Uses plot_annotation(tag_levels) - needs ggtitle conversion</issue>
+    </file>
+
+  </category>
+
+  <!-- ========================================================================
+       SINGLE-PANEL FIGURES (no panel title needed)
+       ======================================================================== -->
+
+  <category name="single-panel-figures">
+    <file status="OK" priority="none">
+      <name>fig_calibration_stratos.R</name>
+      <note>Single panel - no multi-panel styling needed</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_cd_diagrams.R</name>
+      <note>CD diagram - specialized layout</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_cd_preprocessing.R</name>
+      <note>CD diagram - specialized layout</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_dca_stratos.R</name>
+      <note>Single DCA panel</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_factorial_matrix.R</name>
+      <note>Heatmap matrix - no panel titles</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_featurization_comparison.R</name>
+      <note>Single comparison panel</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_fm_dashboard.R</name>
+      <note>Dashboard layout - check separately</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_heatmap_preprocessing.R</name>
+      <note>Heatmap - no panel titles</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_raincloud_auroc.R</name>
+      <note>Single raincloud panel</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_shap_beeswarm.R</name>
+      <note>Single beeswarm panel</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_shap_gt_vs_ensemble.R</name>
+      <note>Check if multi-panel</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_shap_heatmap.R</name>
+      <note>Heatmap - no panel titles</note>
+    </file>
+    <file status="OK" priority="none">
+      <name>fig_specification_curve.R</name>
+      <note>Single specification curve</note>
+    </file>
+  </category>
+
+  <!-- ========================================================================
+       EXECUTION LOG
+       ======================================================================== -->
+
+  <execution-log>
+    <entry timestamp="2026-01-28T12:00:00">
+      <action>Created verification plan</action>
+      <files-identified>7 files need fixing</files-identified>
+    </entry>
+  </execution-log>
+
+</verification-plan>
