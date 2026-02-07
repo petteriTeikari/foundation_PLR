@@ -1,11 +1,19 @@
-from loguru import logger
-import yaml
-from pathlib import Path
+# Use centralized path utilities for portable paths
+import os
+import sys
 from glob import glob
+from pathlib import Path
 
+import yaml
+from loguru import logger
 
-MLRUNS_DIR = "/home/petteri/Dropbox/manuscriptDrafts/foundationPLR/repo_PLR/src/mlruns"
-INPUT_DIR = "file:///home/petteri/Dropbox/manuscriptDrafts/foundationPLR/repo_desktop_clone/foundation_PLR/src/mlruns"
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from src.utils.paths import get_mlruns_dir
+
+MLRUNS_DIR = str(get_mlruns_dir())
+# Default input directory to rename from (set via CLI or env var for flexibility)
+
+INPUT_DIR = os.environ.get("MLFLOW_OLD_URI", f"file://{MLRUNS_DIR}")
 REPLACE_WITH = "file://" + MLRUNS_DIR
 
 

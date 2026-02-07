@@ -1,22 +1,40 @@
-import shutil
 import random
-from loguru import logger
-import os
-from omegaconf import DictConfig
-import numpy as np
-
-from src.log_helpers.log_naming_uris_and_dirs import get_duckdb_file, get_demo_string_to_add
-from src.utils import get_artifacts_dir, pandas_concat
-from tqdm import tqdm
-from scipy import interpolate
-
+import shutil
+from pathlib import Path
+from typing import Optional, Union
 
 import duckdb
+import numpy as np
 import pandas as pd
 import polars as pl
+from loguru import logger
+from omegaconf import DictConfig
+from scipy import interpolate
+from tqdm import tqdm
+
+from src.log_helpers.log_naming_uris_and_dirs import get_duckdb_file
+from src.utils import get_artifacts_dir, pandas_concat
 
 
-def convert_sec_to_date(df, time_col: str = "ds", seconds_offset: float = 1):
+def convert_sec_to_date(
+    df: pd.DataFrame, time_col: str = "ds", seconds_offset: float = 1
+) -> pd.DataFrame:
+    """Convert seconds to datetime format in a dataframe column.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe containing the time column.
+    time_col : str, optional
+        Name of the time column to convert, by default "ds".
+    seconds_offset : float, optional
+        Offset in seconds to add before conversion, by default 1.
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe with the time column converted to datetime.
+    """
     df[time_col] = pd.to_datetime(
         1000 * (df[time_col] + seconds_offset), unit="ms", errors="coerce"
     )
@@ -24,7 +42,25 @@ def convert_sec_to_date(df, time_col: str = "ds", seconds_offset: float = 1):
     return df
 
 
-def convert_sec_to_millisec(df, time_col: str = "ds", seconds_offset: float = 1):
+def convert_sec_to_millisec(
+    df: pd.DataFrame, time_col: str = "ds", seconds_offset: float = 1
+) -> pd.DataFrame:
+    """Convert seconds to milliseconds in a dataframe column.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe containing the time column.
+    time_col : str, optional
+        Name of the time column to convert, by default "ds".
+    seconds_offset : float, optional
+        Offset in seconds to add before conversion, by default 1.
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe with the time column converted to milliseconds.
+    """
     df[time_col] += seconds_offset
     df[time_col] *= 1000
     return df
@@ -32,7 +68,23 @@ def convert_sec_to_millisec(df, time_col: str = "ds", seconds_offset: float = 1)
 
 def split_df_to_samples(
     df: pd.DataFrame, split: str = "train", subject_col_name: str = "unique_id"
-) -> dict:
+) -> dict[str, pd.DataFrame]:
+    """Split a dataframe into a dictionary of single-subject dataframes.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe containing multiple subjects.
+    split : str, optional
+        Name of the data split (for logging), by default "train".
+    subject_col_name : str, optional
+        Name of the column containing subject identifiers, by default "unique_id".
+
+    Returns
+    -------
+    dict
+        Dictionary mapping subject codes to their respective dataframes.
+    """
     subject_codes = df[subject_col_name].unique()
     no_of_unique_subjects = len(subject_codes)
 
@@ -58,7 +110,28 @@ def split_df_to_samples(
     return dict_of_dfs
 
 
-def get_subset_of_data(df_subset: pd.DataFrame, t0: float = 18.0, t1: float = 19.05):
+def get_subset_of_data(
+    df_subset: pd.DataFrame, t0: float = 18.0, t1: float = 19.05
+) -> pd.DataFrame:
+    """Extract a time-windowed subset of data from a dataframe.
+
+    Filters data to keep only rows within the specified time range
+    and limits to the first 3 subjects (96 rows).
+
+    Parameters
+    ----------
+    df_subset : pd.DataFrame
+        Input dataframe with a 'ds' time column.
+    t0 : float, optional
+        Start time for filtering, by default 18.0.
+    t1 : float, optional
+        End time for filtering, by default 19.05.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered dataframe containing only data within the time window.
+    """
     df_subset.drop(df_subset[df_subset.ds > t1].index, inplace=True)
     df_subset.drop(df_subset[df_subset.ds < t0].index, inplace=True)
     df_subset.reset_index(drop=True, inplace=True)
@@ -69,14 +142,45 @@ def get_subset_of_data(df_subset: pd.DataFrame, t0: float = 18.0, t1: float = 19
     return df_subset
 
 
-def define_split_csv_paths(data_dir: str, suffix: str = ""):
-    train_path = os.path.join(data_dir, "train_PLR{}.csv".format(suffix))
-    val_path = os.path.join(data_dir, "val_PLR{}.csv".format(suffix))
+def define_split_csv_paths(data_dir: str, suffix: str = "") -> tuple[Path, Path]:
+    """Define file paths for train and validation CSV files.
+
+    Parameters
+    ----------
+    data_dir : str
+        Directory containing the data files.
+    suffix : str, optional
+        Suffix to append to filenames, by default "".
+
+    Returns
+    -------
+    tuple of Path
+        Tuple containing (train_path, val_path).
+    """
+    data_path = Path(data_dir)
+    train_path = data_path / f"train_PLR{suffix}.csv"
+    val_path = data_path / f"val_PLR{suffix}.csv"
 
     return train_path, val_path
 
 
-def import_nonnan_data_from_csv(data_dir: str, suffix: str = "_nonNan"):
+def import_nonnan_data_from_csv(
+    data_dir: str, suffix: str = "_nonNan"
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Import PLR data from CSV files with NaN/outlier rows removed.
+
+    Parameters
+    ----------
+    data_dir : str
+        Directory containing the CSV files.
+    suffix : str, optional
+        Suffix for the CSV filenames, by default "_nonNan".
+
+    Returns
+    -------
+    tuple of pl.DataFrame
+        Tuple containing (df_train, df_val) as Polars dataframes.
+    """
     logger.info("Import PLR data with the NaN/outlier rows removed")
     train_path, val_path = define_split_csv_paths(data_dir=data_dir, suffix="_nonNan")
     logger.info("TRAIN split path = {}".format(train_path))
@@ -87,7 +191,19 @@ def import_nonnan_data_from_csv(data_dir: str, suffix: str = "_nonNan"):
     return df_train, df_val
 
 
-def import_PLR_data_from_CSV(data_dir: str):
+def import_PLR_data_from_CSV(data_dir: str) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Import PLR data from train and validation CSV files.
+
+    Parameters
+    ----------
+    data_dir : str
+        Directory containing the CSV files.
+
+    Returns
+    -------
+    tuple of pl.DataFrame
+        Tuple containing (df_train, df_val) as Polars dataframes.
+    """
     logger.info('Import data from CSVs in "{}"'.format(data_dir))
     train_path, val_path = define_split_csv_paths(data_dir=data_dir)
 
@@ -104,16 +220,40 @@ def export_dataframe_to_duckdb(
     df: pl.DataFrame,
     db_name: str,
     cfg: DictConfig,
-    name: str = None,
+    name: Optional[str] = None,
     service_name: str = "duckdb",
     debug_DuckDBWrite: bool = True,
     copy_orig_db: bool = False,
-):
+) -> str:
+    """Export a Polars dataframe to a DuckDB database.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Polars dataframe to export.
+    db_name : str
+        Name of the output database file.
+    cfg : DictConfig
+        Configuration dictionary containing DATA settings.
+    name : str, optional
+        Name identifier for the export, by default None.
+    service_name : str, optional
+        Service name for artifact directory, by default "duckdb".
+    debug_DuckDBWrite : bool, optional
+        Whether to verify the write by reading back, by default True.
+    copy_orig_db : bool, optional
+        Whether to copy the original database instead of writing new, by default False.
+
+    Returns
+    -------
+    str
+        Path to the created DuckDB database file.
+    """
     dir_out = get_artifacts_dir(service_name=service_name)
-    os.makedirs(dir_out, exist_ok=True)
-    db_path_out = os.path.join(dir_out, db_name)
-    if os.path.exists(db_path_out):
-        os.remove(db_path_out)
+    dir_out.mkdir(parents=True, exist_ok=True)
+    db_path_out = dir_out / db_name
+    if db_path_out.exists():
+        db_path_out.unlink()
 
     if copy_orig_db:
         # TODO! debug code, eliminate when you figure out what to do with the anomaly detection
@@ -128,10 +268,10 @@ def export_dataframe_to_duckdb(
         logger.info(
             "Shape of the dataframe written to disk as DuckDB {}".format(df.shape)
         )
-        if os.path.exists(db_path_out):
+        if db_path_out.exists():
             logger.warning("DuckDB Database already exists, removing the old one")
-            os.remove(db_path_out)
-        with duckdb.connect(database=db_path_out, read_only=False) as con:
+            db_path_out.unlink()
+        with duckdb.connect(database=str(db_path_out), read_only=False) as con:
             con.execute("""
                         CREATE TABLE IF NOT EXISTS 'train' AS SELECT * FROM df;
                     """)
@@ -160,13 +300,50 @@ def export_dataframe_to_duckdb(
     return db_path_out
 
 
-def load_both_splits_from_duckdb(db_path: str, cfg: DictConfig):
+def load_both_splits_from_duckdb(db_path: str, cfg: DictConfig) -> pl.DataFrame:
+    """Load and concatenate both train and validation splits from DuckDB.
+
+    Parameters
+    ----------
+    db_path : str
+        Path to the DuckDB database file.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    pl.DataFrame
+        Concatenated Polars dataframe containing both splits.
+    """
     df_train = load_from_duckdb_as_dataframe(db_path=db_path, cfg=cfg, split="train")
     df_val = load_from_duckdb_as_dataframe(db_path=db_path, cfg=cfg, split="val")
     return pl.concat([df_train, df_val])
 
 
-def load_from_duckdb_as_dataframe(db_path: str, cfg: DictConfig, split: str = "train"):
+def load_from_duckdb_as_dataframe(
+    db_path: str, cfg: DictConfig, split: str = "train"
+) -> pl.DataFrame:
+    """Load a data split from DuckDB as a Polars dataframe.
+
+    Parameters
+    ----------
+    db_path : str
+        Path to the DuckDB database file.
+    cfg : DictConfig
+        Configuration dictionary.
+    split : str, optional
+        Name of the split to load ("train" or "test"), by default "train".
+
+    Returns
+    -------
+    pl.DataFrame
+        Polars dataframe containing the requested split.
+
+    Raises
+    ------
+    Exception
+        If there is an error reading from DuckDB.
+    """
     try:
         with duckdb.connect(database=db_path, read_only=False) as con:
             df_load = con.query(f"SELECT * FROM {split}").pl()
@@ -177,21 +354,43 @@ def load_from_duckdb_as_dataframe(db_path: str, cfg: DictConfig, split: str = "t
 
 
 def export_dataframes_to_duckdb(
-    df_train,
-    df_test,
+    df_train: Union[pl.DataFrame, pd.DataFrame],
+    df_test: Union[pl.DataFrame, pd.DataFrame],
     db_name: str = "SERI_PLR_GLAUCOMA.db",
-    data_dir: str = None,
+    data_dir: Optional[str] = None,
     debug_DuckDBWrite: bool = True,
-):
+) -> str:
+    """Export train and test dataframes to a DuckDB database.
+
+    Creates separate tables for train and test splits in the database.
+
+    Parameters
+    ----------
+    df_train : pl.DataFrame or pd.DataFrame
+        Training data dataframe.
+    df_test : pl.DataFrame or pd.DataFrame
+        Test data dataframe.
+    db_name : str, optional
+        Name of the database file, by default "SERI_PLR_GLAUCOMA.db".
+    data_dir : str, optional
+        Directory to save the database, by default None.
+    debug_DuckDBWrite : bool, optional
+        Whether to verify the write by reading back, by default True.
+
+    Returns
+    -------
+    str
+        Path to the created DuckDB database file.
+    """
     # https://duckdb.org/docs/api/python/overview.html#persistent-storage
-    db_path = os.path.join(data_dir, db_name)
+    db_path = Path(data_dir) / db_name
     logger.info("Writing dataframes to DuckDB Database: {}".format(db_path))
 
-    if os.path.exists(db_path):
+    if db_path.exists():
         logger.warning("DuckDB Database already exists, removing the old one")
-        os.remove(db_path)
+        db_path.unlink()
 
-    with duckdb.connect(database=db_path, read_only=False) as con:
+    with duckdb.connect(database=str(db_path), read_only=False) as con:
         # TOOPTIMIZE! Blue and Red are now written as double (could be just uint8)
         con.execute("""
                     CREATE TABLE IF NOT EXISTS 'train' AS SELECT * FROM df_train;
@@ -204,18 +403,34 @@ def export_dataframes_to_duckdb(
     if debug_DuckDBWrite:
         logger.info("Reading back from DuckDB")
         logger.info("TRAIN split")
-        with duckdb.connect(database=db_path, read_only=False) as con:
+        with duckdb.connect(database=str(db_path), read_only=False) as con:
             con.query("SELECT * FROM train").show()
         logger.info("TEST split")
-        with duckdb.connect(database=db_path, read_only=False) as con:
+        with duckdb.connect(database=str(db_path), read_only=False) as con:
             con.query("SELECT * FROM test").show()
         logger.info("Read successful!")
 
-    return db_path
+    return str(db_path)
 
 
-def import_duckdb_as_dataframes(db_path: str):
+def import_duckdb_as_dataframes(db_path: str) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Import train and test dataframes from a DuckDB database.
 
+    Parameters
+    ----------
+    db_path : str
+        Path to the DuckDB database file.
+
+    Returns
+    -------
+    tuple of pl.DataFrame
+        Tuple containing (df_train, df_test) as Polars dataframes.
+
+    Raises
+    ------
+    Exception
+        If there is an error reading from DuckDB.
+    """
     logger.info("Reading data from DuckDB Database: {}".format(db_path))
     try:
         with duckdb.connect(database=db_path, read_only=False) as con:
@@ -231,7 +446,28 @@ def import_duckdb_as_dataframes(db_path: str):
     return df_train, df_test
 
 
-def check_data_import(df_train, df_val, display_outliers: bool = True):
+def check_data_import(
+    df_train: pl.DataFrame, df_val: pl.DataFrame, display_outliers: bool = True
+) -> None:
+    """Validate imported data splits for data leakage and display statistics.
+
+    Checks that no subject appears in both train and validation splits,
+    and optionally displays outlier statistics.
+
+    Parameters
+    ----------
+    df_train : pl.DataFrame
+        Training data dataframe.
+    df_val : pl.DataFrame
+        Validation data dataframe.
+    display_outliers : bool, optional
+        Whether to display outlier statistics, by default True.
+
+    Raises
+    ------
+    ValueError
+        If data leakage is detected (same subject in both splits).
+    """
     unique_subjects_train = get_unique_polars_rows(
         df_train,
         unique_col="subject_code",
@@ -285,7 +521,21 @@ def check_data_import(df_train, df_val, display_outliers: bool = True):
         )
 
 
-def prepare_dataframe_for_imputation(df, cfg):
+def prepare_dataframe_for_imputation(df: pl.DataFrame, cfg: DictConfig) -> pl.DataFrame:
+    """Prepare a dataframe for imputation by fixing light stimuli and setting outliers.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe containing PLR data.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    pl.DataFrame
+        Prepared dataframe ready for imputation.
+    """
     # Fix light stimuli vector
     df = fix_light_stimuli_vector(df, cfg)
 
@@ -295,7 +545,25 @@ def prepare_dataframe_for_imputation(df, cfg):
     return df
 
 
-def fix_light_stimuli_vector(df, cfg, drop_colors: bool = False):
+def fix_light_stimuli_vector(
+    df: pl.DataFrame, cfg: DictConfig, drop_colors: bool = False
+) -> pl.DataFrame:
+    """Combine Red and Blue channels into a single light stimuli column.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe with Red and Blue columns.
+    cfg : DictConfig
+        Configuration dictionary.
+    drop_colors : bool, optional
+        Whether to drop the original Red and Blue columns, by default False.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with combined light_stimuli column.
+    """
     logger.info("Combining Red and Blue into a single light stimuli column")
     df = df.with_columns(light_stimuli=pl.Series(df["Blue"] + df["Red"]))
     df = interpolate_missing_light_stimuli_values(df, cfg, col_name="light_stimuli")
@@ -311,7 +579,25 @@ def fix_light_stimuli_vector(df, cfg, drop_colors: bool = False):
     return df
 
 
-def interpolate_missing_light_stimuli_values(df, cfg, col_name: str = "light_stimuli"):
+def interpolate_missing_light_stimuli_values(
+    df: pl.DataFrame, cfg: DictConfig, col_name: str = "light_stimuli"
+) -> pl.DataFrame:
+    """Interpolate missing values in a light stimuli column.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe.
+    cfg : DictConfig
+        Configuration dictionary.
+    col_name : str, optional
+        Name of the column to interpolate, by default "light_stimuli".
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with interpolated values.
+    """
     no_nulls = int(df.select(pl.col(col_name).null_count()).to_numpy())
     if no_nulls > 0:
         logger.debug(
@@ -326,7 +612,21 @@ def interpolate_missing_light_stimuli_values(df, cfg, col_name: str = "light_sti
     return df
 
 
-def set_outliers_to_null(df, cfg):
+def set_outliers_to_null(df: pl.DataFrame, cfg: DictConfig) -> pl.DataFrame:
+    """Set outlier values to null in the pupil_raw column based on outlier labels.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe with pupil_raw and outlier_labels columns.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with outliers set to null in pupil_raw column.
+    """
     # Raw should have this correct already, whereas "_orig" not so much necessarily
 
     # Set 'null' values to the outliers in the pupil_raw (input data
@@ -352,8 +652,34 @@ def set_outliers_to_null(df, cfg):
 
 
 def set_missing_in_data(
-    df, X, missingness_cfg, col_name: str = "pupil_raw", split: str = "train"
-):
+    df: pl.DataFrame,
+    X: np.ndarray,
+    _missingness_cfg: DictConfig,
+    col_name: str = "pupil_raw",
+    split: str = "train",
+) -> np.ndarray:
+    """Set missing values in numpy array based on dataframe null values.
+
+    Transfers the missingness pattern from a dataframe column to a numpy array.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe containing the column with missing values.
+    X : np.ndarray
+        Numpy array to apply missingness pattern to.
+    missingness_cfg : DictConfig
+        Configuration for missingness handling.
+    col_name : str, optional
+        Name of the column to get missingness from, by default "pupil_raw".
+    split : str, optional
+        Name of the data split (for logging), by default "train".
+
+    Returns
+    -------
+    np.ndarray
+        Array with missing values set to NaN where the dataframe has nulls.
+    """
     raw = df.select(col_name)
     raw = raw.to_numpy().reshape(X.shape[0], X.shape[1], X.shape[2])
     X[np.isnan(raw)] = np.nan
@@ -374,7 +700,24 @@ def set_missing_in_data(
     return X
 
 
-def combine_metadata_with_df_splits(df_raw, df_metadata):
+def combine_metadata_with_df_splits(
+    df_raw: pl.DataFrame, df_metadata: pl.DataFrame
+) -> tuple[pl.DataFrame, dict]:
+    """Combine metadata dataframe with the PLR data splits.
+
+    Parameters
+    ----------
+    df_raw : pl.DataFrame
+        Raw PLR data dataframe.
+    df_metadata : pl.DataFrame
+        Metadata dataframe containing subject information.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (combined_df, code_stats) where code_stats contains
+        information about matching, extra, and missing subject codes.
+    """
     logger.info("Combining metadata with the data splits")
     df, code_stats = combine_metadata_with_df(
         df=df_raw, df_metadata=df_metadata, split="all data"
@@ -382,7 +725,25 @@ def combine_metadata_with_df_splits(df_raw, df_metadata):
     return df, code_stats
 
 
-def combine_metadata_with_df(df, df_metadata, split):
+def combine_metadata_with_df(
+    df: pl.DataFrame, df_metadata: pl.DataFrame, split: str
+) -> tuple[pl.DataFrame, dict]:
+    """Combine metadata with a PLR dataframe for a specific split.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        PLR data dataframe.
+    df_metadata : pl.DataFrame
+        Metadata dataframe containing subject information.
+    split : str
+        Name of the data split.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (combined_df, code_stats).
+    """
     unique_PLR = get_unique_polars_rows(
         df, unique_col="subject_code", value_col="time", split=split, df_string="PLR"
     )
@@ -407,9 +768,29 @@ def combine_metadata_with_df(df, df_metadata, split):
     return df, code_stats
 
 
-def get_missing_labels(unique_PLR, unique_metadata, split):
-    def check_code_segment(df, string):
-        list_of_codes = []
+def get_missing_labels(
+    unique_PLR: pl.DataFrame, unique_metadata: pl.DataFrame, split: str
+) -> dict:
+    """Identify matching, extra, and missing subject codes between PLR and metadata.
+
+    Parameters
+    ----------
+    unique_PLR : pl.DataFrame
+        Dataframe with unique PLR subject codes.
+    unique_metadata : pl.DataFrame
+        Dataframe with unique metadata subject codes.
+    split : str
+        Name of the data split (for logging).
+
+    Returns
+    -------
+    dict
+        Dictionary containing lists of 'matching', 'extra_metadata', and
+        'missing_from_PLR' subject codes.
+    """
+
+    def check_code_segment(df: pl.DataFrame, string: str) -> list[str]:
+        list_of_codes: list[str] = []
         for row in df.rows(named=True):
             list_of_codes.append(row["subject_code"])
         logger.info(f"{string} ({split} split), number of labels: {len(list_of_codes)}")
@@ -442,8 +823,27 @@ def get_missing_labels(unique_PLR, unique_metadata, split):
     return codes
 
 
-def add_labels_for_matching_codes(df, df_metadata, matching_codes):
-    def add_empty_cols(df, df_metadata):
+def add_labels_for_matching_codes(
+    df: pl.DataFrame, df_metadata: pl.DataFrame, matching_codes: list[str]
+) -> pl.DataFrame:
+    """Add metadata labels to dataframe for subjects with matching codes.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        PLR data dataframe.
+    df_metadata : pl.DataFrame
+        Metadata dataframe containing subject information.
+    matching_codes : list
+        List of subject codes that exist in both dataframes.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with metadata columns added for matching subjects.
+    """
+
+    def add_empty_cols(df: pl.DataFrame, df_metadata: pl.DataFrame) -> pl.DataFrame:
         for col in df_metadata.columns:
             if col not in df.columns:
                 logger.debug(f"Adding empty column: {col}")
@@ -461,7 +861,33 @@ def add_labels_for_matching_codes(df, df_metadata, matching_codes):
     return df
 
 
-def add_label_per_code(code, df, df_metadata, code_col="subject_code", length_PLR=1981):
+def add_label_per_code(
+    code: str,
+    df: pl.DataFrame,
+    df_metadata: pl.DataFrame,
+    code_col: str = "subject_code",
+    length_PLR: int = 1981,
+) -> pl.DataFrame:
+    """Add metadata labels for a single subject code.
+
+    Parameters
+    ----------
+    code : str
+        Subject code to add labels for.
+    df : pl.DataFrame
+        PLR data dataframe.
+    df_metadata : pl.DataFrame
+        Metadata dataframe.
+    code_col : str, optional
+        Name of the subject code column, by default "subject_code".
+    length_PLR : int, optional
+        Expected number of timepoints per subject, by default 1981.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with metadata added for the specified subject.
+    """
     df_per_code = df.filter(pl.col(code_col) == code)
     # Obviosuly this will break if you start doing some custom recordings
     assert (
@@ -486,8 +912,24 @@ def add_label_per_code(code, df, df_metadata, code_col="subject_code", length_PL
 
 
 def get_unique_labels(
-    df, unique_col: str = "class_label", value_col: str = "time"
-) -> list:
+    df: pl.DataFrame, unique_col: str = "class_label", value_col: str = "time"
+) -> list[str]:
+    """Get list of unique non-null labels from a dataframe column.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe.
+    unique_col : str, optional
+        Column to get unique values from, by default "class_label".
+    value_col : str, optional
+        Column to use for selecting representative rows, by default "time".
+
+    Returns
+    -------
+    list
+        List of unique label values.
+    """
     unique_labels = get_unique_polars_rows(
         df, unique_col=unique_col, value_col=value_col
     )
@@ -497,7 +939,23 @@ def get_unique_labels(
     return list(unique_labels[:, unique_col].to_numpy())
 
 
-def pick_per_label(df, label, cfg):
+def pick_per_label(df: pl.DataFrame, label: str, cfg: DictConfig) -> pl.DataFrame:
+    """Filter dataframe to keep only rows with a specific class label.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe with class_label column.
+    label : str
+        Class label to filter for.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    pl.DataFrame
+        Filtered dataframe containing only rows with the specified label.
+    """
     # Polars alternative due to a weird Polars issue
     df_pd = df.to_pandas()
     df_label = df_pd[df_pd["class_label"] == label]
@@ -506,13 +964,29 @@ def pick_per_label(df, label, cfg):
     return pl.DataFrame(df_label)
 
 
-def get_outlier_count_per_code(unique_value, df_pd):
+def get_outlier_count_per_code(
+    unique_value: np.ndarray, df_pd: pd.DataFrame
+) -> tuple[np.ndarray, np.ndarray]:
+    """Get outlier counts per subject code, sorted by count.
 
+    Parameters
+    ----------
+    unique_value : np.ndarray
+        Array of unique subject codes.
+    df_pd : pd.DataFrame
+        Dataframe with subject_code and no_outliers columns.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (sorted_counts, sorted_codes) for subjects with
+        outlier counts above the median.
+    """
     no_outliers = np.zeros_like(unique_value)
     for i in range(len(unique_value)):
         unique_code = unique_value[i]
         df_code = df_pd[df_pd["subject_code"] == unique_code]
-        no_outliers[i] = df_code['no_outliers'].iloc[0]
+        no_outliers[i] = df_code["no_outliers"].iloc[0]
 
     sorted_indices = no_outliers.argsort()
     outliers_count_sorted = no_outliers[sorted_indices]
@@ -526,10 +1000,27 @@ def get_outlier_count_per_code(unique_value, df_pd):
     return counts_left, codes_left
 
 
-def pick_random_subjects_with_outlier_no_cutoff(unique_value, df_pd, n):
+def pick_random_subjects_with_outlier_no_cutoff(
+    unique_value: np.ndarray, df_pd: pd.DataFrame, n: int
+) -> np.ndarray:
+    """Pick random subjects from those with above-median outlier counts.
 
+    Parameters
+    ----------
+    unique_value : np.ndarray
+        Array of unique subject codes.
+    df_pd : pd.DataFrame
+        Dataframe with subject_code and no_outliers columns.
+    n : int
+        Number of subjects to pick.
+
+    Returns
+    -------
+    np.ndarray
+        Array of randomly selected subject codes.
+    """
     outlier_counts, codes_left = get_outlier_count_per_code(unique_value, df_pd)
-    random_idx = random.sample(range(0, len(codes_left)-1), n)
+    random_idx = random.sample(range(0, len(codes_left) - 1), n)
     random_codes = codes_left[random_idx]
 
     return random_codes
@@ -538,17 +1029,40 @@ def pick_random_subjects_with_outlier_no_cutoff(unique_value, df_pd, n):
 def pick_n_subjects_per_label_pandas(
     df: pl.DataFrame,
     n: int,
-    PLR_length=1981,
+    PLR_length: int = 1981,
     col_select: str = "subject_code",
     pick_random: bool = False,
 ) -> pl.DataFrame:
+    """Pick n subjects from a dataframe, optionally with outlier-based selection.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe.
+    n : int
+        Number of subjects to pick.
+    PLR_length : int, optional
+        Expected number of timepoints per subject, by default 1981.
+    col_select : str, optional
+        Column containing subject identifiers, by default "subject_code".
+    pick_random : bool, optional
+        If True, pick first n subjects; if False, pick from high-outlier subjects,
+        by default False.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe containing data for the selected n subjects.
+    """
     # Pandas alternative due to a weird Polars issue
     df_pd = df.to_pandas()
     unique_value = df_pd[col_select].unique()
     if pick_random:
         first_n_subjects = unique_value[:n]
     else:
-        first_n_subjects = pick_random_subjects_with_outlier_no_cutoff(unique_value, df_pd, n)
+        first_n_subjects = pick_random_subjects_with_outlier_no_cutoff(
+            unique_value, df_pd, n
+        )
 
     df_out = pd.DataFrame()
     for i, code in enumerate(first_n_subjects):
@@ -562,7 +1076,27 @@ def pick_n_subjects_per_label_pandas(
     return pl.DataFrame(df_out)
 
 
-def pick_n_subjects_per_label(df: pl.DataFrame, label: str, n: int, PLR_length=1981):
+def pick_n_subjects_per_label(
+    df: pl.DataFrame, label: str, n: int, PLR_length: int = 1981
+) -> pl.DataFrame:
+    """Pick n subjects with a specific class label from a dataframe.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe with class_label column.
+    label : str
+        Class label to filter for.
+    n : int
+        Number of subjects to pick.
+    PLR_length : int, optional
+        Expected number of timepoints per subject, by default 1981.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe containing data for the selected n subjects with the given label.
+    """
     df_label = df.filter(pl.col("class_label") == label)
     unique_subjects = get_list_of_unique_subjects(df_label)
     first_n_subjects = unique_subjects[:n]
@@ -595,19 +1129,60 @@ def pick_n_subjects_per_label(df: pl.DataFrame, label: str, n: int, PLR_length=1
     return df_out
 
 
-def get_list_of_unique_subjects(df_label, unique_col: str = "subject_code"):
+def get_list_of_unique_subjects(
+    df_label: pl.DataFrame, unique_col: str = "subject_code"
+) -> list[str]:
+    """Get a list of unique subject codes from a dataframe.
+
+    Parameters
+    ----------
+    df_label : pl.DataFrame
+        Input dataframe.
+    unique_col : str, optional
+        Column containing subject identifiers, by default "subject_code".
+
+    Returns
+    -------
+    list
+        List of unique subject codes.
+    """
     unique_rows = get_unique_polars_rows(df_label, unique_col=unique_col)
     return list(unique_rows[:, unique_col].to_numpy())
 
 
 def get_unique_polars_rows(
-    df,
+    df: pl.DataFrame,
     unique_col: str = "subject_code",
     value_col: str = "time",
-    split: str = None,
-    df_string: str = None,
+    split: Optional[str] = None,
+    df_string: Optional[str] = None,
     pandas_fix: bool = True,
-):
+) -> pl.DataFrame:
+    """Get unique rows from a Polars dataframe based on a column.
+
+    Deduplicates the dataframe to get one row per unique value in the
+    specified column.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input Polars dataframe.
+    unique_col : str, optional
+        Column to use for identifying unique rows, by default "subject_code".
+    value_col : str, optional
+        Column to use for selecting representative rows, by default "time".
+    split : str, optional
+        Name of the data split (for logging), by default None.
+    df_string : str, optional
+        Description string for logging, by default None.
+    pandas_fix : bool, optional
+        Whether to use pandas for deduplication (more reliable), by default True.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with one row per unique value in unique_col.
+    """
     # Get one value per subject code to check if the metadata is there
     try:
         unique_values = list(df[unique_col].unique())
@@ -624,7 +1199,7 @@ def get_unique_polars_rows(
             )
     except KeyError as e:
         logger.error(f"Unique values = {unique_values}")
-        logger.error(f"Number of subjects (in df): {int(df.shape[0]/1981)}")
+        logger.error(f"Number of subjects (in df): {int(df.shape[0] / 1981)}")
         logger.error("Error in getting unique rows from the dataframe: {}".format(e))
         raise e
 
@@ -635,7 +1210,24 @@ def get_unique_polars_rows(
     return df
 
 
-def check_post_metadata_add(df, length_PLR: int = 1981):
+def check_post_metadata_add(df: pl.DataFrame, length_PLR: int = 1981) -> None:
+    """Validate dataframe after metadata addition.
+
+    Checks that the number of rows with and without class labels
+    are multiples of the PLR length.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Dataframe to validate.
+    length_PLR : int, optional
+        Expected number of timepoints per subject, by default 1981.
+
+    Raises
+    ------
+    AssertionError
+        If row counts are not multiples of PLR length.
+    """
     no_nonnull_rows = df.select(pl.count("class_label")).to_numpy()[0]
     no_nonnull_subjects = float(no_nonnull_rows / length_PLR)
     assert no_nonnull_subjects.is_integer(), (
@@ -647,8 +1239,7 @@ def check_post_metadata_add(df, length_PLR: int = 1981):
     no_null_rows = df.select(pl.col("class_label").is_null().sum()).to_numpy()[0]
     no_null_subjects = float(no_null_rows / length_PLR)
     assert no_null_subjects.is_integer(), (
-        "Number of null rows is not a multiple of the PLR length, "
-        "no_null_subjects = {}"
+        "Number of null rows is not a multiple of the PLR length, no_null_subjects = {}"
     ).format(no_null_subjects)
 
     logger.info(
@@ -659,7 +1250,35 @@ def check_post_metadata_add(df, length_PLR: int = 1981):
     )
 
 
-def pick_debug_data(df, string, cfg, n: int = 4, pick_random: bool = False):
+def pick_debug_data(
+    df: pl.DataFrame,
+    string: str,
+    cfg: DictConfig,
+    n: int = 4,
+    pick_random: bool = False,
+) -> pl.DataFrame:
+    """Pick a small subset of data for debugging purposes.
+
+    Selects n subjects per unique label for faster debugging runs.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe.
+    string : str
+        Description string for logging.
+    cfg : DictConfig
+        Configuration dictionary.
+    n : int, optional
+        Number of subjects to pick per label, by default 4.
+    pick_random : bool, optional
+        Whether to pick subjects randomly, by default False.
+
+    Returns
+    -------
+    pl.DataFrame
+        Subset dataframe for debugging.
+    """
     logger.warning(
         'You have a debug mode on, picking a subset of the "{}" data!'.format(string)
     )
@@ -671,11 +1290,13 @@ def pick_debug_data(df, string, cfg, n: int = 4, pick_random: bool = False):
     for idx, label in enumerate(unique_labels):
         # df_label = pick_n_subjects_per_label(df, label, n)
         df_label = pick_per_label(df, label, cfg)
-        df_label = pick_n_subjects_per_label_pandas(df_label, n, pick_random=pick_random)
+        df_label = pick_n_subjects_per_label_pandas(
+            df_label, n, pick_random=pick_random
+        )
         get_list_of_unique_subjects(df_label)
         df_out = pandas_concat(df_out, df_label)
         logger.info(
-            f'{idx} ({label}): {int(df_out.shape[0]/cfg["DATA"]["PLR_length"])} subjects for the "{label}" label'
+            f'{idx} ({label}): {int(df_out.shape[0] / cfg["DATA"]["PLR_length"])} subjects for the "{label}" label'
         )
         logger.info(get_list_of_unique_subjects(df_label))
 
@@ -684,11 +1305,47 @@ def pick_debug_data(df, string, cfg, n: int = 4, pick_random: bool = False):
 
 
 def combine_split_dataframes(
-    df_train, df_val, cfg: DictConfig, debug_mode: bool = False, debug_n: int = 4, pick_random: bool = False,
+    df_train: pl.DataFrame,
+    df_val: pl.DataFrame,
+    cfg: DictConfig,
+    debug_mode: bool = False,
+    debug_n: int = 4,
+    pick_random: bool = False,
+    demo_mode: bool = False,
+) -> pl.DataFrame:
+    """Combine train and validation dataframes with a split indicator column.
+
+    Parameters
+    ----------
+    df_train : pl.DataFrame
+        Training dataframe.
+    df_val : pl.DataFrame
+        Validation dataframe.
+    cfg : DictConfig
+        Configuration dictionary.
+    debug_mode : bool, optional
+        Whether to use debug mode (subset of data), by default False.
+    debug_n : int, optional
+        Number of subjects per label in debug mode, by default 4.
+    pick_random : bool, optional
+        Whether to pick subjects randomly in debug mode, by default False.
+    demo_mode : bool, optional
+        Whether demo mode is enabled, by default False.
+
+    Returns
+    -------
+    pl.DataFrame
+        Combined dataframe with 'split' column indicating train/test.
+    """
+
+    def add_split_column(
+        df,
+        string,
+        debug_mode=False,
+        debug_n=debug_n,
+        pick_random: bool = False,
         demo_mode: bool = False,
-):
-    def add_split_column(df, string, debug_mode=False, debug_n=debug_n,
-                         pick_random :bool = False, demo_mode: bool = False):
+    ):
         check_for_data_lengths(df, cfg)
         df_pd = df.to_pandas()
         df_pd["split"] = string
@@ -696,19 +1353,30 @@ def combine_split_dataframes(
         check_for_data_lengths(df, cfg)
         if not demo_mode:
             if debug_mode:
-                df = pick_debug_data(df, string, cfg, n=debug_n, pick_random=pick_random)
+                df = pick_debug_data(
+                    df, string, cfg, n=debug_n, pick_random=pick_random
+                )
         else:
-            logger.info('Demo mode is on, not picking any debug subjects here')
+            logger.info("Demo mode is on, not picking any debug subjects here")
         return df
 
     df_train = add_split_column(
-        df=df_train, string="train", debug_mode=debug_mode, debug_n=debug_n,
-        pick_random=pick_random, demo_mode=demo_mode
+        df=df_train,
+        string="train",
+        debug_mode=debug_mode,
+        debug_n=debug_n,
+        pick_random=pick_random,
+        demo_mode=demo_mode,
     )
     check_for_data_lengths(df_train, cfg)
 
-    df_test = add_split_column(df=df_val, string="test", debug_mode=debug_mode, debug_n=debug_n,
-                               pick_random=pick_random, demo_mode=demo_mode
+    df_test = add_split_column(
+        df=df_val,
+        string="test",
+        debug_mode=debug_mode,
+        debug_n=debug_n,
+        pick_random=pick_random,
+        demo_mode=demo_mode,
     )
     logger.info(
         "Combining the train ({}) and test ({}) splits".format(
@@ -725,12 +1393,43 @@ def combine_split_dataframes(
     return df
 
 
-def define_desired_timevector(PLR_length: int = 1981, fps: int = 30):
+def define_desired_timevector(PLR_length: int = 1981, fps: int = 30) -> np.ndarray:
+    """Generate an ideal time vector for PLR recordings.
+
+    Parameters
+    ----------
+    PLR_length : int, optional
+        Number of timepoints in the recording, by default 1981.
+    fps : int, optional
+        Frames per second of the recording, by default 30.
+
+    Returns
+    -------
+    np.ndarray
+        Time vector in seconds.
+    """
     time_vector = np.linspace(0, (PLR_length - 1) / fps, PLR_length)
     return time_vector
 
 
-def check_time_similarity(time_vec_in, time_vec_ideal):
+def check_time_similarity(
+    time_vec_in: np.ndarray, time_vec_ideal: np.ndarray
+) -> dict[str, bool | float]:
+    """Check if two time vectors are similar.
+
+    Parameters
+    ----------
+    time_vec_in : np.ndarray
+        Input time vector to check.
+    time_vec_ideal : np.ndarray
+        Ideal/reference time vector.
+
+    Returns
+    -------
+    dict
+        Dictionary containing check results including 'allclose', 'min_same',
+        'max_same', and overall 'OK' status.
+    """
     time_checks = {}
     # check if the time vectors are similar (within a tolerance), picks up rounding off issues
     # and if there is some jitter in the original recording?
@@ -748,7 +1447,23 @@ def check_time_similarity(time_vec_in, time_vec_ideal):
 
 def check_time_vector_quality(
     subject_code: str, csv_subset: pd.DataFrame, cfg: DictConfig
-):
+) -> tuple[np.ndarray, np.ndarray, dict[str, bool | float]]:
+    """Check the quality of a subject's time vector against the ideal.
+
+    Parameters
+    ----------
+    subject_code : str
+        Subject identifier.
+    csv_subset : pd.DataFrame
+        Subject's data containing a 'time' column.
+    cfg : DictConfig
+        Configuration dictionary with PLR_length setting.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (time_vec_in, time_vec_ideal, time_checks).
+    """
     time_vec_in = csv_subset["time"].to_numpy()
     time_vec_ideal = define_desired_timevector(PLR_length=cfg["DATA"]["PLR_length"])
     assert (
@@ -760,8 +1475,26 @@ def check_time_vector_quality(
 
 
 def check_for_unique_timepoints(
-    df, cfg: DictConfig, col: str = "time", assert_on_error: bool = True
-):
+    df: pl.DataFrame, cfg: DictConfig, col: str = "time", assert_on_error: bool = True
+) -> None:
+    """Check that all subjects have the same time vector.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe.
+    cfg : DictConfig
+        Configuration dictionary with PLR_length setting.
+    col : str, optional
+        Name of the time column, by default "time".
+    assert_on_error : bool, optional
+        Whether to raise an error if check fails, by default True.
+
+    Raises
+    ------
+    AssertionError
+        If subjects have different time vectors and assert_on_error is True.
+    """
     time_df = get_unique_polars_rows(df, unique_col=col)
     time_col = time_df["time"].to_numpy()
     if assert_on_error:
@@ -790,6 +1523,32 @@ def fix_for_orphaned_nans(
     cfg: DictConfig,
     cols: tuple = ("Red", "Blue"),
 ):
+    """Fix orphaned NaN values by replacing with zeros.
+
+    Orphaned NaNs are NaN values that remain after interpolation,
+    typically at the edges of the data.
+
+    Parameters
+    ----------
+    subject_code : str
+        Subject identifier for logging.
+    csv_subset : pd.DataFrame
+        Subject's data containing the columns to fix.
+    cfg : DictConfig
+        Configuration dictionary with PLR_length setting.
+    cols : tuple, optional
+        Columns to check and fix, by default ("Red", "Blue").
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe with orphaned NaNs replaced by zeros.
+
+    Raises
+    ------
+    ValueError
+        If NaNs remain after the fix.
+    """
     # Check for orphaned NaNs
     for col in cols:
         no_orphaned_nans = csv_subset[col].isnull().sum()
@@ -818,7 +1577,21 @@ def fix_for_orphaned_nans(
     return csv_subset
 
 
-def check_for_data_lengths(df, cfg):
+def check_for_data_lengths(df: pl.DataFrame, cfg: DictConfig) -> None:
+    """Verify that all subjects have the expected PLR data length.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input dataframe.
+    cfg : DictConfig
+        Configuration dictionary with PLR_length setting.
+
+    Raises
+    ------
+    AssertionError
+        If any subject has a different number of timepoints than expected.
+    """
     unique_codes = get_unique_polars_rows(df)
     unique_codes = list(unique_codes["subject_code"].to_numpy())
 
@@ -831,7 +1604,30 @@ def check_for_data_lengths(df, cfg):
         )
 
 
-def transform_data_for_momentfm(X, mask, dataset_cfg, model_name):
+def transform_data_for_momentfm(
+    X: np.ndarray, mask: np.ndarray, dataset_cfg: DictConfig, model_name: str
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Transform data arrays for MOMENT foundation model input.
+
+    Applies trimming, padding, and downsampling to prepare PLR data
+    for the MOMENT time series foundation model.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Input data array of shape (n_subjects, n_timepoints).
+    mask : np.ndarray
+        Outlier mask array of shape (n_subjects, n_timepoints).
+    dataset_cfg : DictConfig
+        Dataset configuration with transform parameters.
+    model_name : str
+        Name of the model (e.g., "MOMENT", "UniTS", "TimesNet").
+
+    Returns
+    -------
+    tuple
+        Tuple containing (X_transformed, mask_transformed, input_mask).
+    """
     logger.debug("Trimming the data for MomentFM")
     logger.debug(f"Trimming to size = {dataset_cfg.trim_to_size}")
     logger.debug(f"Downsample factor = {dataset_cfg.downsample_factor}")
@@ -874,10 +1670,39 @@ def transform_data_for_momentfm(X, mask, dataset_cfg, model_name):
     return X.copy(), mask.copy(), input_mask.copy()
 
 
-def fill_na_in_array_before_windowing(array, fill_na, trim_to_size, model_name):
-    """
-    array: np.ndarray
-        shape (batch_size, time_points)
+def fill_na_in_array_before_windowing(
+    array: np.ndarray,
+    fill_na: Optional[str],
+    trim_to_size: int,
+    model_name: Optional[str],
+) -> np.ndarray:
+    """Fill NaN values in array before splitting into windows.
+
+    Different models have different requirements for handling NaN values.
+    This function applies model-specific filling strategies.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Input array of shape (batch_size, time_points).
+    fill_na : str or None
+        Strategy for filling NaN values ("median", "0", or None).
+    trim_to_size : int
+        Target window size after trimming.
+    model_name : str
+        Name of the model ("TimesNet", "UniTS", "NuwaTS", etc.).
+
+    Returns
+    -------
+    np.ndarray
+        Array with NaN values filled according to the strategy.
+
+    Raises
+    ------
+    ValueError
+        If model_name is unknown.
+    NotImplementedError
+        If fill_na strategy is not implemented.
     """
     logger.debug(f"Filling NaNs in the array before windowing with {fill_na}")
 
@@ -948,10 +1773,41 @@ def transform_for_moment_fm_length(
     downsample_factor: int = 4,
     resample_method: str = "cubic",
     split_subjects_to_windows: bool = True,
-    binarize_output: bool = False,
-    fill_na: str = None,
-    model_name: str = None,
-):
+    _binarize_output: bool = False,
+    fill_na: Optional[str] = None,
+    model_name: Optional[str] = None,
+) -> np.ndarray:
+    """Transform data array to required length for foundation models.
+
+    Applies padding or trimming, optional downsampling, and optional
+    window splitting to prepare data for time series foundation models.
+
+    Parameters
+    ----------
+    data_array : np.ndarray
+        Input array of shape (n_subjects, n_timepoints).
+    trim_to_size : int, optional
+        Target size for trimming/padding, by default 512.
+    pad_ts : bool, optional
+        Whether to pad the time series, by default True.
+    downsample_factor : int, optional
+        Factor for downsampling, by default 4.
+    resample_method : str, optional
+        Interpolation method for resampling, by default "cubic".
+    split_subjects_to_windows : bool, optional
+        Whether to split into fixed-size windows, by default True.
+    binarize_output : bool, optional
+        Whether to binarize the output (for masks), by default False.
+    fill_na : str, optional
+        Strategy for filling NaN values, by default None.
+    model_name : str, optional
+        Name of the target model, by default None.
+
+    Returns
+    -------
+    np.ndarray
+        Transformed data array.
+    """
     if pad_ts:
         # Pad to the next multiple of 512, e.g. (1981,) -> (2048,) with NaNs for the padding
         array = pad_glaucoma_PLR(data_array=data_array, trim_to_size=trim_to_size)
@@ -984,7 +1840,21 @@ def transform_for_moment_fm_length(
     return array
 
 
-def trim_to_multiple_of(data_array: np.ndarray, window_size: int = 96):
+def trim_to_multiple_of(data_array: np.ndarray, window_size: int = 96) -> np.ndarray:
+    """Trim array length to a multiple of window_size by removing edge samples.
+
+    Parameters
+    ----------
+    data_array : np.ndarray
+        Input array of shape (n_subjects, n_timepoints).
+    window_size : int, optional
+        Target multiple size, by default 96.
+
+    Returns
+    -------
+    np.ndarray
+        Trimmed array with length as a multiple of window_size.
+    """
     length_in = data_array.shape[1]
     no_of_windows = np.floor(length_in / window_size).astype(int)
     new_length = no_of_windows * window_size
@@ -1001,10 +1871,41 @@ def trim_to_multiple_of(data_array: np.ndarray, window_size: int = 96):
 
 
 def get_no_of_windows(length_PLR: int = 1981, window_size: int = 512):
+    """Calculate the number of windows needed to cover the PLR signal.
+
+    Parameters
+    ----------
+    length_PLR : int, optional
+        Length of the PLR signal, by default 1981.
+    window_size : int, optional
+        Size of each window, by default 512.
+
+    Returns
+    -------
+    int
+        Number of windows needed (rounded up).
+    """
     return np.ceil(length_PLR / window_size).astype(int)
 
 
 def split_subjects_to_windows_PLR(array: np.ndarray, window_size: int = 512):
+    """Split subject data into fixed-size windows.
+
+    Reshapes the array so each subject's time series is split into
+    multiple windows, creating pseudo-subjects.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Input array of shape (n_subjects, n_timepoints).
+    window_size : int, optional
+        Size of each window, by default 512.
+
+    Returns
+    -------
+    np.ndarray
+        Reshaped array of shape (n_subjects * windows_per_subject, window_size).
+    """
     windows_per_subject = array.shape[1] // window_size
     no_subjects = array.shape[0]
     array_out = np.reshape(array, (no_subjects * windows_per_subject, window_size))
@@ -1014,6 +1915,28 @@ def split_subjects_to_windows_PLR(array: np.ndarray, window_size: int = 512):
 def downsample_PLR(
     array: np.ndarray, downsample_factor: int = 4, resample_method: str = "cubic"
 ):
+    """Downsample PLR signals by a given factor using interpolation.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Input array of shape (n_subjects, n_timepoints).
+    downsample_factor : int, optional
+        Factor by which to reduce the number of samples, by default 4.
+    resample_method : str, optional
+        Interpolation method ("cubic", "linear", etc.), by default "cubic".
+
+    Returns
+    -------
+    np.ndarray
+        Downsampled array of shape (n_subjects, n_timepoints // downsample_factor).
+
+    Raises
+    ------
+    AssertionError
+        If NaN ratio increases significantly after resampling or all values are NaN.
+    """
+
     def downsample_subject(x, y, downsample_factor, resample_method):
         nan_ratio = np.isnan(y).sum() / len(y)
         x_new = np.linspace(x[0], x[-1], len(x) // downsample_factor)
@@ -1054,6 +1977,20 @@ def downsample_PLR(
 
 
 def unpad_glaucoma_PLR(array: np.ndarray, length_PLR: int = 1981):
+    """Remove padding from PLR array to restore original length.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Padded array of shape (n_subjects, padded_length).
+    length_PLR : int, optional
+        Original PLR signal length, by default 1981.
+
+    Returns
+    -------
+    np.ndarray
+        Unpadded array of shape (n_subjects, length_PLR).
+    """
     start_idx, end_idx = get_padding_indices(
         length_orig=length_PLR, length_padded=array.shape[1]
     )
@@ -1063,6 +2000,20 @@ def unpad_glaucoma_PLR(array: np.ndarray, length_PLR: int = 1981):
 
 
 def get_padding_indices(length_orig: int = 1981, length_padded: int = 2048):
+    """Calculate start and end indices for centered padding/unpadding.
+
+    Parameters
+    ----------
+    length_orig : int, optional
+        Original signal length, by default 1981.
+    length_padded : int, optional
+        Padded signal length, by default 2048.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (start_idx, end_idx) for slicing.
+    """
     no_points_pad = length_padded - length_orig  # 67
     start_idx = no_points_pad // 2  # 33
     end_idx = start_idx + length_orig  # 2014
@@ -1070,6 +2021,27 @@ def get_padding_indices(length_orig: int = 1981, length_padded: int = 2048):
 
 
 def pad_glaucoma_PLR(data_array: np.ndarray, trim_to_size: int = 512):
+    """Pad PLR array with NaN values to reach a multiple of trim_to_size.
+
+    Centers the original data within the padded array.
+
+    Parameters
+    ----------
+    data_array : np.ndarray
+        Input array of shape (n_subjects, n_timepoints).
+    trim_to_size : int, optional
+        Target multiple for the padded length, by default 512.
+
+    Returns
+    -------
+    np.ndarray
+        Padded array of shape (n_subjects, ceil(n_timepoints/trim_to_size) * trim_to_size).
+
+    Raises
+    ------
+    AssertionError
+        If the padded array contains only NaN values.
+    """
     new_length = int(np.ceil(data_array.shape[1] / trim_to_size)) * trim_to_size  # 2048
     length_in = data_array.shape[1]  # 1981
     start_idx, end_idx = get_padding_indices(length_in, new_length)

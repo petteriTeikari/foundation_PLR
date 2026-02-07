@@ -1,23 +1,60 @@
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import polars as pl
 from loguru import logger
-from tqdm import tqdm
-from sklearn.metrics import confusion_matrix
 from momentfm.utils.anomaly_detection_metrics import (
     f1_score,
 )
+from omegaconf import DictConfig
+from sklearn.metrics import confusion_matrix
+from tqdm import tqdm
 
 
-def get_global_stdev_and_envelopes(residual, std_multiplier):
+def get_global_stdev_and_envelopes(
+    residual: np.ndarray, std_multiplier: float
+) -> Tuple[float, float, float]:
+    """Calculate global standard deviation and confidence interval envelopes.
+
+    Parameters
+    ----------
+    residual : np.ndarray
+        Residual signal array.
+    std_multiplier : float
+        Multiplier for standard deviation to define envelope bounds.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (global_stdev, upper_envelope, lower_envelope).
+    """
     global_stdev = np.nanstd(residual)
     upper_envelope = global_stdev * std_multiplier
     lower_envelope = -(global_stdev * std_multiplier)
     return global_stdev, upper_envelope, lower_envelope
 
 
-def fill_with_median(array_rolling, W, median_W=5):
+def fill_with_median(
+    array_rolling: np.ndarray, W: int, median_W: int = 5
+) -> np.ndarray:
+    """Fill NaN values at array edges with median of nearby values.
+
+    Parameters
+    ----------
+    array_rolling : np.ndarray
+        Array with potential NaN values at edges from rolling operations.
+    W : int
+        Window size used in rolling operation.
+    median_W : int, optional
+        Number of values to use for median calculation, by default 5.
+
+    Returns
+    -------
+    np.ndarray
+        Array with edge NaN values filled.
+    """
     nonnan_idxs = np.argwhere((~np.isnan(array_rolling)))
     first_nonnan_idx = int(nonnan_idxs[0])
     last_nonnan_idx = int(nonnan_idxs[-1])
@@ -33,14 +70,48 @@ def fill_with_median(array_rolling, W, median_W=5):
     return array_rolling
 
 
-def get_rolling_stdev(X_subj, W, fill_na_values_with_median=True):
+def get_rolling_stdev(
+    X_subj: np.ndarray, W: int, fill_na_values_with_median: bool = True
+) -> np.ndarray:
+    """Calculate rolling standard deviation of a signal.
+
+    Parameters
+    ----------
+    X_subj : np.ndarray
+        Input signal array.
+    W : int
+        Window size for rolling calculation.
+    fill_na_values_with_median : bool, optional
+        Whether to fill edge NaN values with median, by default True.
+
+    Returns
+    -------
+    np.ndarray
+        Rolling standard deviation array.
+    """
     array_rolling = np.array(pd.Series(X_subj).rolling(W, center=True).std())
     if fill_na_values_with_median:
         array_rolling = fill_with_median(array_rolling, W)
     return array_rolling
 
 
-def compute_rolling_metrics(outliers, outlier_mask):
+def compute_rolling_metrics(
+    outliers: np.ndarray, outlier_mask: np.ndarray
+) -> Tuple[float, float, float]:
+    """Compute outlier detection performance metrics.
+
+    Parameters
+    ----------
+    outliers : np.ndarray
+        Predicted outlier mask (boolean).
+    outlier_mask : np.ndarray
+        Ground truth outlier mask (boolean).
+
+    Returns
+    -------
+    tuple
+        Tuple containing (fp_ratio, tp_ratio, f1_score).
+    """
     tn, fp, fn, tp = confusion_matrix(outlier_mask, outliers).ravel()
     # False negative still okay, as it meeans that we did not get all the difficult ones, but we don't want
     # to remove the inliers (fp to zero desire)
@@ -50,7 +121,28 @@ def compute_rolling_metrics(outliers, outlier_mask):
     return fp_ratio, tp_ratio, f1
 
 
-def plot_debug_per_subject(code, pupil_trend, residual, outliers_subj, outlier_mask):
+def plot_debug_per_subject(
+    code: str,
+    pupil_trend: np.ndarray,
+    residual: np.ndarray,
+    outliers_subj: np.ndarray,
+    outlier_mask: np.ndarray,
+) -> None:
+    """Create debug visualization of outlier detection for a single subject.
+
+    Parameters
+    ----------
+    code : str
+        Subject code identifier.
+    pupil_trend : np.ndarray
+        Ground truth pupil trend.
+    residual : np.ndarray
+        Residual signal (raw - trend).
+    outliers_subj : np.ndarray
+        Detected outlier mask.
+    outlier_mask : np.ndarray
+        Ground truth outlier mask.
+    """
     plt.close("all")
     raw_inputed = pupil_trend + residual
     # fp_subj, f1_subj = compute_rolling_metrics(outliers_subj, outlier_mask)
@@ -77,11 +169,35 @@ def find_window_size_for_dataset(
     df_raw: pl.DataFrame,
     std_multiplier: float = 1.96,
     W: int = 100,
-    codes: np.ndarray = None,
-    outlier_mask: np.ndarray = None,
+    codes: Optional[np.ndarray] = None,
+    outlier_mask: Optional[np.ndarray] = None,
     plot_debug: bool = False,
     correct_for_ground_truth: bool = True,
-):
+) -> Tuple[float, float, float, np.ndarray, List[int]]:
+    """Find outliers using rolling standard deviation method for entire dataset.
+
+    Parameters
+    ----------
+    df_raw : pl.DataFrame
+        Raw data dataframe with pupil signals.
+    std_multiplier : float, optional
+        Standard deviation multiplier for outlier threshold, by default 1.96.
+    W : int, optional
+        Window size for rolling calculation, by default 100.
+    codes : np.ndarray, optional
+        Subject codes array, by default None.
+    outlier_mask : np.ndarray, optional
+        Ground truth outlier mask, by default None.
+    plot_debug : bool, optional
+        Whether to create debug plots, by default False.
+    correct_for_ground_truth : bool, optional
+        Whether to correct predictions using ground truth, by default True.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (fp_ratio, tp_ratio, f1_score, outliers_flat, sum_per_subj).
+    """
     subjects = sorted(df_raw["subject_code"].unique().to_numpy())
     sum_per_subj = []
     outliers = []
@@ -131,7 +247,29 @@ def find_window_size_for_dataset(
     return fp, tp, f1, outliers_flat, sum_per_subj
 
 
-def subjectwise_rolling_stdev(df_raw, window_size, std_multiplier, codes):
+def subjectwise_rolling_stdev(
+    df_raw: pl.DataFrame, window_size: int, std_multiplier: float, codes: np.ndarray
+) -> np.ndarray:
+    """Find best window size for rolling stdev outlier detection.
+
+    Searches over a range of window sizes to find the one with best F1 score.
+
+    Parameters
+    ----------
+    df_raw : pl.DataFrame
+        Raw data dataframe.
+    window_size : int
+        Initial window size (not used, searches range instead).
+    std_multiplier : float
+        Standard deviation multiplier for thresholds.
+    codes : np.ndarray
+        Subject code identifiers.
+
+    Returns
+    -------
+    np.ndarray
+        Boolean outlier mask using best window size.
+    """
     w_sizes = np.linspace(3, 30, 28).astype(int)
     fps = []
     tps = []
@@ -169,7 +307,21 @@ def subjectwise_rolling_stdev(df_raw, window_size, std_multiplier, codes):
     return best_outliers
 
 
-def check_for_nan_subjects(X, codes):
+def check_for_nan_subjects(X: np.ndarray, codes: Union[List[str], np.ndarray]) -> None:
+    """Check for subjects with all NaN values and log warnings.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Data array of shape (n_subjects, n_timepoints).
+    codes : list or np.ndarray
+        Subject code identifiers.
+
+    Raises
+    ------
+    AssertionError
+        If X and codes have different lengths.
+    """
     assert X.shape[0] == len(codes), "X and codes must have the same length"
     for idx in range(X.shape[0]):
         X_subj = X[idx, :]
@@ -178,14 +330,33 @@ def check_for_nan_subjects(X, codes):
 
 
 def debug_global_outlier(
-    outliers_init,
-    outliers,
-    pupil_trend,
-    residual,
-    outlier_mask,
-    idxs=(16000, 22000),
+    outliers_init: np.ndarray,
+    outliers: np.ndarray,
+    pupil_trend: np.ndarray,
+    residual: np.ndarray,
+    outlier_mask: np.ndarray,
+    idxs: Tuple[int, int] = (16000, 22000),
     use_indices: bool = True,
-):
+) -> None:
+    """Create debug visualization of global outlier detection.
+
+    Parameters
+    ----------
+    outliers_init : np.ndarray
+        Initial outlier predictions before ground truth correction.
+    outliers : np.ndarray
+        Final outlier predictions after correction.
+    pupil_trend : np.ndarray
+        Ground truth pupil trend.
+    residual : np.ndarray
+        Residual signal.
+    outlier_mask : np.ndarray
+        Ground truth outlier mask.
+    idxs : tuple, optional
+        Index range for plotting, by default (16000, 22000).
+    use_indices : bool, optional
+        Whether to use index range or plot all, by default True.
+    """
     plt.close("all")
     raw_imputed = pupil_trend + residual
     init_outliers = raw_imputed.copy()
@@ -226,11 +397,38 @@ def debug_global_outlier(
 def reject_outliers(
     df_raw: pl.DataFrame,
     std_multiplier: float = 1.96,
-    window_size: int = None,
+    window_size: Optional[int] = None,
     method: str = "global",
-    codes: np.ndarray = None,
+    codes: Optional[np.ndarray] = None,
     plot_on: bool = False,
-):
+) -> np.ndarray:
+    """Detect outliers using global or rolling standard deviation method.
+
+    Parameters
+    ----------
+    df_raw : pl.DataFrame
+        Raw data dataframe with pupil signals.
+    std_multiplier : float, optional
+        Standard deviation multiplier for threshold, by default 1.96.
+    window_size : int, optional
+        Window size for rolling method, by default None.
+    method : str, optional
+        Detection method ("global" or "rolling"), by default "global".
+    codes : np.ndarray, optional
+        Subject code identifiers, by default None.
+    plot_on : bool, optional
+        Whether to create debug plots, by default False.
+
+    Returns
+    -------
+    np.ndarray
+        Boolean outlier mask.
+
+    Raises
+    ------
+    ValueError
+        If method is unknown.
+    """
     if method == "global":
         pupil_trend = df_raw["pupil_gt"].to_numpy()
         residual = df_raw["pupil_orig_imputed"].to_numpy() - pupil_trend
@@ -273,7 +471,27 @@ def reject_outliers(
     return outliers
 
 
-def granularize_outlier_labels(df_raw, cfg):
+def granularize_outlier_labels(
+    df_raw: pl.DataFrame, cfg: Union[DictConfig, Dict[str, Any]]
+) -> pl.DataFrame:
+    """Split outlier labels into easy (blinks) and medium difficulty categories.
+
+    Uses global method for easy outliers and rolling method for medium
+    difficulty outliers that are closer to the true signal.
+
+    Parameters
+    ----------
+    df_raw : pl.DataFrame
+        Raw data dataframe with pupil signals and outlier_mask.
+    cfg : DictConfig
+        Configuration with granular_outliers_stdev_factor and
+        granular_outlier_window_size settings.
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with added outlier_mask_easy and outlier_mask_medium columns.
+    """
     # The most conservative rejection
     outliers = reject_outliers(
         df_raw=df_raw,
@@ -311,7 +529,7 @@ def granularize_outlier_labels(df_raw, cfg):
     # The hard outliers that are close to the signal: 5.07%
     logger.info(
         f"The hard outliers that are close to the signal: "
-        f"{outlier_percentage-mask_percentage:.2f}% of the total outliers labeled then"
+        f"{outlier_percentage - mask_percentage:.2f}% of the total outliers labeled then"
     )
 
     return df_raw

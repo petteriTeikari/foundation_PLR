@@ -1,6 +1,5 @@
 # Some of the classifications runs had 100 iterations instead of the "commonly accepted 1000 runs", so batch-delete
 # them all and re-run this configs with the correct value
-import os
 import shutil
 
 import mlflow
@@ -15,11 +14,11 @@ EXPERIMENT_NAME = "PLR_Classification"
 def clear_incorrect_cls_runs(
     experiment_name: str,
     correct_iters: int,
-    incorrect_iters: int,
+    _incorrect_iters: int,
     delete_folder: bool = True,
 ):
-    mlruns_dir = os.path.join(get_repo_root(), "mlruns")
-    mlflow.set_tracking_uri(mlruns_dir)
+    mlruns_dir = get_repo_root() / "mlruns"
+    mlflow.set_tracking_uri(str(mlruns_dir))
     mlruns = mlflow.search_runs(experiment_names=[experiment_name])
     if len(mlruns) == 0:
         logger.error(
@@ -51,10 +50,10 @@ def clear_incorrect_cls_runs(
                     logger.info(f"n = {n}: {model_name} / {run_name}")
                     no_erroneous_runs += 1
                     if delete_folder:
-                        folder_path = os.path.join(mlruns_dir, exp_id, run_id)
-                        if os.path.exists(folder_path):
+                        folder_path = mlruns_dir / exp_id / run_id
+                        if folder_path.exists():
                             shutil.rmtree(folder_path)
-                            if os.path.exists(folder_path):
+                            if folder_path.exists():
                                 logger.error(f"Problem deleting {folder_path}")
                             else:
                                 logger.info(f"Deleted {folder_path}")

@@ -1,20 +1,27 @@
-from loguru import logger
 import mlflow
+from loguru import logger
 from omegaconf import DictConfig
 
 
 def get_run_ids_from_infos(mlflow_infos):
+    """Extract run IDs from MLflow info dictionaries.
+
+    Parameters
+    ----------
+    mlflow_infos : dict
+        Dictionary mapping names to MLflow info with 'run_info' containing 'run_id'.
+
+    Returns
+    -------
+    dict
+        Mapping of names to run IDs.
+    """
     run_ids = {}
     for name in mlflow_infos.keys():
         run_ids[name] = mlflow_infos[name]["run_info"]["run_id"]
     return run_ids
 
 
-# @task(
-#     log_prints=True,
-#     name="Export visualizations as artifacts",
-#     description="Export artifacts to MLflow (and Prefect?)",
-# )
 def export_viz_as_artifacts(
     fig_paths: dict,
     flow_type: str,
@@ -22,6 +29,29 @@ def export_viz_as_artifacts(
     mlflow_run_ids: dict = None,
     mlflow_infos: dict = None,
 ):
+    """Export visualization files as MLflow artifacts.
+
+    Logs figure files to all relevant MLflow runs. Useful for aggregated
+    visualizations that span multiple model runs.
+
+    Parameters
+    ----------
+    fig_paths : dict
+        Dictionary mapping figure names to file paths.
+    flow_type : str
+        Type of flow for logging context.
+    cfg : DictConfig
+        Configuration object (currently unused).
+    mlflow_run_ids : dict, optional
+        Pre-computed mapping of model names to run IDs.
+    mlflow_infos : dict, optional
+        MLflow info dictionaries to extract run IDs from.
+
+    Raises
+    ------
+    ValueError
+        If neither mlflow_run_ids nor mlflow_infos is provided.
+    """
     logger.info(f"Logging the {flow_type} visualizations as artifacts")
     if mlflow_run_ids is None:
         if mlflow_infos is not None:

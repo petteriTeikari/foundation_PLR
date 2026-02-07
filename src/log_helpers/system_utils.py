@@ -1,14 +1,28 @@
 import re
 import subprocess
-from platform import python_version, release, system, processor
+from platform import processor, python_version, release, system
+
 import numpy as np
+import polars as pl
 import psutil
 import torch
 from loguru import logger
-import polars as pl
 
 
 def get_commit_id(return_short: bool = True) -> str:
+    """Get current git commit ID.
+
+    Parameters
+    ----------
+    return_short : bool, default True
+        If True, return short hash; otherwise return full hash.
+
+    Returns
+    -------
+    str
+        Git commit hash, or np.nan if git is not available.
+    """
+
     def get_git_revision_hash() -> str:
         return (
             subprocess.check_output(["git", "rev-parse", "HEAD"])
@@ -38,6 +52,18 @@ def get_commit_id(return_short: bool = True) -> str:
 
 
 def get_processor_info():
+    """Get CPU model name from system.
+
+    Returns
+    -------
+    str or np.nan
+        CPU model name, or np.nan if detection fails.
+
+    Notes
+    -----
+    Currently only fully implemented for Linux. Windows and macOS
+    have placeholder implementations.
+    """
     model_name = np.nan
 
     if system() == "Windows":
@@ -65,6 +91,13 @@ def get_processor_info():
 
 
 def get_system_params():
+    """Get system hardware parameters.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'CPU' (model name) and 'RAM_GB' (total RAM in GB).
+    """
     # CPU/Mem
 
     dict = {
@@ -75,6 +108,14 @@ def get_system_params():
 
 
 def get_library_versions() -> dict:
+    """Get versions of key Python libraries.
+
+    Returns
+    -------
+    dict
+        Dictionary with version strings for Python, NumPy, Polars, OS,
+        PyTorch, CUDA, and cuDNN.
+    """
     metadata = {}
     try:
         metadata["v_Python"] = python_version()
@@ -97,6 +138,16 @@ def get_library_versions() -> dict:
 
 
 def get_system_param_dict() -> dict:
+    """Get comprehensive system parameters dictionary.
+
+    Collects hardware info, library versions, and git commit for
+    reproducibility logging.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'system', 'libraries', and 'git_commit' keys.
+    """
     # In a way, might as well log everything, but at some point you just clutter the MLflow UI
     # You could dump this dict to a file as well and log it as an artifact?
     dict = {

@@ -1,11 +1,12 @@
 from copy import deepcopy
+from typing import Optional
 
+import mlflow
 import numpy as np
 import pandas as pd
 import psutil
-from omegaconf import DictConfig
-import mlflow
 from loguru import logger
+from omegaconf import DictConfig
 from tqdm import tqdm
 
 from src.anomaly_detection.anomaly_utils import outlier_detection_artifacts_dict
@@ -17,14 +18,13 @@ from src.ensemble.ensemble_utils import (
     get_grouped_classification_runs,
 )
 from src.log_helpers.log_naming_uris_and_dirs import (
-    get_model_name_from_run_name,
     get_foundation_model_names,
+    get_model_name_from_run_name,
     get_simple_outlier_detectors,
 )
 from src.log_helpers.mlflow_artifacts import (
     get_col_for_for_best_anomaly_detection_metric,
 )
-
 
 # def create_dict_for_featurization_from_imputation_results_and_original_data(
 #     imputation_results, cfg
@@ -41,26 +41,97 @@ from src.log_helpers.mlflow_artifacts import (
 #     return results
 
 
-def get_best_mlflow_col_for_imputation(cfg, string="MAE"):
+def get_best_mlflow_col_for_imputation(cfg: DictConfig, string: str = "MAE") -> str:
+    """Get the MLflow column name for the best imputation metric.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary containing IMPUTATION_METRICS settings.
+    string : str, optional
+        Metric identifier (e.g., "MAE"), by default "MAE".
+
+    Returns
+    -------
+    str
+        MLflow column name for the specified metric.
+    """
     best_metric: dict = cfg["IMPUTATION_METRICS"]["best_metric"]
     return best_metric[string]
 
 
-def get_best_string_for_imputation(cfg: DictConfig, split: str = "test"):
+def get_best_string_for_imputation(cfg: DictConfig, split: str = "test") -> dict:
+    """Get the best metric configuration dictionary for imputation.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary containing IMPUTATION_METRICS settings.
+    split : str, optional
+        Data split name, by default "test".
+
+    Returns
+    -------
+    dict
+        Best metric configuration dictionary.
+    """
     best_metric = cfg["IMPUTATION_METRICS"]["best_metric"]
     return best_metric
 
 
-def get_best_string_for_outlier_detection(cfg: DictConfig):
+def get_best_string_for_outlier_detection(cfg: DictConfig) -> dict:
+    """Get the best metric configuration for outlier detection.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary containing OUTLIER_DETECTION settings.
+
+    Returns
+    -------
+    dict
+        Best metric configuration for outlier detection.
+    """
     what_is_best = cfg["OUTLIER_DETECTION"]["what_is_best"]
     return cfg["OUTLIER_DETECTION"][what_is_best]
 
 
-def get_best_string_for_classification(cfg: DictConfig):
+def get_best_string_for_classification(cfg: DictConfig) -> dict:
+    """Get the best metric configuration for classification.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary containing CLASSIFICATION_SETTINGS.
+
+    Returns
+    -------
+    dict
+        Best metric configuration for classification.
+    """
     return cfg["CLASSIFICATION_SETTINGS"]["BEST_METRIC"]
 
 
-def get_best_dict(task, cfg):
+def get_best_dict(task: str, cfg: DictConfig) -> Optional[dict]:
+    """Get the best metric dictionary for a given task.
+
+    Parameters
+    ----------
+    task : str
+        Task name ("outlier_detection", "imputation", "featurization", or "classification").
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    dict or None
+        Best metric configuration dictionary, or None for featurization.
+
+    Raises
+    ------
+    NotImplementedError
+        If the task is unknown.
+    """
     if task == "outlier_detection":
         best_dict = get_best_string_for_outlier_detection(cfg)
     elif task == "imputation":
@@ -75,7 +146,28 @@ def get_best_dict(task, cfg):
     return best_dict
 
 
-def get_best_run_dict(run_df, best_dict, task):
+def get_best_run_dict(run_df: pd.DataFrame, best_dict: dict, task: str) -> pd.DataFrame:
+    """Sort MLflow runs by the best metric and return the sorted dataframe.
+
+    Parameters
+    ----------
+    run_df : pd.DataFrame
+        DataFrame of MLflow runs.
+    best_dict : dict
+        Configuration specifying the metric column and sort direction.
+    task : str
+        Task name for metric column selection.
+
+    Returns
+    -------
+    pd.DataFrame
+        Sorted DataFrame with best runs first.
+
+    Raises
+    ------
+    ValueError
+        If task is unknown or metric column not found.
+    """
     if task == "outlier_detection":
         col_name = get_col_for_for_best_anomaly_detection_metric(best_dict, task)
     elif task == "imputation":
@@ -102,7 +194,19 @@ def get_best_run_dict(run_df, best_dict, task):
     return run_df
 
 
-def drop_ensemble_runs(runs_model):
+def drop_ensemble_runs(runs_model: pd.DataFrame) -> pd.DataFrame:
+    """Remove ensemble runs from a MLflow runs dataframe.
+
+    Parameters
+    ----------
+    runs_model : pd.DataFrame
+        DataFrame of MLflow runs.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with ensemble runs removed.
+    """
     runs_model_out = pd.DataFrame()
     logger.info("Dropping ensemble runs")
     for idx, row in runs_model.iterrows():
@@ -113,11 +217,28 @@ def drop_ensemble_runs(runs_model):
 
 def foundation_model_filter(
     mlflow_runs: pd.DataFrame, best_dict: dict, model_name: str, task: str
-):
-    """
-    The idea is to get both the zeroshot and finetuned model with the foundation models (if available)
-    whereas with the more traditional models, the zeroshot option is not there typically (or does not perform
-    so well at all)
+) -> Optional[pd.DataFrame]:
+    """Filter foundation model runs to get best zeroshot and finetuned variants.
+
+    The idea is to get both the zeroshot and finetuned model with the foundation
+    models (if available) whereas with the more traditional models, the zeroshot
+    option is not there typically (or does not perform so well at all).
+
+    Parameters
+    ----------
+    mlflow_runs : pd.DataFrame
+        DataFrame of all MLflow runs.
+    best_dict : dict
+        Configuration specifying the best metric and direction.
+    model_name : str
+        Name of the foundation model to filter for.
+    task : str
+        Task name for metric selection.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        DataFrame with filtered runs, or None if no runs found.
     """
     df = pd.DataFrame()
     runs_model = mlflow_runs[
@@ -155,16 +276,33 @@ def foundation_model_filter(
         return None
 
 
-def get_best_imputation_runs(mlflow_runs, task, cfg):
-    """
-    Unlike best outlier_runs, we now have added 3 new fields to the mlflow_runs
+def get_best_imputation_runs(
+    mlflow_runs: pd.DataFrame, task: str, cfg: DictConfig
+) -> pd.DataFrame:
+    """Get the best run for each unique imputer+outlier combination.
+
+    Unlike best outlier_runs, we now have added 3 new fields to the mlflow_runs:
     1. imputer_model
     2. outlier_source
     3. unique_combo
 
-    And the unique_combo defines how many imputer+outlier_source combos we have for featurization
-    """
+    And the unique_combo defines how many imputer+outlier_source combos we have
+    for featurization.
 
+    Parameters
+    ----------
+    mlflow_runs : pd.DataFrame
+        DataFrame of MLflow runs with unique_combo column.
+    task : str
+        Task name for metric selection.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with one best run per unique combination.
+    """
     unique_combos = mlflow_runs["unique_combo"].unique()
     best_dict = get_best_dict(task, cfg)
     runs_out = pd.DataFrame()
@@ -182,8 +320,25 @@ def get_best_imputation_runs(mlflow_runs, task, cfg):
     return runs_out
 
 
-def drop_foundational_models(mlflow_runs, foundation_model_names):
-    def check_name(foundation_model_names, run_name):
+def drop_foundational_models(
+    mlflow_runs: pd.DataFrame, foundation_model_names: list[str]
+) -> pd.DataFrame:
+    """Remove foundation model runs from MLflow runs dataframe.
+
+    Parameters
+    ----------
+    mlflow_runs : pd.DataFrame
+        DataFrame of MLflow runs.
+    foundation_model_names : list
+        List of foundation model name strings to filter out.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with foundation model runs removed.
+    """
+
+    def check_name(foundation_model_names: list[str], run_name: str) -> bool:
         is_foundational_run = False
         for name in foundation_model_names:
             if name in run_name:
@@ -198,11 +353,28 @@ def drop_foundational_models(mlflow_runs, foundation_model_names):
     return runs_out
 
 
-def get_best_model_runs(mlflow_runs, task, cfg) -> pd.DataFrame:
-    """
-    Manual definition of what you want to compare
-    You could also simple use all MLflow runs as source, and put the return_subset to False
-    This artisanal selection is here just to reduce the number of combos to return
+def get_best_model_runs(
+    mlflow_runs: pd.DataFrame, task: str, cfg: DictConfig
+) -> pd.DataFrame:
+    """Get the best runs for each model type (foundation and traditional).
+
+    Manual definition of what you want to compare. You could also simply use
+    all MLflow runs as source, and put the return_subset to False. This
+    artisanal selection is here just to reduce the number of combos to return.
+
+    Parameters
+    ----------
+    mlflow_runs : pd.DataFrame
+        DataFrame of all MLflow runs.
+    task : str
+        Task name for metric selection.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with best runs for each model type.
     """
     best_dict = get_best_dict(task, cfg)
 
@@ -231,9 +403,24 @@ def get_best_model_runs(mlflow_runs, task, cfg) -> pd.DataFrame:
     return runs_out
 
 
-def get_unique_outlier_runs(mlflow_runs: pd.DataFrame, cfg: DictConfig, task: str):
-    """
-    You could return best
+def get_unique_outlier_runs(
+    mlflow_runs: pd.DataFrame, cfg: DictConfig, task: str
+) -> pd.DataFrame:
+    """Get one best run per unique run name from MLflow runs.
+
+    Parameters
+    ----------
+    mlflow_runs : pd.DataFrame
+        DataFrame of MLflow runs.
+    cfg : DictConfig
+        Configuration dictionary.
+    task : str
+        Task name for metric selection.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with one best run per unique run name.
     """
     best_dict = get_best_dict(task, cfg)
     best_runs = pd.DataFrame()
@@ -257,7 +444,28 @@ def get_unique_outlier_runs(mlflow_runs: pd.DataFrame, cfg: DictConfig, task: st
     return best_runs
 
 
-def parse_run_name_for_two_model_names(run_name: str, delimiter: str = "__"):
+def parse_run_name_for_two_model_names(
+    run_name: str, delimiter: str = "__"
+) -> tuple[str, str]:
+    """Parse a run name to extract imputer model and outlier source names.
+
+    Parameters
+    ----------
+    run_name : str
+        MLflow run name in format "imputer__outlier_source".
+    delimiter : str, optional
+        Delimiter separating model names, by default "__".
+
+    Returns
+    -------
+    tuple
+        Tuple containing (imputer_model, outlier_source) as simplified names.
+
+    Raises
+    ------
+    Exception
+        If the run name cannot be parsed.
+    """
     try:
         imputer_model, outlier_source = run_name.split(delimiter)
     except Exception:
@@ -275,7 +483,23 @@ def parse_run_name_for_two_model_names(run_name: str, delimiter: str = "__"):
     return imputer_model, outlier_source
 
 
-def simplify_model_name(model_name, delimiter: str = "_"):
+def simplify_model_name(model_name: str, delimiter: str = "_") -> str:
+    """Simplify a model name by extracting the core identifier.
+
+    Handles special cases for ensemble and MOMENT model naming conventions.
+
+    Parameters
+    ----------
+    model_name : str
+        Full model name from MLflow run.
+    delimiter : str, optional
+        Delimiter in the model name, by default "_".
+
+    Returns
+    -------
+    str
+        Simplified model name.
+    """
     model_name = model_name.replace("pupil_", "pupil-")
     model_name_out = model_name.split(delimiter)[0]
     # if "zeroshot" in model_name:
@@ -306,7 +530,35 @@ def simplify_model_name(model_name, delimiter: str = "_"):
     return model_name_out
 
 
-def get_unique_combo_runs(mlflow_runs_in, cfg, task, delimiter: str = "__"):
+def get_unique_combo_runs(
+    mlflow_runs_in: pd.DataFrame, cfg: DictConfig, task: str, delimiter: str = "__"
+) -> pd.DataFrame:
+    """Add unique combo columns to MLflow runs for imputer+outlier tracking.
+
+    Parses run names to extract imputer_model and outlier_source, creating
+    a unique_combo identifier for each combination.
+
+    Parameters
+    ----------
+    mlflow_runs_in : pd.DataFrame
+        Input MLflow runs DataFrame.
+    cfg : DictConfig
+        Configuration dictionary.
+    task : str
+        Task name.
+    delimiter : str, optional
+        Delimiter separating model names, by default "__".
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with added imputer_model, outlier_source, and unique_combo columns.
+
+    Raises
+    ------
+    ValueError
+        If any run has a NaN run_id.
+    """
     # Add empty columns to the Pandas DataFrame
     mlflow_runs = deepcopy(mlflow_runs_in)
     mlflow_runs = mlflow_runs.reset_index(drop=True)
@@ -354,7 +606,32 @@ def get_previous_best_mlflow_runs(
     cfg: DictConfig,
     task: str = "outlier_detection",
     return_subset: bool = True,
-):
+) -> Optional[pd.DataFrame]:
+    """Get the best MLflow runs from a previous experiment for use as data sources.
+
+    Parameters
+    ----------
+    experiment_name : str
+        Name of the MLflow experiment.
+    cfg : DictConfig
+        Configuration dictionary.
+    task : str, optional
+        Task name to determine filtering strategy, by default "outlier_detection".
+    return_subset : bool, optional
+        Whether to return a curated subset or all runs, by default True.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        DataFrame of best MLflow runs, or None if no runs found.
+
+    Raises
+    ------
+    ValueError
+        If the task is unknown.
+    NotImplementedError
+        If featurization task is requested.
+    """
     # Gives all the runs per experiment
     mlflow_runs = mlflow.search_runs(experiment_names=[experiment_name])
 
@@ -420,7 +697,23 @@ def get_previous_best_mlflow_runs(
         return mlflow_runs
 
 
-def get_arrays_for_splits_from_imputer_artifacts(artifacts, run_name):
+def get_arrays_for_splits_from_imputer_artifacts(
+    artifacts: dict, run_name: str
+) -> dict[str, dict[str, np.ndarray]]:
+    """Extract imputation arrays from MLflow imputer artifacts.
+
+    Parameters
+    ----------
+    artifacts : dict
+        MLflow artifacts containing imputation results.
+    run_name : str
+        MLflow run name for logging.
+
+    Returns
+    -------
+    dict
+        Dictionary with train/test splits containing X, CI_pos, CI_neg, and mask arrays.
+    """
     dict_out = {}
     imputation = artifacts["model_artifacts"]["imputation"]
     for split in imputation.keys():
@@ -457,7 +750,21 @@ def get_arrays_for_splits_from_imputer_artifacts(artifacts, run_name):
     return dict_out
 
 
-def check_arrays(splits_dicts, task: str):
+def check_arrays(splits_dicts: dict[str, dict[str, np.ndarray]], task: str) -> None:
+    """Validate that X and mask arrays have matching shapes.
+
+    Parameters
+    ----------
+    splits_dicts : dict
+        Dictionary of split dictionaries containing X and mask arrays.
+    task : str
+        Task name for error messages.
+
+    Raises
+    ------
+    AssertionError
+        If X and mask arrays have different shapes.
+    """
     for split, split_dict in splits_dicts.items():
         assert (
             split_dict["X"].shape == split_dict["mask"].shape
@@ -466,7 +773,22 @@ def check_arrays(splits_dicts, task: str):
         )
 
 
-def get_best_epoch(outlier_artifacts: dict):
+def get_best_epoch(outlier_artifacts: dict) -> tuple[dict, bool]:
+    """Extract the best epoch results from outlier detection artifacts.
+
+    Handles multiple artifact formats from different outlier detection methods.
+
+    Parameters
+    ----------
+    outlier_artifacts : dict
+        Dictionary of outlier detection artifacts from MLflow.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (results_best, simple_format) where simple_format
+        indicates the artifact structure type.
+    """
     # TODO! There is no need to have all these options, have all the outlier detection method output the same format
     simple_format = True
     if "outlier_results" in outlier_artifacts:
@@ -489,7 +811,21 @@ def get_best_epoch(outlier_artifacts: dict):
     return results_best, simple_format
 
 
-def if_pick_the_split(run_name, split):
+def if_pick_the_split(run_name: str, split: str) -> bool:
+    """Determine if a given split should be processed based on run name.
+
+    Parameters
+    ----------
+    run_name : str
+        MLflow run name.
+    split : str
+        Split name to check.
+
+    Returns
+    -------
+    bool
+        True if the split should be picked, False otherwise.
+    """
     pick_split = False
     if "outlier" in split:
         return True
@@ -503,16 +839,33 @@ def if_pick_the_split(run_name, split):
     return pick_split
 
 
-def get_arrays_for_splits_from_outlier_artifacts(outlier_artifacts, run_name):
-    """
-    output:
-        dict_out: dict
-            train: dict
-                X: np.array
-                mask: np.array
-            test: dict
-                X: np.array
-                mask: np.array
+def get_arrays_for_splits_from_outlier_artifacts(
+    outlier_artifacts: dict, run_name: str
+) -> dict[str, dict[str, np.ndarray]]:
+    """Extract reconstruction and mask arrays from outlier detection artifacts.
+
+    Handles multiple artifact formats from different outlier detection methods
+    (MOMENT, TimesNet, LOF, Prophet, etc.).
+
+    Parameters
+    ----------
+    outlier_artifacts : dict
+        Dictionary of outlier detection artifacts from MLflow.
+    run_name : str
+        MLflow run name for logging and method detection.
+
+    Returns
+    -------
+    dict
+        Dictionary with train/test splits containing X (reconstruction) and mask arrays.
+        Format: {split: {'X': np.array, 'mask': np.array}}
+
+    Raises
+    ------
+    ValueError
+        If arrays cannot be extracted from the artifacts.
+    AssertionError
+        If no splits were selected for analysis.
     """
     # best_arrays_format = "best_arrays" in outlier_artifacts
     results_best, simple_format = get_best_epoch(outlier_artifacts)
@@ -597,14 +950,50 @@ def get_arrays_for_splits_from_outlier_artifacts(outlier_artifacts, run_name):
     return dict_out
 
 
-def get_ensembled_anomaly_masks(artifacts):
+def get_ensembled_anomaly_masks(artifacts: dict) -> dict[str, dict[str, np.ndarray]]:
+    """Create ensembled anomaly masks from individual detector masks.
+
+    Parameters
+    ----------
+    artifacts : dict
+        Dictionary mapping splits to 3D arrays of individual detector masks.
+
+    Returns
+    -------
+    dict
+        Dictionary with ensembled masks for each split.
+    """
     dict_out = {}
     for split, array_3D in artifacts.items():
         dict_out[split] = {"mask": ensemble_masks(array_3D)}
     return dict_out
 
 
-def get_source_data(mlflow_runs, cfg, task: str):
+def get_source_data(
+    mlflow_runs: pd.DataFrame, cfg: DictConfig, task: str
+) -> tuple[dict, dict]:
+    """Load source data arrays from MLflow artifacts for each run.
+
+    Parameters
+    ----------
+    mlflow_runs : pd.DataFrame
+        DataFrame of MLflow runs to process.
+    cfg : DictConfig
+        Configuration dictionary.
+    task : str
+        Task name ("outlier_detection" or "imputation").
+
+    Returns
+    -------
+    tuple
+        Tuple containing (dicts_out, mlflow_dict) where dicts_out contains
+        the data arrays and mlflow_dict maps source names to MLflow run info.
+
+    Raises
+    ------
+    ValueError
+        If the task is unknown.
+    """
     dicts_out = {}
     mlflow_dict = {}
     for mlflow_row in (
@@ -650,7 +1039,30 @@ def get_source_data(mlflow_runs, cfg, task: str):
     return dicts_out, mlflow_dict
 
 
-def add_array_to_dict(array_to_add: np.ndarray, key: str, astype: str = None):
+def add_array_to_dict(
+    array_to_add: np.ndarray, key: str, astype: Optional[str] = None
+) -> np.ndarray:
+    """Validate and optionally cast a numpy array before adding to a dictionary.
+
+    Parameters
+    ----------
+    array_to_add : np.ndarray
+        Array to validate and add.
+    key : str
+        Dictionary key name for error messages.
+    astype : str, optional
+        Data type to cast the array to, by default None.
+
+    Returns
+    -------
+    np.ndarray
+        Validated (and optionally cast) array.
+
+    Raises
+    ------
+    ValueError
+        If the input is not a numpy array.
+    """
     if isinstance(array_to_add, np.ndarray):
         if astype is not None:
             return array_to_add.astype(astype)
@@ -658,7 +1070,7 @@ def add_array_to_dict(array_to_add: np.ndarray, key: str, astype: str = None):
             return array_to_add
     else:
         logger.error(
-            "You are trying to add (key={}) a non-Numpy array, " "type = {}".format(
+            "You are trying to add (key={}) a non-Numpy array, type = {}".format(
                 key, type(array_to_add)
             )
         )
@@ -672,8 +1084,26 @@ def add_array_to_dict(array_to_add: np.ndarray, key: str, astype: str = None):
 
 
 def get_dict_per_col_name(
-    col_names: list, data_dict: dict, col_name: str, mask_col: str
-):
+    col_names: list[str], data_dict: dict, col_name: str, mask_col: str
+) -> dict:
+    """Create data dictionary structure for a specific column name.
+
+    Parameters
+    ----------
+    col_names : list
+        List of column names to process (typically pupil signal columns).
+    data_dict : dict
+        Source data dictionary with df and preprocess keys.
+    col_name : str
+        Target column name for the data.
+    mask_col : str
+        Column name for the mask data.
+
+    Returns
+    -------
+    dict
+        Structured data dictionary with X, X_GT, and mask arrays.
+    """
     data_dicts = {}
     for gt_source in col_names:  # see if this for loop is really necessary
         data_dicts = {}
@@ -718,7 +1148,16 @@ def get_dict_per_col_name(
     return data_dicts
 
 
-def print_mask_stats(data_dict: dict, mask_col: str):
+def print_mask_stats(data_dict: dict, mask_col: str) -> None:
+    """Log statistics about the mask coverage for each split.
+
+    Parameters
+    ----------
+    data_dict : dict
+        Data dictionary containing df with mask arrays.
+    mask_col : str
+        Name of the mask column for logging.
+    """
     for split, dict_data in data_dict["df"].items():
         mask = dict_data["data"]["mask"]
         mask_sum = np.sum(mask)
@@ -728,7 +1167,28 @@ def print_mask_stats(data_dict: dict, mask_col: str):
         )
 
 
-def import_data_for_flow(cfg: DictConfig, task: str):
+def import_data_for_flow(cfg: DictConfig, task: str) -> tuple[dict, str, dict]:
+    """Import data from DuckDB and prepare it for the processing flow.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary.
+    task : str
+        Task name ("outlier_detection" or "imputation").
+
+    Returns
+    -------
+    tuple
+        Tuple containing (data_dicts, input_signal, data_dict) where
+        data_dicts is the structured source data, input_signal is the
+        column name for input data, and data_dict is the raw imported data.
+
+    Raises
+    ------
+    ValueError
+        If the task is unknown.
+    """
     data_df = flow_import_data(cfg=cfg)
     data_dict = convert_df_to_dict(data_df=data_df, cfg=cfg)
 
@@ -773,7 +1233,23 @@ def import_data_for_flow(cfg: DictConfig, task: str):
     return data_dicts, input_signal, data_dict
 
 
-def check_combination(source_data, source_name, split):
+def check_combination(source_data: dict, source_name: str, split: str) -> None:
+    """Validate that X, mask, and time arrays have consistent dimensions.
+
+    Parameters
+    ----------
+    source_data : dict
+        Dictionary of source data.
+    source_name : str
+        Name of the source to check.
+    split : str
+        Split name to check.
+
+    Raises
+    ------
+    AssertionError
+        If array dimensions are inconsistent.
+    """
     assert (
         source_data[source_name]["df"][split]["data"]["X"].shape[0]
         == source_data[source_name]["df"][split]["data"]["mask"].shape[0]
@@ -790,7 +1266,18 @@ def check_combination(source_data, source_name, split):
     )
 
 
-def check_gt_and_X(source_data, source_name, split):
+def check_gt_and_X(source_data: dict, source_name: str, split: str) -> None:
+    """Check if X and X_GT arrays are identical and warn if so.
+
+    Parameters
+    ----------
+    source_data : dict
+        Dictionary of source data.
+    source_name : str
+        Name of the source to check.
+    split : str
+        Split name for logging.
+    """
     model_data = source_data[source_name]
     for split, split_dict in model_data["df"].items():
         data_dict = split_dict["data"]
@@ -808,7 +1295,22 @@ def check_gt_and_X(source_data, source_name, split):
             logger.warning(f"source_name={source_name}, split={split}")
 
 
-def add_CI_to_data_dicts(data_dicts: dict):
+def add_CI_to_data_dicts(data_dicts: dict) -> dict:
+    """Add placeholder confidence interval arrays to data dictionaries.
+
+    The featurization script assumes CI arrays exist, so this adds NaN-filled
+    arrays where they are missing.
+
+    Parameters
+    ----------
+    data_dicts : dict
+        Data dictionaries to add CI arrays to.
+
+    Returns
+    -------
+    dict
+        Updated data dictionaries with CI_pos and CI_neg arrays.
+    """
     # Featurization script assumes that you have something here
     logger.info("Adding CI to data dicts")
     for pupil_col in data_dicts.keys():
@@ -823,7 +1325,21 @@ def add_CI_to_data_dicts(data_dicts: dict):
     return data_dicts
 
 
-def add_mlflow_dict_to_sources(sources, mlflow_dict):
+def add_mlflow_dict_to_sources(sources: dict, mlflow_dict: Optional[dict]) -> dict:
+    """Add MLflow run information to each source dictionary.
+
+    Parameters
+    ----------
+    sources : dict
+        Dictionary of source data.
+    mlflow_dict : dict or None
+        Dictionary mapping source names to MLflow run info.
+
+    Returns
+    -------
+    dict
+        Updated sources dictionary with mlflow key added to each source.
+    """
     for source_name in sources.keys():
         if mlflow_dict is not None:
             if source_name in mlflow_dict.keys():
@@ -836,7 +1352,19 @@ def add_mlflow_dict_to_sources(sources, mlflow_dict):
     return sources
 
 
-def check_sources(sources):
+def check_sources(sources: dict) -> None:
+    """Quality check all source data for NaN values.
+
+    Parameters
+    ----------
+    sources : dict
+        Dictionary of source data to check.
+
+    Raises
+    ------
+    ValueError
+        If any source contains NaN values in its data arrays.
+    """
     logger.info("Checking quality (QA) of the sources")
     for source in sources.keys():
         for split in sources[source]["df"].keys():
@@ -852,19 +1380,44 @@ def check_sources(sources):
 
 
 def combine_source_with_data_dicts(
-    source_data,
-    data_dicts_for_source,
-    mlflow_dict: dict,
+    source_data: Optional[dict],
+    data_dicts_for_source: dict,
+    mlflow_dict: Optional[dict],
     cfg: DictConfig,
     task: str,
     input_signal: str,
     data_dict: dict,
-):
-    """
-    split_dict: dict
-        X: np.array
-        mask: np.array
-     data_dict_template: dict
+) -> dict:
+    """Combine MLflow source data with the base data dictionary template.
+
+    Merges reconstruction/mask arrays from MLflow runs with the full data
+    structure (time, metadata, etc.) from the DuckDB import.
+
+    Parameters
+    ----------
+    source_data : dict or None
+        Dictionary of source data from MLflow runs.
+    data_dicts_for_source : dict
+        Base data dictionary template from DuckDB import.
+    mlflow_dict : dict
+        Dictionary mapping source names to MLflow run info.
+    cfg : DictConfig
+        Configuration dictionary.
+    task : str
+        Task name ("outlier_detection" or "imputation").
+    input_signal : str
+        Column name for input data when no reconstruction available.
+    data_dict : dict
+        Raw imported data dictionary for fallback values.
+
+    Returns
+    -------
+    dict
+        Combined sources dictionary with full data structure for each source.
+
+    Notes
+    -----
+    Expected data_dict_template structure:
         df: dict
             train: dict
                 time: dict
@@ -975,7 +1528,27 @@ def combine_source_with_data_dicts(
 
 def define_sources_for_flow(
     prev_experiment_name: str, cfg: DictConfig, task: str = "outlier_detection"
-):
+) -> dict:
+    """Define all data sources for a processing flow from previous MLflow experiments.
+
+    Main entry point for loading source data. Combines:
+    1. Best runs from the previous MLflow experiment
+    2. Original ground truth data from DuckDB
+
+    Parameters
+    ----------
+    prev_experiment_name : str
+        Name of the previous MLflow experiment to get runs from.
+    cfg : DictConfig
+        Configuration dictionary.
+    task : str, optional
+        Task name for determining data source type, by default "outlier_detection".
+
+    Returns
+    -------
+    dict
+        Dictionary of all source data, including both MLflow and ground truth sources.
+    """
     logger.debug("Defining sources for the flow = {}".format(task))
 
     # Get the best runs from the previous experiment

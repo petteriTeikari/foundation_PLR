@@ -1,7 +1,8 @@
-from loguru import logger
-import os
+from pathlib import Path
+from typing import Any, Optional
 
 import polars as pl
+from loguru import logger
 
 from src.utils import get_data_dir
 
@@ -10,6 +11,21 @@ FNAME_GLAUCOMA = "Master_File_De-Identified_Copy_For_Petteri_glaucoma.xlsx"
 
 
 def pick_subset_of_cols(df: pl.DataFrame) -> pl.DataFrame:
+    """Select and rename relevant columns from metadata dataframe.
+
+    Keeps only SubjectChar and Age columns, renames SubjectChar to subject_code,
+    and drops rows with missing values.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Full metadata dataframe from Excel.
+
+    Returns
+    -------
+    pl.DataFrame
+        Subset dataframe with subject_code and Age columns.
+    """
     cols_to_keep = ["SubjectChar", "Age"]
     df_subset = df.select(pl.col(cols_to_keep))
 
@@ -31,8 +47,23 @@ def pick_subset_of_cols(df: pl.DataFrame) -> pl.DataFrame:
     return df_subset
 
 
-def import_excel_file(path: str, class_label: str):
-    if not os.path.exists(path):
+def import_excel_file(path: str, class_label: str) -> pl.DataFrame:
+    """Import metadata from an Excel file and add class label.
+
+    Parameters
+    ----------
+    path : str
+        Path to the Excel file.
+    class_label : str
+        Class label to add ("control" or "glaucoma").
+
+    Returns
+    -------
+    pl.DataFrame
+        Dataframe with subject_code, Age, and class_label columns.
+    """
+    path = Path(path)
+    if not path.exists():
         logger.error(f"XLSX File not found: {path}")
 
     logger.info(f"Reading the metadata from the XLSX files: {path}")
@@ -49,7 +80,19 @@ def import_excel_file(path: str, class_label: str):
     return df
 
 
-def check_for_duplicate_codes(df):
+def check_for_duplicate_codes(df: pl.DataFrame) -> pl.DataFrame:
+    """Check for and warn about duplicate subject codes in metadata.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Metadata dataframe with subject_code column.
+
+    Returns
+    -------
+    pl.DataFrame
+        Input dataframe unchanged (duplicates logged but not removed).
+    """
     codes = df.select(pl.col("subject_code"))
     code_duplicates = codes.filter(codes.is_duplicated())
     if code_duplicates.shape[0] > 0:
@@ -61,7 +104,23 @@ def check_for_duplicate_codes(df):
     return df
 
 
-def get_metadata_from_xlsx(path_in_ctrl: str = None, path_in_glaucoma: str = None):
+def get_metadata_from_xlsx(
+    path_in_ctrl: Optional[str] = None, path_in_glaucoma: Optional[str] = None
+) -> pl.DataFrame:
+    """Import and combine metadata from control and glaucoma Excel files.
+
+    Parameters
+    ----------
+    path_in_ctrl : str, optional
+        Path to control group metadata Excel file, by default None.
+    path_in_glaucoma : str, optional
+        Path to glaucoma group metadata Excel file, by default None.
+
+    Returns
+    -------
+    pl.DataFrame
+        Combined metadata dataframe with all subjects.
+    """
     df_ctrl = import_excel_file(path=path_in_ctrl, class_label="control")
     df_glaucoma = import_excel_file(path=path_in_glaucoma, class_label="glaucoma")
 
@@ -71,14 +130,26 @@ def get_metadata_from_xlsx(path_in_ctrl: str = None, path_in_glaucoma: str = Non
     return df
 
 
-def metadata_wrapper(metadata_cfg):
+def metadata_wrapper(_metadata_cfg: Any) -> pl.DataFrame:
+    """Main wrapper to import all metadata from Excel files.
+
+    Parameters
+    ----------
+    metadata_cfg : DictConfig
+        Metadata configuration dictionary.
+
+    Returns
+    -------
+    pl.DataFrame
+        Combined metadata dataframe with control and glaucoma subjects.
+    """
     data_dir = get_data_dir()
     logger.info(
         f"Reading the metadata from the XLSX files in the directory: {data_dir}"
     )
     df = get_metadata_from_xlsx(
-        path_in_ctrl=os.path.join(data_dir, FNAME_CTRL),
-        path_in_glaucoma=os.path.join(data_dir, FNAME_GLAUCOMA),
+        path_in_ctrl=str(data_dir / FNAME_CTRL),
+        path_in_glaucoma=str(data_dir / FNAME_GLAUCOMA),
     )
 
     return df

@@ -1,11 +1,36 @@
-from loguru import logger
-
 import numpy as np
+from loguru import logger
 
 from src.utils import get_time_vector
 
 
 def long_df_to_long_numpy(df, no_features: int = 1, size_col_name: str = "gt"):
+    """Convert a long-format dataframe to a 3D numpy array.
+
+    Reshapes flat dataframe data into the format expected by PyPOTS
+    and similar time series libraries: (n_subjects, n_timepoints, n_features).
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Long-format Polars dataframe with all subjects' data concatenated.
+    no_features : int, optional
+        Number of features per timepoint, by default 1.
+    size_col_name : str, optional
+        Column name containing pupil size data, by default "gt".
+
+    Returns
+    -------
+    np.ndarray
+        3D array with shape (n_subjects, n_timepoints, n_features).
+
+    Raises
+    ------
+    AssertionError
+        If the data length is not evenly divisible by the expected time steps.
+    Exception
+        If the specified column is not found in the dataframe.
+    """
     # compared to PyPOTS examples, we have only one feature (pupil size),
     # or 2 if you consider light stimuli as a separate feature
     try:
