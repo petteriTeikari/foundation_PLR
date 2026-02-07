@@ -1,18 +1,31 @@
 import warnings
 from copy import deepcopy
-from typing import OrderedDict
+from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 
-from omegaconf import DictConfig
 import numpy as np
 import pandas as pd
-from loguru import logger
 import polars as pl
+from loguru import logger
+from omegaconf import DictConfig
 from sklearn.preprocessing import LabelEncoder
 
 from src.classification.classification_checks import pre_tree_based_classifier_checks
 
 
-def encode_labels_to_integers(y_string: np.ndarray):
+def encode_labels_to_integers(y_string: np.ndarray) -> np.ndarray:
+    """
+    Encode string class labels to integer values.
+
+    Parameters
+    ----------
+    y_string : np.ndarray
+        Array of string class labels (e.g., 'control', 'glaucoma').
+
+    Returns
+    -------
+    np.ndarray
+        Integer-encoded labels where control=0, glaucoma=1.
+    """
     label_encoder = LabelEncoder()
     label_encoder = label_encoder.fit(y_string)
     # control - 0, glaucoma - 1
@@ -27,7 +40,33 @@ def get_x_y(
     return_value: str,
     xgboost_cfg: DictConfig,
     hparam_cfg: DictConfig,
-):
+) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+    """
+    Extract feature matrix X and target vector y from a DataFrame.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame containing features and metadata columns.
+    split : str
+        Data split identifier ('train' or 'val').
+    return_value : str
+        Type of values to return: 'mean' for feature values or 'weights' for
+        inverse variance weights.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration dictionary.
+
+    Returns
+    -------
+    x : np.ndarray
+        Feature matrix of shape (n_samples, n_features).
+    y : np.ndarray
+        Integer-encoded target labels.
+    feature_names : list
+        List of feature column names.
+    """
     try:
         df = df.drop("subject_code", axis=1)
     except Exception as e:
@@ -82,9 +121,40 @@ def transform_data_for_xgboost(
     val_df: pl.DataFrame,
     xgboost_cfg: DictConfig,
     hparam_cfg: DictConfig,
-    return_value="mean",
-    check_ratio: bool = False
-):
+    return_value: str = "mean",
+    check_ratio: bool = False,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[str]]:
+    """
+    Transform Polars DataFrames to numpy arrays for XGBoost training.
+
+    Parameters
+    ----------
+    train_df : pl.DataFrame
+        Training data as a Polars DataFrame.
+    val_df : pl.DataFrame
+        Validation data as a Polars DataFrame.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration dictionary.
+    return_value : str, optional
+        Type of values to extract: 'mean' or 'weights'. Default is 'mean'.
+    check_ratio : bool, optional
+        Whether to check train/test mean ratio for sanity. Default is False.
+
+    Returns
+    -------
+    x_train : np.ndarray
+        Training feature matrix.
+    y_train : np.ndarray
+        Training labels.
+    x_test : np.ndarray
+        Test feature matrix.
+    y_test : np.ndarray
+        Test labels.
+    feature_names_train : list
+        List of feature names.
+    """
     x_train, y_train, feature_names_train = get_x_y(
         df=deepcopy(train_df.to_pandas()),
         split="train",
@@ -136,7 +206,20 @@ def transform_data_for_xgboost(
     return x_train, y_train, x_test, y_test, feature_names_train
 
 
-def convert_numpy_to_cupy(array):
+def convert_numpy_to_cupy(array: np.ndarray) -> Optional[Any]:
+    """
+    Convert a NumPy array to a CuPy array for GPU acceleration.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Input NumPy array to convert.
+
+    Returns
+    -------
+    cupy.ndarray or None
+        CuPy array if conversion succeeds, None if CuPy import fails.
+    """
     try:
         # "uv add cupy" might give you "Exception: Your CUDA environment is invalid. Please check above error log."
         # and either way, you need to have CUDA installed at system level
@@ -148,7 +231,44 @@ def convert_numpy_to_cupy(array):
     return cp.asarray(array)
 
 
-def polars_to_numpy_arrays(train_df, val_df, xgboost_cfg, hparam_cfg, run_name):
+def polars_to_numpy_arrays(
+    train_df: pl.DataFrame,
+    val_df: pl.DataFrame,
+    xgboost_cfg: DictConfig,
+    hparam_cfg: DictConfig,
+    run_name: str,
+) -> Tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    List[str],
+    np.ndarray,
+    np.ndarray,
+    List[str],
+]:
+    """
+    Convert Polars DataFrames to numpy arrays with feature values and weights.
+
+    Parameters
+    ----------
+    train_df : pl.DataFrame
+        Training data as a Polars DataFrame.
+    val_df : pl.DataFrame
+        Validation data as a Polars DataFrame.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration dictionary.
+    run_name : str
+        Name of the current run, used to determine weighting scheme.
+
+    Returns
+    -------
+    tuple
+        Tuple containing (x_train, y_train, x_test, y_test, feature_names,
+        x_train_w, x_test_w, feature_names_w) where _w suffix denotes weight arrays.
+    """
     # Convert Polars DataFrames to numpy arrays
     logger.info("Transforming data for mean feature values")
     x_train, y_train, x_test, y_test, feature_names = transform_data_for_xgboost(
@@ -216,19 +336,59 @@ def polars_to_numpy_arrays(train_df, val_df, xgboost_cfg, hparam_cfg, run_name):
 
 
 def create_dmatrices_and_dict_arrays(
-    x_train,
-    y_train,
-    x_test,
-    y_test,
-    feature_names,
-    x_train_w,
-    x_test_w,
-    feature_names_w,
-    train_df,
-    val_df,
-    xgboost_cfg,
-    check_ratio: bool = False
-):
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    y_test: np.ndarray,
+    feature_names: List[str],
+    x_train_w: np.ndarray,
+    x_test_w: np.ndarray,
+    feature_names_w: List[str],
+    train_df: pl.DataFrame,
+    val_df: pl.DataFrame,
+    xgboost_cfg: DictConfig,
+    check_ratio: bool = False,
+) -> Tuple[None, None, Dict[str, Any]]:
+    """
+    Create XGBoost DMatrix objects and a dictionary of arrays for training.
+
+    Parameters
+    ----------
+    x_train : np.ndarray
+        Training feature matrix.
+    y_train : np.ndarray
+        Training labels.
+    x_test : np.ndarray
+        Test feature matrix.
+    y_test : np.ndarray
+        Test labels.
+    feature_names : list
+        List of feature names for mean values.
+    x_train_w : np.ndarray
+        Training feature weights.
+    x_test_w : np.ndarray
+        Test feature weights.
+    feature_names_w : list
+        List of feature names for weight values.
+    train_df : pl.DataFrame
+        Original training DataFrame (for subject codes).
+    val_df : pl.DataFrame
+        Original validation DataFrame (for subject codes).
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    check_ratio : bool, optional
+        Whether to check train/test mean ratio. Default is False.
+
+    Returns
+    -------
+    dtest : xgb.DMatrix or None
+        XGBoost DMatrix for test data (currently None).
+    dtrain : xgb.DMatrix or None
+        XGBoost DMatrix for training data (currently None).
+    dict_arrays : dict
+        Dictionary containing all arrays and metadata for training.
+    """
+
     def clean_feature_names(feature_names):
         # remove '_value' from a list of feature names
         feature_names = [name.replace("_value", "") for name in feature_names]
@@ -290,7 +450,26 @@ def create_dmatrices_and_dict_arrays(
     return dtest, dtrain, dict_arrays
 
 
-def join_test_and_train_arrays(dict_arrays: dict):
+def join_test_and_train_arrays(
+    dict_arrays: Dict[str, Any],
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Concatenate train and test arrays for cross-validation.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing x_train, x_test, y_train, y_test, x_train_w, x_test_w.
+
+    Returns
+    -------
+    X : np.ndarray
+        Combined feature matrix from train and test sets.
+    y : np.ndarray
+        Combined labels from train and test sets.
+    X_w : np.ndarray
+        Combined feature weights from train and test sets.
+    """
     # e.g. when you are doing CV and you want to use the whole dataset
     X = np.concatenate((dict_arrays["x_train"], dict_arrays["x_test"]), axis=0)
     y = np.concatenate((dict_arrays["y_train"], dict_arrays["y_test"]), axis=0)
@@ -304,7 +483,32 @@ def data_transform_wrapper(
     xgboost_cfg: DictConfig,
     hparam_cfg: DictConfig,
     run_name: str = "None",
-):
+) -> Tuple[None, None, Dict[str, Any]]:
+    """
+    Transform Polars DataFrames to XGBoost-ready format with all preprocessing.
+
+    Parameters
+    ----------
+    train_df : pl.DataFrame
+        Training data as a Polars DataFrame.
+    test_df : pl.DataFrame
+        Test data as a Polars DataFrame.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration dictionary.
+    run_name : str, optional
+        Name of the current run. Default is "None".
+
+    Returns
+    -------
+    dtest : xgb.DMatrix or None
+        XGBoost DMatrix for test data.
+    dtrain : xgb.DMatrix or None
+        XGBoost DMatrix for training data.
+    dict_arrays : dict
+        Dictionary containing all arrays and metadata for training.
+    """
     logger.info("Transforming data for Classification Model")
 
     # Convert Polars DataFrames to numpy arrays
@@ -359,7 +563,24 @@ def data_transform_wrapper(
     return dtest, dtrain, dict_arrays
 
 
-def get_last_items_from_OrderedDicts(results: dict):
+def get_last_items_from_OrderedDicts(
+    results: Dict[str, OrderedDict[str, List[float]]],
+) -> Dict[str, float]:
+    """
+    Extract the last metric values from XGBoost evaluation results.
+
+    Parameters
+    ----------
+    results : dict
+        XGBoost evals_result dictionary containing validation_0 and validation_1.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'train' and 'test' keys containing the last metric value
+        for each split.
+    """
+
     # Inside XGBoost model, the "best metric" is a bit hidden so getting it out like this:
     def get_last_value_per_split(split: OrderedDict):
         last_key = next(reversed(split))
@@ -374,7 +595,25 @@ def get_last_items_from_OrderedDicts(results: dict):
     return items_out
 
 
-def find_best_metric(best_metrics: dict, xgboost_cfg: DictConfig):
+def find_best_metric(
+    best_metrics: Dict[str, Dict[str, float]],
+    xgboost_cfg: DictConfig,
+) -> int:
+    """
+    Find the index of the best performing configuration from grid search.
+
+    Parameters
+    ----------
+    best_metrics : dict
+        Dictionary mapping grid config names to their train/test metric values.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+
+    Returns
+    -------
+    int
+        Index of the configuration with the best test metric value.
+    """
     best_values = []
     for grid_name in best_metrics.keys():
         best_values.append(best_metrics[grid_name]["test"])

@@ -1,15 +1,17 @@
 import os
 import random
+from typing import Any, Dict, List, Tuple
 
+import mlflow
 import numpy as np
 import torch
 from loguru import logger
-from omegaconf import DictConfig
 from momentfm import MOMENTPipeline
-from tqdm import tqdm
-from sklearn.utils.class_weight import compute_class_weight
+from omegaconf import DictConfig
 from scipy.special import softmax
-import mlflow
+from sklearn.utils.class_weight import compute_class_weight
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from src.classification.bootstrap_evaluation import get_ensemble_stats
 from src.classification.classifier_log_utils import (
@@ -21,10 +23,38 @@ from src.imputation.momentfm.moment_utils import init_torch_training
 
 
 def train_epoch(
-    model, device, train_dataloader, criterion, optimizer, scheduler, reduction="mean"
-):
+    model: MOMENTPipeline,
+    device: str,
+    train_dataloader: DataLoader,
+    criterion: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    scheduler: torch.optim.lr_scheduler.LRScheduler,
+    reduction: str = "mean",
+) -> float:
     """
-    Train only classification head
+    Train only classification head for one epoch.
+
+    Parameters
+    ----------
+    model : MOMENTPipeline
+        The MOMENT model with classification head.
+    device : str
+        Device to run training on ('cuda' or 'cpu').
+    train_dataloader : DataLoader
+        PyTorch DataLoader containing training batches.
+    criterion : torch.nn.Module
+        Loss function (e.g., CrossEntropyLoss).
+    optimizer : torch.optim.Optimizer
+        Optimizer for updating model parameters.
+    scheduler : torch.optim.lr_scheduler._LRScheduler
+        Learning rate scheduler.
+    reduction : str, optional
+        Reduction method for output logits. Default is 'mean'.
+
+    Returns
+    -------
+    float
+        Average training loss over all batches.
     """
     model.to(device)
     model.train()
@@ -45,7 +75,41 @@ def train_epoch(
     return avg_loss
 
 
-def evaluate_epoch(dataloader, model, criterion, device, phase="val", reduction="mean"):
+def evaluate_epoch(
+    dataloader: DataLoader,
+    model: MOMENTPipeline,
+    criterion: torch.nn.Module,
+    device: str,
+    phase: str = "val",
+    reduction: str = "mean",
+) -> Tuple[float, float, np.ndarray, np.ndarray]:
+    """
+    Evaluate model on a dataset for one epoch.
+
+    Parameters
+    ----------
+    dataloader : DataLoader
+        PyTorch DataLoader containing evaluation batches.
+    model : MOMENTPipeline
+        The MOMENT model with classification head.
+    criterion : torch.nn.Module
+        Loss function for computing evaluation loss.
+    device : str
+        Device to run evaluation on ('cuda' or 'cpu').
+    phase : str, optional
+        Evaluation phase name (e.g., 'val', 'test'). Default is 'val'.
+    reduction : str, optional
+        Reduction method for output logits. Default is 'mean'.
+
+    Returns
+    -------
+    tuple
+        Tuple of (avg_loss, accuracy, outputs, labels) where:
+        - avg_loss : float - Average loss over all batches
+        - accuracy : float - Classification accuracy
+        - outputs : np.ndarray - Model logits for all samples
+        - labels : np.ndarray - Ground truth labels for all samples
+    """
     model.eval()
     model.to(device)
     total_loss, total_correct = 0, 0
@@ -77,7 +141,20 @@ def evaluate_epoch(dataloader, model, criterion, device, phase="val", reduction=
     return avg_loss, accuracy, outputs, labels
 
 
-def get_labels_from_loader(train_loader):
+def get_labels_from_loader(train_loader: DataLoader) -> np.ndarray:
+    """
+    Extract all labels from a DataLoader.
+
+    Parameters
+    ----------
+    train_loader : DataLoader
+        PyTorch DataLoader to extract labels from.
+
+    Returns
+    -------
+    np.ndarray
+        Concatenated array of all labels from the DataLoader.
+    """
     labels = None
     for _, batch_labels, _ in train_loader:
         if labels is None:
@@ -89,7 +166,20 @@ def get_labels_from_loader(train_loader):
     return labels
 
 
-def get_class_weights(train_loader):
+def get_class_weights(train_loader: DataLoader) -> torch.Tensor:
+    """
+    Compute balanced class weights from training data.
+
+    Parameters
+    ----------
+    train_loader : DataLoader
+        PyTorch DataLoader containing training data.
+
+    Returns
+    -------
+    torch.Tensor
+        Tensor of class weights for weighted loss computation.
+    """
     labels = get_labels_from_loader(train_loader)
     class_weights = compute_class_weight(
         "balanced", classes=np.unique(labels), y=labels
@@ -97,24 +187,55 @@ def get_class_weights(train_loader):
     return torch.tensor(class_weights, dtype=torch.float)
 
 
-def get_preds_from_logits(logits: np.ndarray, labels: np.ndarray, split: str):
+def get_preds_from_logits(
+    logits: np.ndarray, labels: np.ndarray, split: str
+) -> Dict[str, np.ndarray]:
+    """
+    Convert model logits to probability predictions.
+
+    Parameters
+    ----------
+    logits : np.ndarray
+        Raw model output logits of shape (n_samples, n_classes).
+    labels : np.ndarray
+        Ground truth labels (unused but kept for API consistency).
+    split : str
+        Data split name (unused but kept for API consistency).
+
+    Returns
+    -------
+    dict
+        Dictionary with 'pred' key containing softmax probabilities.
+    """
     probs = softmax(logits)  # (n_samples, n_classes), e.g. (63,2)
     # probs_class1 = probs[:, 1] # (n_samples,)
     # preds = probs_class1 > 0.5
     return {"pred": probs}
 
 
-def get_dict_split_from_dataloaders(dataloaders):
+def get_dict_split_from_dataloaders(
+    dataloaders: Dict[str, DataLoader],
+) -> Dict[str, Dict[str, np.ndarray]]:
     """
-    dict_splits: dict
-    test: dict
-        X: np.ndarray
-        y: np.ndarray
-        w: np.ndarray
-        codes: np.ndarray
+    Convert PyTorch DataLoaders to dictionary format for metric computation.
+
+    Parameters
+    ----------
+    dataloaders : dict
+        Dictionary mapping split names to DataLoader objects.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping split names to data dictionaries, where each
+        data dictionary contains:
+        - X : np.ndarray - Feature array
+        - y : np.ndarray - Label array
+        - w : np.ndarray - Sample weights (ones)
+        - codes : np.ndarray - Sample indices
     """
 
-    def get_dict_per_split(dataloader, split):
+    def get_dict_per_split(dataloader: DataLoader, split: str) -> Dict[str, np.ndarray]:
         x, y = None, None
         for batch_x, batch_labels, _ in dataloader:
             if y is None:
@@ -135,8 +256,33 @@ def get_dict_split_from_dataloaders(dataloaders):
 
 
 def moment_ts_train_script(
-    dataloaders, device, cfg: DictConfig, cls_model_cfg: DictConfig
-):
+    dataloaders: Dict[str, DataLoader],
+    device: str,
+    cfg: DictConfig,
+    cls_model_cfg: DictConfig,
+) -> Tuple[List[str], Dict[str, Any], Dict[int, Dict[str, List[float]]]]:
+    """
+    Train an ensemble of MOMENT classifiers on time series data.
+
+    Parameters
+    ----------
+    dataloaders : dict
+        Dictionary with 'train' and 'test' DataLoaders.
+    device : str
+        Device to run training on ('cuda' or 'cpu').
+    cfg : DictConfig
+        Main Hydra configuration object.
+    cls_model_cfg : DictConfig
+        Classifier-specific model configuration.
+
+    Returns
+    -------
+    tuple
+        Tuple of (models, metrics_iter, train_losses) where:
+        - models : list - Trained model paths or placeholders
+        - metrics_iter : dict - Per-iteration metrics from bootstrap evaluation
+        - train_losses : dict - Training and test losses per submodel
+    """
     # Not that computationally expensive with our small dataset, but reduce maybe to 5 if you larger dataset
     no_of_submodels_in_ensemble = cls_model_cfg["MODEL"]["no_submodels"]
     epoch = cls_model_cfg["MODEL"]["no_epochs"]
@@ -148,7 +294,7 @@ def moment_ts_train_script(
     preds = {}
 
     train_msg = (
-        f'Moment for classification ({cls_model_cfg["MODEL"]["detection_type"]})'
+        f"Moment for classification ({cls_model_cfg['MODEL']['detection_type']})"
     )
     for submodel in (pbar := tqdm(range(no_of_submodels_in_ensemble), desc=train_msg)):
         # Initialize the Moment classifier model
@@ -182,7 +328,7 @@ def moment_ts_train_script(
                 dataloaders["test"], model, criterion, device, phase="test"
             )
             pbar.set_description(
-                f"{train_msg} | Epoch = {i+1}/{epoch}, Train loss = {train_loss:.4f}, "
+                f"{train_msg} | Epoch = {i + 1}/{epoch}, Train loss = {train_loss:.4f}, "
                 f"test_loss = {test_loss:.4f}, test_acc = {test_accuracy:.2f}"
             )
             # lr=1e-4
@@ -225,14 +371,25 @@ def moment_ts_train_script(
         del model
         torch.cuda.empty_cache()
         logger.debug(
-            f"CUDA Memory allocated (1): {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB"
+            f"CUDA Memory allocated (1): {torch.cuda.memory_allocated() / 1024**3:.2f} GB"
         )
 
     return models, metrics_iter, train_losses
 
 
-def control_randomness(seed: int = 42):
-    """Function to control randomness in the code."""
+def control_randomness(seed: int = 42) -> None:
+    """
+    Set random seeds for reproducibility across all libraries.
+
+    Parameters
+    ----------
+    seed : int, optional
+        Random seed value. Default is 42.
+
+    Returns
+    -------
+    None
+    """
     logger.debug("Random seed = {}".format(seed))
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
@@ -243,9 +400,26 @@ def control_randomness(seed: int = 42):
     torch.backends.cudnn.benchmark = False
 
 
-def init_moment_cls_model(cls_model_cfg: DictConfig, device: str):
+def init_moment_cls_model(cls_model_cfg: DictConfig, device: str) -> MOMENTPipeline:
     """
-    Initialize the Moment classifier model
+    Initialize the MOMENT classifier model from pretrained weights.
+
+    Parameters
+    ----------
+    cls_model_cfg : DictConfig
+        Classifier model configuration containing model_kwargs.
+    device : str
+        Device to load the model on ('cuda' or 'cpu').
+
+    Returns
+    -------
+    MOMENTPipeline
+        Initialized MOMENT model ready for classification.
+
+    Raises
+    ------
+    Exception
+        If model cannot be moved to the specified device.
     """
     model = MOMENTPipeline.from_pretrained(
         "AutonLab/MOMENT-1-large",
@@ -263,7 +437,19 @@ def init_moment_cls_model(cls_model_cfg: DictConfig, device: str):
     return model
 
 
-def log_moment_cls_mlflow_params(cls_model_cfg):
+def log_moment_cls_mlflow_params(cls_model_cfg: DictConfig) -> None:
+    """
+    Log MOMENT classifier parameters to MLflow.
+
+    Parameters
+    ----------
+    cls_model_cfg : DictConfig
+        Classifier model configuration to log.
+
+    Returns
+    -------
+    None
+    """
     mlflow.log_param("data_source", "time_series")
     for key, value in cls_model_cfg["MODEL"].items():
         if key != "model_kwargs":
@@ -275,13 +461,40 @@ def log_moment_cls_mlflow_params(cls_model_cfg):
 
 def ts_cls_moment_main(
     source_name: str,
-    features_per_source: dict,
+    features_per_source: Dict[str, Any],
     cls_model_name: str,
     cls_model_cfg: DictConfig,
     run_name: str,
     cfg: DictConfig,
-):
+) -> None:
     """
+    Main entry point for MOMENT time series classification pipeline.
+
+    Trains an ensemble of MOMENT classifiers, evaluates performance using
+    bootstrap metrics, and logs all results to MLflow.
+
+    Parameters
+    ----------
+    source_name : str
+        Name of the data source being processed.
+    features_per_source : dict
+        Dictionary containing feature data, with 'df' key holding the DataFrame.
+    cls_model_name : str
+        Name of the classifier model (should be 'MOMENT').
+    cls_model_cfg : DictConfig
+        Classifier-specific model configuration.
+    run_name : str
+        Name for the MLflow run.
+    cfg : DictConfig
+        Main Hydra configuration object.
+
+    Returns
+    -------
+    None
+        Results are logged to MLflow rather than returned.
+
+    See Also
+    --------
     https://github.com/moment-timeseries-foundation-model/moment/blob/main/tutorials/ptbxl_classification.ipynb
     """
     with mlflow.start_run(run_name=run_name):

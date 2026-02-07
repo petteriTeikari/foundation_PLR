@@ -2,6 +2,7 @@ import math
 
 import torch
 import torch.nn as nn
+
 from src.classification.tabpfn_v1.utils import normalize_data
 
 

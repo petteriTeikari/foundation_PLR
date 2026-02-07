@@ -10,11 +10,11 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
-from typing_extensions import TypeAlias
 
 import joblib
 import numpy as np
 from packaging import version
+from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     from src.classification.tabpfn.preprocessing import (

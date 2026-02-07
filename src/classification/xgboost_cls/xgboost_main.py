@@ -1,20 +1,18 @@
 import time
 from copy import deepcopy
 
-from omegaconf import DictConfig
-from loguru import logger
+import mlflow
 import polars as pl
 import xgboost as xgb
-from hyperopt import fmin, tpe, Trials, STATUS_OK
-
-import mlflow
+from hyperopt import STATUS_OK, Trials, fmin, tpe
+from loguru import logger
+from omegaconf import DictConfig
 
 from src.classification.classifier_log_utils import (
     log_classifier_params_to_mlflow,
     log_classifier_sources_as_params,
 )
-from src.classification.classifier_utils import preprocess_features, classifier_hpo_eval
-
+from src.classification.classifier_utils import classifier_hpo_eval, preprocess_features
 from src.classification.feature_selection import rfe_feature_selector
 from src.classification.hyperopt_utils import parse_hyperopt_search_space
 from src.classification.viz_classifiers import classifier_feature_importance
@@ -22,12 +20,12 @@ from src.classification.weighing_utils import get_weights_for_xgboost_fit
 from src.classification.xgboost_cls.xgboost_grid import define_xgboost_grid_search_space
 from src.classification.xgboost_cls.xgboost_utils import (
     data_transform_wrapper,
-    get_last_items_from_OrderedDicts,
     find_best_metric,
+    get_last_items_from_OrderedDicts,
 )
 from src.log_helpers.log_naming_uris_and_dirs import (
-    get_train_loss_name,
     get_eval_metric_name,
+    get_train_loss_name,
 )
 
 
@@ -40,6 +38,32 @@ def xgboost_hyperparameter_tuning(
     hparam_cfg: DictConfig,
     cfg: DictConfig,
 ):
+    """
+    Perform Bayesian hyperparameter optimization for XGBoost using Hyperopt.
+
+    Parameters
+    ----------
+    space : dict
+        Hyperopt search space defining parameter distributions.
+    dict_arrays : dict
+        Dictionary containing training and test arrays.
+    loss_function : str
+        Loss function name for training.
+    eval_metric : str
+        Evaluation metric name for optimization.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration dictionary.
+    cfg : DictConfig
+        Main configuration dictionary.
+
+    Returns
+    -------
+    dict
+        Best hyperparameters found combined with static parameters.
+    """
+
     # The function to be optimized by hyperopt
     def hyperparameter_tuning(space: dict):
         # https://medium.com/analytics-vidhya/hyperparameter-tuning-hyperopt-bayesian-optimization-for-xgboost-and-neural-network-8aedf278a1c9
@@ -122,6 +146,35 @@ def xgboost_train_script(
     debug_mode: bool = False,
     eval_metric: str = None,
 ):
+    """
+    Train an XGBoost classifier with optional RFE feature selection.
+
+    Parameters
+    ----------
+    model_params : dict
+        Hyperparameters for the XGBoost model.
+    dict_arrays : dict
+        Dictionary containing training and test arrays.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    weights_dict : dict, optional
+        Dictionary of sample weights. Default is None.
+    use_RFE : bool, optional
+        Whether to use Recursive Feature Elimination. Default is True.
+    verbose : bool, optional
+        Whether to print training progress. Default is True.
+    debug_mode : bool, optional
+        Whether to print debug information. Default is False.
+    eval_metric : str, optional
+        Evaluation metric name. Default is None.
+
+    Returns
+    -------
+    model : xgb.XGBClassifier
+        Trained XGBoost classifier.
+    dict_arrays : dict
+        Updated dictionary with potentially reduced features after RFE.
+    """
     # https://xgboosting.com/xgboost-feature-selection-with-rfe/
     if verbose:
         logger.info(
@@ -192,6 +245,33 @@ def hpo_and_train_xgboost(
     cfg: DictConfig,
     use_RFE: bool = True,
 ):
+    """
+    Run hyperparameter optimization and train XGBoost model.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing training and test arrays.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration dictionary.
+    cfg : DictConfig
+        Main configuration dictionary.
+    use_RFE : bool, optional
+        Whether to use Recursive Feature Elimination. Default is True.
+
+    Returns
+    -------
+    model : xgb.XGBClassifier
+        Trained XGBoost classifier.
+    space : dict
+        Hyperopt search space used.
+    model_params : dict
+        Best hyperparameters found.
+    dict_arrays : dict
+        Updated dictionary with potentially reduced features.
+    """
     loss_function = get_train_loss_name(cfg)
     eval_metric = get_eval_metric_name(cfg=cfg, cls_model_name="XGBOOST")
 
@@ -227,6 +307,31 @@ def hpo_and_train_xgboost(
 def rfe_xgboost_train_wrapper(
     dict_arrays: dict, xgboost_cfg: DictConfig, hparam_cfg: DictConfig, cfg: DictConfig
 ):
+    """
+    Wrapper for XGBoost training with optional RFE and iterative HPO.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing training and test arrays.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration dictionary.
+    cfg : DictConfig
+        Main configuration dictionary.
+
+    Returns
+    -------
+    model : xgb.XGBClassifier
+        Trained XGBoost classifier.
+    space : dict
+        Hyperopt search space used.
+    model_params : dict
+        Best hyperparameters found.
+    dict_arrays : dict
+        Updated dictionary with potentially reduced features.
+    """
     start = time.time()
     if xgboost_cfg["FEATURE_SELECTION"]["RFE"]["use"]:
         model, space, model_params, dict_arrays = hpo_and_train_xgboost(
@@ -264,6 +369,39 @@ def pick_the_best_params_and_best_config(
     grid_cfgs: dict,
     xgboost_cfg: DictConfig,
 ):
+    """
+    Select the best model and configuration from grid search results.
+
+    Parameters
+    ----------
+    best_metrics : dict
+        Dictionary mapping config names to their train/test metric values.
+    list_of_models : list
+        List of trained XGBoost models from each grid iteration.
+    spaces : list
+        List of hyperopt search spaces used.
+    list_of_model_params : list
+        List of best hyperparameters from each iteration.
+    list_of_dict_arrays : list
+        List of data dictionaries from each iteration.
+    grid_cfgs : dict
+        Dictionary of grid search configurations.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+
+    Returns
+    -------
+    model : xgb.XGBClassifier
+        Best performing model.
+    space : dict
+        Search space used for best model.
+    model_params : dict
+        Hyperparameters of best model.
+    dict_arrays : dict
+        Data dictionary for best model.
+    xgboost_cfg : DictConfig
+        Configuration used for best model.
+    """
     best_idx = find_best_metric(best_metrics, xgboost_cfg=xgboost_cfg)
     model = list_of_models[best_idx]
     space = spaces[best_idx]
@@ -277,13 +415,42 @@ def pick_the_best_params_and_best_config(
 
 
 def xgboost_grid_search(dict_arrays, xgboost_cfg, hparam_cfg, cfg):
+    """
+    Perform grid search over XGBoost configurations with nested HPO.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing training and test arrays.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration dictionary.
+    cfg : DictConfig
+        Main configuration dictionary.
+
+    Returns
+    -------
+    model : xgb.XGBClassifier
+        Best performing model from grid search.
+    space : dict
+        Search space used for best model.
+    model_params : dict
+        Hyperparameters of best model.
+    dict_arrays : dict
+        Data dictionary for best model.
+    xgboost_cfg : DictConfig
+        Configuration used for best model.
+    """
     # Define the grid search space (different weighing schemes at this point)
     time_start = time.time()
     grid_cfgs = define_xgboost_grid_search_space(hparam_cfg, xgboost_cfg, cfg)
     best_metrics = {}
     list_of_models, spaces, list_of_model_params, list_of_dict_arrays = [], [], [], []
     for i, (cfg_name, xgboost_cfg) in enumerate(grid_cfgs.items()):
-        logger.info(f"XGBoost Grid search iteration {i+1}/{len(grid_cfgs)}: {cfg_name}")
+        logger.info(
+            f"XGBoost Grid search iteration {i + 1}/{len(grid_cfgs)}: {cfg_name}"
+        )
 
         # Train the model with Hyperparameter Optimization (HPO) and possibly RFE feature selection
         model, space, model_params, dict_arrays = rfe_xgboost_train_wrapper(
@@ -373,6 +540,35 @@ def xgboost_train(
     hparam_cfg: DictConfig,
     features_per_source: dict,
 ):
+    """
+    Train and evaluate an XGBoost classifier with MLflow logging.
+
+    Parameters
+    ----------
+    train_df : pl.DataFrame
+        Training data as a Polars DataFrame.
+    test_df : pl.DataFrame
+        Test data as a Polars DataFrame.
+    run_name : str
+        Name for the MLflow run.
+    cfg : DictConfig
+        Main configuration dictionary.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration dictionary.
+    features_per_source : dict
+        Dictionary mapping feature sources to feature counts.
+
+    Returns
+    -------
+    model : xgb.XGBClassifier
+        Trained XGBoost classifier.
+    metrics : dict
+        Evaluation metrics from the classifier.
+    dict_arrays : dict
+        Data dictionary used for training.
+    """
     # circular import quick fix
     from src.classification.classifier_evaluation import evaluate_sklearn_classifier
 
@@ -425,11 +621,39 @@ def xgboost_main(
     hparam_cfg: DictConfig,
     features_per_source: dict,
 ):
+    """
+    Main entry point for XGBoost classification pipeline.
+
+    Orchestrates feature preprocessing, model training with hyperparameter
+    optimization, evaluation, and feature importance visualization.
+
+    Parameters
+    ----------
+    train_df : pl.DataFrame
+        Training data as a Polars DataFrame.
+    test_df : pl.DataFrame
+        Test data as a Polars DataFrame.
+    run_name : str
+        Name for the MLflow run.
+    cfg : DictConfig
+        Main configuration dictionary.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration dictionary.
+    features_per_source : dict
+        Dictionary mapping feature sources to feature counts.
+
+    Returns
+    -------
+    None
+        Results are logged to MLflow and visualizations are generated.
+    """
     # Task) Preprocess the features (standardize, normalize, etc.)
     train_df, test_df = preprocess_features(
         train_df,
         test_df,
-        cls_preprocess_cfg=cfg["CLASSIFICATION_SETTINGS"]["PREPROCESS"],
+        _cls_preprocess_cfg=cfg["CLASSIFICATION_SETTINGS"]["PREPROCESS"],
     )
 
     # Task) Train the XGBoost model (with hyperparameter optimization) (and evaluate with metrics)

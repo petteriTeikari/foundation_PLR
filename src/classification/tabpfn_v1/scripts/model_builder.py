@@ -1,14 +1,13 @@
+import math
+import os
+import subprocess as sp
 from functools import partial
-import src.classification.tabpfn_v1.encoders as encoders
 
+import torch
+
+import src.classification.tabpfn_v1.encoders as encoders
 from src.classification.tabpfn_v1.transformer import TransformerModel
 from src.classification.tabpfn_v1.utils import get_uniform_single_eval_pos_sampler
-import torch
-import math
-
-
-import subprocess as sp
-import os
 
 
 def save_model(model, path, filename, config_sample):
@@ -280,7 +279,7 @@ def get_model(
     epoch_callback=None,
 ):
     import src.classification.tabpfn_v1.priors as priors
-    from src.classification.tabpfn_v1.train import train, Losses
+    from src.classification.tabpfn_v1.train import Losses, train
 
     extra_kwargs = {}
     verbose_train, verbose_prior = verbose >= 1, verbose >= 2

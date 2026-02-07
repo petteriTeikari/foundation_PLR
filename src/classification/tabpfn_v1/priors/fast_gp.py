@@ -1,11 +1,12 @@
 import time
 
+import gpytorch
 import torch
 from torch import nn
-import gpytorch
+
+from src.classification.tabpfn_v1.utils import default_device
 
 from .utils import get_batch_to_dataloader
-from src.classification.tabpfn_v1.utils import default_device
 
 
 # We will use the simplest form of GP model, exact inference
@@ -158,9 +159,12 @@ def evaluate(
     losses_after_t = [0.0] if start_pos == 0 else []
     all_losses_after_t = []
 
-    with gpytorch.settings.fast_computations(
-        *hyperparameters.get("fast_computations", (True, True, True))
-    ), gpytorch.settings.fast_pred_var(False):
+    with (
+        gpytorch.settings.fast_computations(
+            *hyperparameters.get("fast_computations", (True, True, True))
+        ),
+        gpytorch.settings.fast_pred_var(False),
+    ):
         for t in range(max(start_pos, 1), len(x), step_size):
             loss_sum = 0.0  # noqa F841
             model, likelihood = get_model_on_device(

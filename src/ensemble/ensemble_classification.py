@@ -1,8 +1,20 @@
+"""
+Classification ensemble module.
+
+Provides functionality to aggregate predictions from multiple classification
+models and compute ensemble metrics with bootstrap confidence intervals.
+
+Cross-references:
+- src/ensemble/ensemble_utils.py for run retrieval
+- src/classification/bootstrap_evaluation.py for metric computation
+"""
+
 import warnings
+from typing import Any
 
 import numpy as np
-from loguru import logger
 import pandas as pd
+from loguru import logger
 from omegaconf import DictConfig
 from tqdm import tqdm
 
@@ -14,13 +26,56 @@ from src.ensemble.ensemble_utils import are_codes_the_same
 from src.log_helpers.local_artifacts import load_results_dict
 
 
-def import_model_metrics(run_id, run_name, model_name, subdir: str = "baseline_model"):
+def import_model_metrics(
+    run_id: str, run_name: str, model_name: str, subdir: str = "baseline_model"
+) -> dict[str, Any]:
+    """
+    Load model metrics from MLflow artifact storage.
+
+    Parameters
+    ----------
+    run_id : str
+        MLflow run ID.
+    run_name : str
+        MLflow run name.
+    model_name : str
+        Name of the model (for artifact path construction).
+    subdir : str, default 'baseline_model'
+        Subdirectory within artifacts to load from.
+
+    Returns
+    -------
+    dict
+        Dictionary containing model artifacts and metrics.
+    """
     artifacts_path = get_artifact(run_id, run_name, model_name, subdir=subdir)
     artifacts = load_results_dict(artifacts_path)
     return artifacts
 
 
-def get_preds_and_labels_from_artifacts(artifacts):
+def get_preds_and_labels_from_artifacts(
+    artifacts: dict[str, Any],
+) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, np.ndarray]]:
+    """
+    Extract predictions and labels from model artifacts.
+
+    Retrieves mean predictions and variance from subjectwise statistics,
+    which are averaged across bootstrap iterations.
+
+    Parameters
+    ----------
+    artifacts : dict
+        Dictionary containing model artifacts with 'subjectwise_stats'.
+
+    Returns
+    -------
+    dict
+        Mean predicted probabilities per split.
+    dict
+        Variance of predicted probabilities per split.
+    dict
+        Ground truth labels per split.
+    """
     # NOTE! to make things simpler, we get the data from the stats subdict which are averaged from n bootstrap iters
     # this does not account the case in which you did not use same number of bootstrap iters (if you care), assuming
     # that all the models used the same number of iterations
@@ -38,8 +93,31 @@ def get_preds_and_labels_from_artifacts(artifacts):
 
 
 def import_model_preds_and_labels(
-    run_id, run_name, model_name, subdir: str = "metrics"
-):
+    run_id: str, run_name: str, model_name: str, subdir: str = "metrics"
+) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, np.ndarray]]:
+    """
+    Load predictions and labels from MLflow run.
+
+    Parameters
+    ----------
+    run_id : str
+        MLflow run ID.
+    run_name : str
+        MLflow run name.
+    model_name : str
+        Name of the model.
+    subdir : str, default 'metrics'
+        Subdirectory within artifacts.
+
+    Returns
+    -------
+    dict
+        Mean predicted probabilities per split.
+    dict
+        Variance of predicted probabilities per split.
+    dict
+        Ground truth labels per split.
+    """
     artifacts = import_model_metrics(run_id, run_name, model_name, subdir=subdir)
     y_pred_proba, y_pred_proba_var, label = get_preds_and_labels_from_artifacts(
         artifacts
@@ -47,14 +125,53 @@ def import_model_preds_and_labels(
     return y_pred_proba, y_pred_proba_var, label
 
 
-def import_metrics_iter(run_id, run_name, model_name, subdir: str = "metrics"):
+def import_metrics_iter(
+    run_id: str, run_name: str, model_name: str, subdir: str = "metrics"
+) -> dict[str, Any]:
+    """
+    Load per-iteration metrics from MLflow run.
+
+    Parameters
+    ----------
+    run_id : str
+        MLflow run ID.
+    run_name : str
+        MLflow run name.
+    model_name : str
+        Name of the model.
+    subdir : str, default 'metrics'
+        Subdirectory within artifacts.
+
+    Returns
+    -------
+    dict
+        Dictionary of metrics per bootstrap iteration per split.
+    """
     artifacts = import_model_metrics(run_id, run_name, model_name, subdir=subdir)
     return artifacts["metrics_iter"]
 
 
 def concentate_one_var(
-    array_out: dict[str, np.ndarray], array_per_submodel: dict[str, np.ndarray]
-):
+    array_out: dict[str, np.ndarray] | None,
+    array_per_submodel: dict[str, np.ndarray],
+) -> dict[str, np.ndarray]:
+    """
+    Concatenate arrays from submodel into accumulated output.
+
+    Stacks submodel arrays along a new first axis.
+
+    Parameters
+    ----------
+    array_out : dict or None
+        Accumulated arrays (None for first submodel).
+    array_per_submodel : dict
+        Arrays from current submodel, keyed by split.
+
+    Returns
+    -------
+    dict
+        Updated accumulated arrays.
+    """
     if array_out is None:
         array_out = {}
         for split in array_per_submodel.keys():
@@ -69,8 +186,40 @@ def concentate_one_var(
 
 
 def concatenate_arrays(
-    preds_out, preds_var_out, labels_out, y_pred_proba, y_pred_proba_var, label
-):
+    preds_out: dict[str, np.ndarray] | None,
+    preds_var_out: dict[str, np.ndarray] | None,
+    _labels_out: dict[str, np.ndarray] | None,
+    y_pred_proba: dict[str, np.ndarray],
+    y_pred_proba_var: dict[str, np.ndarray],
+    label: dict[str, np.ndarray],
+) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, np.ndarray]]:
+    """
+    Concatenate prediction arrays from multiple submodels.
+
+    Parameters
+    ----------
+    preds_out : dict or None
+        Accumulated predictions.
+    preds_var_out : dict or None
+        Accumulated prediction variances.
+    labels_out : dict or None
+        Accumulated labels (not modified, labels are same across models).
+    y_pred_proba : dict
+        Predictions from current submodel.
+    y_pred_proba_var : dict
+        Prediction variances from current submodel.
+    label : dict
+        Labels from current submodel.
+
+    Returns
+    -------
+    dict
+        Updated predictions.
+    dict
+        Updated variances.
+    dict
+        Labels (unchanged).
+    """
     preds_out = concentate_one_var(preds_out, y_pred_proba)
     preds_var_out = concentate_one_var(preds_var_out, y_pred_proba_var)
     # should be the same, thus no need for this
@@ -79,7 +228,31 @@ def concatenate_arrays(
     return preds_out, preds_var_out, label
 
 
-def check_dicts(preds_out, preds_var_out, labels_out, no_submodel_runs):
+def check_dicts(
+    preds_out: dict[str, np.ndarray],
+    preds_var_out: dict[str, np.ndarray],
+    _labels_out: dict[str, np.ndarray] | None,
+    no_submodel_runs: int,
+) -> None:
+    """
+    Verify concatenated arrays have expected dimensions.
+
+    Parameters
+    ----------
+    preds_out : dict
+        Accumulated predictions.
+    preds_var_out : dict
+        Accumulated variances.
+    labels_out : dict
+        Labels (unused, kept for API compatibility).
+    no_submodel_runs : int
+        Expected number of submodels.
+
+    Raises
+    ------
+    AssertionError
+        If array dimensions don't match expected submodel count.
+    """
     for split in preds_out.keys():
         assert preds_out[split].shape[0] == no_submodel_runs, (
             f"preds_out[split].shape[0]: "
@@ -93,7 +266,28 @@ def check_dicts(preds_out, preds_var_out, labels_out, no_submodel_runs):
         )
 
 
-def compute_stats(preds_out, preds_var_out):
+def compute_stats(
+    preds_out: dict[str, np.ndarray], preds_var_out: dict[str, np.ndarray]
+) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, np.ndarray]]:
+    """
+    Compute ensemble statistics from stacked predictions.
+
+    Parameters
+    ----------
+    preds_out : dict
+        Stacked predictions (n_models x n_subjects).
+    preds_var_out : dict
+        Stacked variances (n_models x n_subjects).
+
+    Returns
+    -------
+    dict
+        Mean predictions across models.
+    dict
+        Standard deviation of predictions across models.
+    dict
+        Mean of within-model standard deviations.
+    """
     preds = {}
     preds_std = {}
     preds_meanstd = {}
@@ -105,7 +299,30 @@ def compute_stats(preds_out, preds_var_out):
     return preds, preds_std, preds_meanstd
 
 
-def aggregate_pred_dict(preds_out, preds_per_submodel, ensemble: bool = False):
+def aggregate_pred_dict(
+    preds_out: dict[str, dict[str, list[Any]]],
+    preds_per_submodel: dict[str, dict[str, list[Any]]],
+    ensemble: bool = False,
+) -> dict[str, dict[str, list[Any]]]:
+    """
+    Aggregate prediction dictionaries from submodels.
+
+    Extends lists of predictions for each subject code.
+
+    Parameters
+    ----------
+    preds_out : dict
+        Accumulated predictions keyed by variable and subject code.
+    preds_per_submodel : dict
+        Predictions from current submodel.
+    ensemble : bool, default False
+        If True, performs additional consistency checks.
+
+    Returns
+    -------
+    dict
+        Updated accumulated predictions.
+    """
     for var in preds_per_submodel:  # e.g. y_pred_proba, y_pred, label
         assert isinstance(preds_per_submodel[var], dict), (
             f"preds_per_submodel[var] is not a dict, "
@@ -127,7 +344,24 @@ def aggregate_pred_dict(preds_out, preds_per_submodel, ensemble: bool = False):
     return preds_out
 
 
-def aggregate_preds(preds_out, preds_per_submodel):
+def aggregate_preds(
+    preds_out: dict[str, np.ndarray], preds_per_submodel: dict[str, np.ndarray]
+) -> dict[str, np.ndarray]:
+    """
+    Concatenate prediction arrays along iteration axis.
+
+    Parameters
+    ----------
+    preds_out : dict
+        Accumulated predictions (n_subjects x n_accumulated_iters).
+    preds_per_submodel : dict
+        Predictions from current submodel.
+
+    Returns
+    -------
+    dict
+        Updated predictions with new iterations concatenated.
+    """
     for split in preds_per_submodel:
         preds_out[split] = np.concatenate(
             [preds_out[split], preds_per_submodel[split]], axis=1
@@ -135,35 +369,75 @@ def aggregate_preds(preds_out, preds_per_submodel):
     return preds_out
 
 
-def check_metrics_iter_preds_dict(dict_arrays: dict[str, dict[str, list]]):
+def check_metrics_iter_preds_dict(
+    dict_arrays: dict[str, dict[str, list[Any]]],
+) -> None:
+    """
+    Validate prediction dictionary has consistent dimensions.
+
+    Checks that y_pred_proba, y_pred, and labels have same length.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary with 'y_pred_proba', 'y_pred', and 'label'/'labels' keys.
+
+    Raises
+    ------
+    AssertionError
+        If lengths don't match.
+    """
     # (no_subjects, no_of_bootstrap_iters)
     if "labels" in dict_arrays:
         # TODO! why with CATBOOST? fix this eventually so that only one key
         assert (
             len(dict_arrays["y_pred_proba"]) == len(dict_arrays["labels"])
-        ), f'you have {len(dict_arrays["y_pred_proba"])} y_pred_proba and {len(dict_arrays["labels"])} labels'
+        ), f"you have {len(dict_arrays['y_pred_proba'])} y_pred_proba and {len(dict_arrays['labels'])} labels"
     elif "label" in dict_arrays:
         assert (
             len(dict_arrays["y_pred_proba"]) == len(dict_arrays["label"])
-        ), f'you have {len(dict_arrays["y_pred_proba"])} y_pred_proba and {len(dict_arrays["label"])} labels'
+        ), f"you have {len(dict_arrays['y_pred_proba'])} y_pred_proba and {len(dict_arrays['label'])} labels"
     assert len(dict_arrays["y_pred_proba"]) == len(dict_arrays["y_pred"])
 
 
-def check_metrics_iter_preds(dict_arrays: dict[str, np.ndarray]):
+def check_metrics_iter_preds(dict_arrays: dict[str, np.ndarray]) -> None:
+    """
+    Validate prediction arrays have consistent shapes.
+
+    Checks that y_pred_proba, y_pred, and labels have same first dimension.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary with numpy array values.
+
+    Raises
+    ------
+    AssertionError
+        If shapes don't match.
+    """
     # (no_subjects, no_of_bootstrap_iters)
     if "label" in dict_arrays:
         assert (
             dict_arrays["y_pred_proba"].shape[0] == dict_arrays["label"].shape[0]
-        ), f'you have {dict_arrays["y_pred_proba"].shape[0]} y_pred_proba and {dict_arrays["label"].shape[0]} labels'
+        ), f"you have {dict_arrays['y_pred_proba'].shape[0]} y_pred_proba and {dict_arrays['label'].shape[0]} labels"
     elif "labels" in dict_arrays:
         # TODO! why with CATBOOST? fix this eventually so that only one key
         assert (
             dict_arrays["y_pred_proba"].shape[0] == dict_arrays["labels"].shape[0]
-        ), f'you have {dict_arrays["y_pred_proba"].shape[0]} y_pred_proba and {dict_arrays["labels"].shape[0]} labels'
+        ), f"you have {dict_arrays['y_pred_proba'].shape[0]} y_pred_proba and {dict_arrays['labels'].shape[0]} labels"
     assert dict_arrays["y_pred_proba"].shape[0] == dict_arrays["y_pred"].shape[0]
 
 
-def check_metrics_iter_shapes(iter_split):
+def check_metrics_iter_shapes(iter_split: dict[str, Any]) -> None:
+    """
+    Dispatch shape checking based on data structure type.
+
+    Parameters
+    ----------
+    iter_split : dict
+        Split-level metrics iteration data.
+    """
     if "preds_dict" in iter_split:
         check_metrics_iter_preds_dict(dict_arrays=iter_split["preds_dict"]["arrays"])
     else:
@@ -172,7 +446,22 @@ def check_metrics_iter_shapes(iter_split):
         )
 
 
-def check_subjects_in_splits(metrics_iter):
+def check_subjects_in_splits(
+    metrics_iter: dict[str, Any] | None,
+) -> dict[str, list[str]] | None:
+    """
+    Extract and validate subject codes from metrics iteration data.
+
+    Parameters
+    ----------
+    metrics_iter : dict or None
+        Metrics per iteration dictionary.
+
+    Returns
+    -------
+    dict or None
+        Dictionary mapping splits to sorted subject code lists.
+    """
     if metrics_iter is not None:
         subjects = {}
         for split in metrics_iter.keys():
@@ -206,8 +495,35 @@ def check_subjects_in_splits(metrics_iter):
 
 
 def check_compare_subjects_for_aggregation(
-    subject_codes, subject_codes_model, run_name, i, split_to_check: str = "train"
-):
+    subject_codes: dict[str, list[str]] | None,
+    subject_codes_model: dict[str, list[str]] | None,
+    run_name: str,
+    i: int,
+    split_to_check: str = "train",
+) -> list[str]:
+    """
+    Compare subject codes between ensemble and current submodel.
+
+    Verifies that the current submodel used same subjects as previous models.
+
+    Parameters
+    ----------
+    subject_codes : dict or None
+        Subject codes from ensemble (accumulated).
+    subject_codes_model : dict or None
+        Subject codes from current submodel.
+    run_name : str
+        Name of current run for error reporting.
+    i : int
+        Index of current submodel.
+    split_to_check : str, default 'train'
+        Which split to compare.
+
+    Returns
+    -------
+    list
+        List of run names with mismatched codes (empty if match).
+    """
     error_run = []
     if subject_codes is not None and subject_codes_model is not None:
         for split in subject_codes.keys():
@@ -215,7 +531,7 @@ def check_compare_subjects_for_aggregation(
             if split == split_to_check:
                 if subject_codes[split] != subject_codes_model[split]:
                     logger.error(
-                        f"Submodel #{i+1}: {run_name} seem to have different subjects in splits than in previous submodels"
+                        f"Submodel #{i + 1}: {run_name} seem to have different subjects in splits than in previous submodels"
                     )
                     error_run = [run_name]
                     if len(subject_codes[split]) != len(subject_codes_model[split]):
@@ -242,8 +558,33 @@ def check_compare_subjects_for_aggregation(
 
 
 def aggregate_metric_iter(
-    metrics_iter, metrics_iter_model, run_name: str, ensemble: bool = False
-):
+    metrics_iter: dict[str, Any] | None,
+    metrics_iter_model: dict[str, Any],
+    run_name: str,
+    ensemble: bool = False,
+) -> dict[str, Any]:
+    """
+    Aggregate metrics iteration data from submodel into ensemble.
+
+    Combines predictions from multiple bootstrap models by extending
+    the iteration arrays.
+
+    Parameters
+    ----------
+    metrics_iter : dict or None
+        Accumulated metrics (None for first submodel).
+    metrics_iter_model : dict
+        Metrics from current submodel.
+    run_name : str
+        Name of current run for logging.
+    ensemble : bool, default False
+        If True, performs additional consistency checks.
+
+    Returns
+    -------
+    dict
+        Updated accumulated metrics.
+    """
     if metrics_iter is None:
         metrics_iter = {}
         for split in metrics_iter_model.keys():
@@ -283,7 +624,20 @@ def aggregate_metric_iter(
     return metrics_iter
 
 
-def get_label_array(label_dict: dict[str, np.ndarray]):
+def get_label_array(label_dict: dict[str, np.ndarray]) -> np.ndarray:
+    """
+    Convert label dictionary to array.
+
+    Parameters
+    ----------
+    label_dict : dict
+        Dictionary mapping subject codes to label arrays.
+
+    Returns
+    -------
+    np.ndarray
+        Array of labels in same order as dictionary keys.
+    """
     label_array = []
     for code in label_dict.keys():
         label_array.append(label_dict[code][0])
@@ -295,8 +649,24 @@ def get_label_array(label_dict: dict[str, np.ndarray]):
     return label_array
 
 
-def get_preds_array(preds_dict: dict[str, np.ndarray]):
-    def get_min_bootstrap_iters_from_subjects(preds_dict):
+def get_preds_array(preds_dict: dict[str, np.ndarray]) -> np.ndarray:
+    """
+    Convert prediction dictionary to 2D array.
+
+    Parameters
+    ----------
+    preds_dict : dict
+        Dictionary mapping subject codes to prediction arrays.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (n_subjects, n_bootstrap_iters).
+    """
+
+    def get_min_bootstrap_iters_from_subjects(
+        preds_dict: dict[str, np.ndarray],
+    ) -> int:
         lengths = []
         for code in preds_dict.keys():
             lengths.append(len(preds_dict[code]))
@@ -310,7 +680,29 @@ def get_preds_array(preds_dict: dict[str, np.ndarray]):
     return preds_array
 
 
-def recompute_ensemble_metrics(metrics_iter, sources: dict, cfg: DictConfig):
+def recompute_ensemble_metrics(
+    metrics_iter: dict[str, Any], sources: dict[str, Any], cfg: DictConfig
+) -> dict[str, Any]:
+    """
+    Recompute metrics for aggregated ensemble predictions.
+
+    Takes combined predictions from all submodels and recomputes
+    bootstrap metrics as if they were from a single model.
+
+    Parameters
+    ----------
+    metrics_iter : dict
+        Aggregated predictions from all submodels.
+    sources : dict
+        Source data containing subject information.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    dict
+        Updated metrics_iter with recomputed metrics.
+    """
     warnings.simplefilter("ignore")
     # skip "val" for now
     splits = ["train", "test"]
@@ -370,8 +762,27 @@ def recompute_ensemble_metrics(metrics_iter, sources: dict, cfg: DictConfig):
 
 
 def get_cls_preds_from_artifact(
-    run, i, no_submodel_runs, aggregate_preds: bool = False
-):
+    run: pd.Series, i: int, no_submodel_runs: int, aggregate_preds: bool = False
+) -> dict[str, Any]:
+    """
+    Load classification predictions from MLflow run artifact.
+
+    Parameters
+    ----------
+    run : pd.Series
+        MLflow run data.
+    i : int
+        Index of current submodel (for logging).
+    no_submodel_runs : int
+        Total number of submodels (for logging).
+    aggregate_preds : bool, default False
+        If True, log aggregation progress.
+
+    Returns
+    -------
+    dict
+        Metrics per iteration dictionary from the run.
+    """
     run_id = run["run_id"]
     run_name = run["tags.mlflow.runName"]
     model_name = run["params.model_name"]
@@ -401,12 +812,37 @@ def get_cls_preds_from_artifact(
 
 
 def aggregate_submodels(
-    ensemble_model_runs,
-    no_submodel_runs,
+    ensemble_model_runs: pd.DataFrame,
+    no_submodel_runs: int,
     aggregate_preds: bool = True,
-    split_to_check="train",
-    ensemble_codes: pd.DataFrame = None,
-):
+    split_to_check: str = "train",
+    ensemble_codes: pd.DataFrame | None = None,
+) -> tuple[dict[str, Any] | None, pd.DataFrame, bool]:
+    """
+    Aggregate predictions from multiple classification submodels.
+
+    Parameters
+    ----------
+    ensemble_model_runs : pd.DataFrame
+        DataFrame of MLflow runs to aggregate.
+    no_submodel_runs : int
+        Number of submodels.
+    aggregate_preds : bool, default True
+        If True, actually aggregate predictions. If False, only check codes.
+    split_to_check : str, default 'train'
+        Split to use for code consistency checking.
+    ensemble_codes : pd.DataFrame, optional
+        Pre-computed ensemble codes for validation.
+
+    Returns
+    -------
+    dict or None
+        Aggregated metrics_iter (or None if aggregate_preds=False).
+    pd.DataFrame
+        DataFrame of subject codes per submodel.
+    bool
+        Whether all submodels have same subject codes.
+    """
     metrics_iter = None
     subject_codes_out = {}
     error_runs = []
@@ -454,7 +890,29 @@ def aggregate_submodels(
     return metrics_iter, df_out, all_submodels_have_same_codes
 
 
-def get_classification_preds(ensemble_model_runs, sources: dict, cfg: DictConfig):
+def get_classification_preds(
+    ensemble_model_runs: pd.DataFrame, sources: dict[str, Any], cfg: DictConfig
+) -> dict[str, Any] | None:
+    """
+    Get aggregated classification predictions from submodels.
+
+    Coordinates the full aggregation process: code checking, prediction
+    aggregation, and metric recomputation.
+
+    Parameters
+    ----------
+    ensemble_model_runs : pd.DataFrame
+        DataFrame of MLflow runs to ensemble.
+    sources : dict
+        Source data.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    dict or None
+        Aggregated metrics_iter with recomputed metrics, or None if failed.
+    """
     no_submodel_runs = ensemble_model_runs.shape[0]
     if no_submodel_runs > 0:
         _, ensemble_codes, same_codes = aggregate_submodels(
@@ -489,7 +947,24 @@ def get_classification_preds(ensemble_model_runs, sources: dict, cfg: DictConfig
     return metrics_iter
 
 
-def create_pred_dict(split_preds: np.ndarray, y_true: np.ndarray):
+def create_pred_dict(
+    split_preds: np.ndarray, y_true: np.ndarray
+) -> dict[str, np.ndarray]:
+    """
+    Create prediction dictionary from arrays.
+
+    Parameters
+    ----------
+    split_preds : np.ndarray
+        Predicted probabilities.
+    y_true : np.ndarray
+        Ground truth labels.
+
+    Returns
+    -------
+    dict
+        Dictionary with y_pred, y_pred_proba, and labels.
+    """
     preds = {
         "y_pred": (split_preds > 0.5).astype(int),
         "y_pred_proba": split_preds,
@@ -498,11 +973,21 @@ def create_pred_dict(split_preds: np.ndarray, y_true: np.ndarray):
     return preds
 
 
-def get_compact_dict_arrays(sources):
+def get_compact_dict_arrays(sources: dict[str, Any]) -> dict[str, np.ndarray]:
     """
-    see e.g. bootstrap_compute_subject_stats()
-             get_labels_and_codes()
-    for where these are needed
+    Extract compact arrays of subject codes and labels from sources.
+
+    Used by bootstrap metric computation functions.
+
+    Parameters
+    ----------
+    sources : dict
+        Source data dictionary.
+
+    Returns
+    -------
+    dict
+        Dictionary with keys like 'subject_codes_train', 'y_train', etc.
     """
     first_feature_source = list(sources.keys())[0]
     data = sources[first_feature_source]["data"]
@@ -523,7 +1008,27 @@ def get_compact_dict_arrays(sources):
     return dict_arrays_compact
 
 
-def compute_cls_ensemble_metrics(metrics_iter: dict, sources: dict, cfg: DictConfig):
+def compute_cls_ensemble_metrics(
+    metrics_iter: dict[str, Any], sources: dict[str, Any], cfg: DictConfig
+) -> dict[str, Any]:
+    """
+    Compute classification ensemble statistics.
+
+    Parameters
+    ----------
+    metrics_iter : dict
+        Aggregated predictions from ensemble.
+    sources : dict
+        Source data.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metrics_iter, metrics_stats, subjectwise_stats,
+        and subject_global_stats.
+    """
     method_cfg = cfg["CLS_EVALUATION"]["BOOTSTRAP"]
     dict_arrays_compact = get_compact_dict_arrays(sources)
     metrics_stats, subjectwise_stats, subject_global_stats = get_ensemble_stats(
@@ -546,9 +1051,31 @@ def compute_cls_ensemble_metrics(metrics_iter: dict, sources: dict, cfg: DictCon
 def ensemble_classification(
     ensemble_model_runs: pd.DataFrame,
     cfg: DictConfig,
-    sources: dict,
+    sources: dict[str, Any],
     ensemble_name: str,
-):
+) -> dict[str, Any] | None:
+    """
+    Create classification ensemble from multiple models.
+
+    Main entry point for classification ensembling. Aggregates predictions
+    from submodels and computes ensemble metrics.
+
+    Parameters
+    ----------
+    ensemble_model_runs : pd.DataFrame
+        DataFrame of MLflow classification runs to ensemble.
+    cfg : DictConfig
+        Main Hydra configuration.
+    sources : dict
+        Source data.
+    ensemble_name : str
+        Name for the ensemble.
+
+    Returns
+    -------
+    dict or None
+        Ensemble metrics dictionary, or None if ensembling failed.
+    """
     # Get imputation mask and labels for each model
     metrics_iter = get_classification_preds(ensemble_model_runs, sources, cfg=cfg)
 

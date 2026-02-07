@@ -1,3 +1,10 @@
+"""
+Ensemble task orchestration module.
+
+Provides high-level functions to coordinate ensemble creation and logging
+across anomaly detection, imputation, and classification tasks.
+"""
+
 from loguru import logger
 from omegaconf import DictConfig
 
@@ -5,19 +12,32 @@ from src.ensemble.ensemble_anomaly_detection import ensemble_anomaly_detection
 from src.ensemble.ensemble_classification import ensemble_classification
 from src.ensemble.ensemble_imputation import ensemble_imputation
 from src.ensemble.ensemble_logging import (
-    log_ensembling_to_mlflow,
     get_mlflow_ensemble_name,
+    log_ensembling_to_mlflow,
 )
 from src.ensemble.ensemble_utils import get_results_from_mlflow_for_ensembling
-from src.log_helpers.mlflow_utils import init_mlflow_experiment
 from src.log_helpers.log_naming_uris_and_dirs import experiment_name_wrapper
+from src.log_helpers.mlflow_utils import init_mlflow_experiment
 
 
 def check_if_for_reprocess(mlflow_ensemble_name, cfg):
     """
-    Anomaly detection/Imputation ensembles are quite fast to compute, with classification ensemble it might be worth
-    then to skip the processing if you really don't want it, e.g. when debugging, otherwise, it would be nicest to have
-    the most fresh ensemble
+    Check whether to reprocess an existing ensemble.
+
+    For anomaly detection and imputation, ensembles are fast to compute.
+    For classification, may want to skip for debugging.
+
+    Parameters
+    ----------
+    mlflow_ensemble_name : str
+        Name of the ensemble.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    bool
+        True if ensemble should be (re)processed.
     """
     # TODO! the logic
     reprocess = True
@@ -34,11 +54,28 @@ def get_ensembled_prediction(
     recompute_metrics: bool = False,
 ):
     """
-    ensemble_mlflow_runs: dict
-        ensemble_name: dict (e.g. "pupil_gt")
-            submodel_1: pd.Series
-            ...
-            submodel_n: pd.Series
+    Create ensemble predictions for all ensemble configurations.
+
+    Parameters
+    ----------
+    ensemble_mlflow_runs : dict
+        Dictionary where keys are ensemble names (e.g., 'pupil_gt') and
+        values are dicts/DataFrames of submodel runs.
+    experiment_name : str
+        MLflow experiment name.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type ('anomaly_detection', 'imputation', or 'classification').
+    sources : dict
+        Source data.
+    recompute_metrics : bool, default False
+        If True, only recompute submodel metrics.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping ensemble names to their outputs.
     """
     if len(ensemble_mlflow_runs) == 0:
         logger.warning(
@@ -104,6 +141,24 @@ def log_ensemble_to_mlflow(
     task: str,
     recompute_metrics: bool = False,
 ):
+    """
+    Log all ensemble outputs to MLflow.
+
+    Parameters
+    ----------
+    ensemble_mlflow_runs : dict
+        Dictionary of ensemble submodel runs.
+    experiment_name : str
+        MLflow experiment name.
+    cfg : DictConfig
+        Main Hydra configuration.
+    ensemble_output : dict
+        Dictionary mapping ensemble names to their outputs.
+    task : str
+        Task type.
+    recompute_metrics : bool, default False
+        If True, metrics were recomputed (affects logging).
+    """
     init_mlflow_experiment(mlflow_cfg=cfg["MLFLOW"], experiment_name=experiment_name)
 
     for ensemble_name, output_dict in ensemble_output.items():
@@ -149,6 +204,25 @@ def log_ensemble_to_mlflow(
 def task_ensemble(
     cfg: DictConfig, task: str, sources: dict, recompute_metrics: bool = False
 ):
+    """
+    Main ensemble task: create and log ensembles for a given task.
+
+    Orchestrates the full ensembling pipeline:
+    1. Retrieve submodel runs from MLflow
+    2. Create ensemble predictions
+    3. Log results to MLflow
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type ('anomaly_detection', 'imputation', or 'classification').
+    sources : dict
+        Source data.
+    recompute_metrics : bool, default False
+        If True, only recompute submodel metrics without creating ensembles.
+    """
     # Computationally independent so could be run as a flow, but seems more coherent on flow diagram
     # to be run inside the "imputation" flow
     # TODO! harmonize the naming, they could be the same without all this if/elif/else
@@ -204,4 +278,6 @@ def task_ensemble(
                 recompute_metrics=recompute_metrics,
             )
     else:
-        logger.warning('Skipping ensembled prediction as no submodel sources were found')
+        logger.warning(
+            "Skipping ensembled prediction as no submodel sources were found"
+        )

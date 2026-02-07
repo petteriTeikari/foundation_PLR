@@ -1,7 +1,8 @@
 import torch
 
-from .utils import get_batch_to_dataloader
 from src.classification.tabpfn_v1.utils import default_device
+
+from .utils import get_batch_to_dataloader
 
 
 def get_batch(

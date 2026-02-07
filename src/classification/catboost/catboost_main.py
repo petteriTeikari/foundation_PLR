@@ -1,17 +1,17 @@
 from copy import deepcopy
+from typing import Optional
 
-import numpy as np
-from omegaconf import DictConfig
-from loguru import logger
-import polars as pl
 import mlflow
-from catboost import CatBoostClassifier
+import numpy as np
 import optuna
-from catboost import Pool
+import polars as pl
+from catboost import CatBoostClassifier, Pool
+from loguru import logger
+from omegaconf import DictConfig
 
 from src.classification.bootstrap_evaluation import (
-    get_ensemble_stats,
     bootstrap_evaluator,
+    get_ensemble_stats,
 )
 from src.classification.catboost.catboost_ensemble import (
     ClassificationEnsembleSGLB,
@@ -22,28 +22,58 @@ from src.classification.classifier_log_utils import (
     log_classifier_params_to_mlflow,
     log_classifier_sources_as_params,
 )
-from src.classification.classifier_utils import preprocess_features, classifier_hpo_eval
+from src.classification.classifier_utils import classifier_hpo_eval, preprocess_features
 from src.classification.stats_metric_utils import (
     bootstrap_metrics_per_split,
 )
 from src.classification.weighing_utils import return_weights_as_dict
 from src.classification.xgboost_cls.xgboost_utils import data_transform_wrapper
 from src.log_helpers.log_naming_uris_and_dirs import (
-    get_train_loss_name,
     get_eval_metric_name,
+    get_train_loss_name,
 )
 
 
 def catboost_ensemble_fit(
     train: Pool,
     test: Pool,
-    val: Pool,
+    val: Optional[Pool],
     cls_model_cfg: DictConfig,
     cfg: DictConfig,
-    param: dict,
+    param: dict[str, object],
     loss_function: str,
     verbose: bool = True,
-):
+) -> ClassificationEnsembleSGLB:
+    """
+    Fit a CatBoost ensemble classifier.
+
+    Trains multiple CatBoost models using the SGLB (Stochastic Gradient
+    Langevin Boosting) approach for uncertainty quantification.
+
+    Parameters
+    ----------
+    train : Pool
+        CatBoost training data pool.
+    test : Pool
+        CatBoost test data pool for evaluation.
+    val : Pool, optional
+        CatBoost validation data pool.
+    cls_model_cfg : DictConfig
+        Classifier model configuration with ensemble size.
+    cfg : DictConfig
+        Full Hydra configuration with device settings.
+    param : dict
+        CatBoost hyperparameters.
+    loss_function : str
+        Loss function name (e.g., 'Logloss').
+    verbose : bool, default True
+        Enable training verbosity.
+
+    Returns
+    -------
+    ClassificationEnsembleSGLB
+        Fitted CatBoost ensemble model.
+    """
     use_GPU = False
     if use_GPU:  # cls_model_cfg['MODEL']['use_GPU']:
         if cfg["DEVICE"]["device"] == "cuda":
@@ -92,8 +122,41 @@ def catboost_ensemble_HPO(
     loss_function: str,
     eval_metric: str,
     verbose: bool = False,
-):
-    def objective(trial):
+) -> tuple[optuna.study.Study, dict[str, object], float]:
+    """
+    Hyperparameter optimization for CatBoost ensemble using Optuna.
+
+    Searches for optimal hyperparameters including colsample, min_data_in_leaf,
+    l2_regularization, depth, and learning rate.
+
+    Parameters
+    ----------
+    train : Pool
+        CatBoost training data pool.
+    test : Pool
+        CatBoost test data pool.
+    y_test : np.ndarray
+        Test labels.
+    cls_model_cfg : DictConfig
+        Classifier model configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    hparam_cfg : DictConfig
+        Hyperparameter search space configuration.
+    loss_function : str
+        Loss function for training.
+    eval_metric : str
+        Metric for optimization (e.g., 'auc').
+    verbose : bool, default False
+        Enable training verbosity.
+
+    Returns
+    -------
+    tuple
+        (study, best_params, best_value) from Optuna optimization.
+    """
+
+    def objective(trial: optuna.Trial) -> float:
         """
         https://github.com/optuna/optuna-examples/blob/main/catboost/catboost_simple.py
         """
@@ -178,7 +241,28 @@ def catboost_ensemble_HPO(
     return study, study.best_params, study.best_value
 
 
-def create_data_pools(dict_arrays: dict, cls_model_cfg: DictConfig):
+def create_data_pools(
+    dict_arrays: dict[str, np.ndarray], cls_model_cfg: DictConfig
+) -> tuple[Pool, Optional[Pool], Pool, np.ndarray]:
+    """
+    Create CatBoost Pool objects from data arrays.
+
+    Converts numpy arrays to CatBoost Pool format with optional sample weights.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Data arrays with 'x_train', 'y_train', 'x_test', 'y_test',
+        optionally 'x_val', 'y_val'.
+    cls_model_cfg : DictConfig
+        Configuration with MODEL.WEIGHING settings.
+
+    Returns
+    -------
+    tuple
+        (train_pool, val_pool, test_pool, y_test) where pools are CatBoost
+        Pool objects and val_pool may be None.
+    """
     # Same weight dfrom other classifiers if you happen to need them
     weights_dict = return_weights_as_dict(dict_arrays, cls_model_cfg)
 
@@ -225,12 +309,34 @@ def ensemble_eval_metrics(
     model: CatBoostClassifier,
     probs_per_model: np.ndarray,
     y: np.ndarray,
-    metrics_iter: dict,
+    metrics_iter: dict[str, object],
     cfg: DictConfig,
     split: str,
-):
+) -> dict[str, object]:
     """
-    see bootstrap_metrics_per_split() in stats_metric_utils.py used by the bootstrap evaluation
+    Compute and aggregate metrics for a single ensemble member.
+
+    Wraps bootstrap_metrics_per_split for use with CatBoost ensemble evaluation.
+
+    Parameters
+    ----------
+    model : CatBoostClassifier
+        Single CatBoost model from ensemble.
+    probs_per_model : np.ndarray
+        Predictions from this model (n_subjects, n_classes).
+    y : np.ndarray
+        True labels.
+    metrics_iter : dict
+        Accumulated metrics from previous models.
+    cfg : DictConfig
+        Hydra configuration.
+    split : str
+        Split name ('train', 'val', 'test').
+
+    Returns
+    -------
+    dict
+        Updated metrics_iter with new model's results.
     """
 
     preds = {
@@ -257,7 +363,29 @@ def ensemble_eval_metrics(
     return metrics_iter
 
 
-def combine_unks_with_subjectwise_stats(subjectwise_stats, unks, split: str):
+def combine_unks_with_subjectwise_stats(
+    subjectwise_stats: dict[str, object], unks: dict[str, np.ndarray], split: str
+) -> dict[str, object]:
+    """
+    Merge ensemble uncertainty metrics into subject-wise statistics.
+
+    Adds confidence, entropy, and mutual information metrics to the
+    subject-wise predictions dictionary.
+
+    Parameters
+    ----------
+    subjectwise_stats : dict
+        Per-subject statistics.
+    unks : dict
+        Uncertainty metrics from ensemble (confidence, entropy, etc.).
+    split : str
+        Split name.
+
+    Returns
+    -------
+    dict
+        Updated subjectwise_stats with uncertainty metrics.
+    """
     # these are now all subjectwise measures (from n models in the ensemble)
     for key, value in unks.items():
         nan_array = np.full_like(value, np.nan)
@@ -283,16 +411,47 @@ def combine_unks_with_subjectwise_stats(subjectwise_stats, unks, split: str):
 
 
 def eval_ensemble_split(
-    ens,
+    ens: ClassificationEnsembleSGLB,
     x: np.ndarray,
     y: np.ndarray,
-    dict_arrays: dict,
+    dict_arrays: dict[str, np.ndarray],
     split: str,
     cfg: DictConfig,
     verbose: bool = False,
-):
+) -> dict[str, object]:
     """
-    https://github.com/yandex-research/GBDT-uncertainty/blob/339264ee82c1ec2b22d4200d3b9c18fcce56bb0d/aggregate_results_classification.py#L190
+    Evaluate CatBoost ensemble on a single split.
+
+    Collects predictions from all ensemble members and computes aggregated
+    statistics including uncertainty quantification.
+
+    Parameters
+    ----------
+    ens : ClassificationEnsembleSGLB
+        Fitted CatBoost ensemble.
+    x : np.ndarray
+        Features for this split.
+    y : np.ndarray
+        Labels for this split.
+    dict_arrays : dict
+        Full data arrays (for subject codes).
+    split : str
+        Split name ('train', 'val', 'test').
+    cfg : DictConfig
+        Hydra configuration.
+    verbose : bool, default False
+        Enable verbose logging.
+
+    Returns
+    -------
+    dict
+        Metrics dictionary with metrics_iter, metrics_stats, subjectwise_stats,
+        subject_global_stats.
+
+    References
+    ----------
+    Based on GBDT-uncertainty implementation:
+    https://github.com/yandex-research/GBDT-uncertainty
     """
     probs = ens.predict(
         x
@@ -353,19 +512,58 @@ def eval_ensemble_split(
 
 
 def catboost_ensemble_wrapper(
-    dict_arrays: dict,
+    dict_arrays: dict[str, np.ndarray],
     train: Pool,
     test: Pool,
-    best_params: dict,
+    best_params: dict[str, object],
     cls_model_cfg: DictConfig,
     hparam_cfg: DictConfig,
     cfg: DictConfig,
     loss_function: str,
     eval_metric: str,
-    val: Pool = None,
+    val: Optional[Pool] = None,
     verbose: bool = False,
     rearrange_results: bool = True,
-):
+) -> tuple[ClassificationEnsembleSGLB, dict[str, object]]:
+    """
+    Train and evaluate CatBoost ensemble on all splits.
+
+    Fits ensemble model and evaluates on train, val (if present), and test splits.
+    Optionally rearranges results to match bootstrap evaluation structure.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Data arrays with features and labels.
+    train : Pool
+        Training data pool.
+    test : Pool
+        Test data pool.
+    best_params : dict
+        Hyperparameters for training.
+    cls_model_cfg : DictConfig
+        Classifier model configuration.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    loss_function : str
+        Loss function name.
+    eval_metric : str
+        Evaluation metric name.
+    val : Pool, optional
+        Validation data pool.
+    verbose : bool, default False
+        Enable verbose logging.
+    rearrange_results : bool, default True
+        Rearrange to bootstrap structure.
+
+    Returns
+    -------
+    tuple
+        (ensemble, results) where ensemble is the fitted model and
+        results contains metrics for all splits.
+    """
     # Fit the model
     loss_function = get_train_loss_name(cfg)
     ens = catboost_ensemble_fit(
@@ -423,17 +621,54 @@ def catboost_ensemble_wrapper(
 
 
 def catboost_train_script(
-    dict_arrays: dict,
+    dict_arrays: dict[str, np.ndarray],
     cls_model_cfg: DictConfig,
     hparam_cfg: DictConfig,
     cfg: DictConfig,
     verbose: bool = True,
-    run_name: str = None,
+    run_name: Optional[str] = None,
     skip_HPO: bool = True,
-):
+) -> tuple[
+    ClassificationEnsembleSGLB,
+    dict[str, object],
+    ClassificationEnsembleSGLB | list[object],
+    dict[str, object],
+    dict[str, np.ndarray],
+]:
     """
-    https://towardsdatascience.com/estimating-uncertainty-with-catboost-classifiers-2d0b2229ad6
-    -> https://github.com/yandex-research/GBDT-uncertainty
+    Main CatBoost training script with optional HPO and CI estimation.
+
+    Trains CatBoost ensemble classifier with optional hyperparameter
+    optimization and confidence interval estimation via bootstrap or
+    ensemble methods.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Data arrays with train/test splits.
+    cls_model_cfg : DictConfig
+        Classifier model configuration.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    verbose : bool, default True
+        Enable verbose logging.
+    run_name : str, optional
+        MLflow run name for bootstrap evaluator.
+    skip_HPO : bool, default True
+        Skip hyperparameter optimization and use defaults.
+
+    Returns
+    -------
+    tuple
+        (model, baseline_results, models, results, dict_arrays) containing
+        baseline model, its results, CI estimation models/results, and data.
+
+    References
+    ----------
+    Based on GBDT-uncertainty:
+    https://github.com/yandex-research/GBDT-uncertainty
     """
     # Define data
     train, _, test, y_test = create_data_pools(dict_arrays, cls_model_cfg)
@@ -514,8 +749,31 @@ def catboost_main(
     cfg: DictConfig,
     cls_model_cfg: DictConfig,
     hparam_cfg: DictConfig,
-    features_per_source: dict,
-):
+    features_per_source: dict[str, object],
+) -> None:
+    """
+    Main entry point for CatBoost classifier training with MLflow tracking.
+
+    Preprocesses features, converts to arrays, trains CatBoost ensemble,
+    and logs all results to MLflow.
+
+    Parameters
+    ----------
+    train_df : pl.DataFrame
+        Training data as Polars DataFrame.
+    test_df : pl.DataFrame
+        Test data as Polars DataFrame.
+    run_name : str
+        MLflow run name.
+    cfg : DictConfig
+        Full Hydra configuration.
+    cls_model_cfg : DictConfig
+        Classifier model configuration.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration.
+    features_per_source : dict
+        Feature source metadata for logging.
+    """
     # Task) Preprocess the features (standardize, normalize, etc.)
     train_df, test_df = preprocess_features(
         train_df,

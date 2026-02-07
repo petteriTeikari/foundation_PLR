@@ -1,10 +1,21 @@
-import numpy as np
-import pandas as pd
-from omegaconf import DictConfig
-from loguru import logger
-import mlflow
+"""
+Anomaly detection ensemble module.
+
+Provides functionality to combine outlier detection masks from multiple models
+using majority voting and compute ensemble metrics across difficulty levels.
+
+Cross-references:
+- src/anomaly_detection/outlier_sklearn.py for metric computation
+- src/ensemble/ensemble_utils.py for run retrieval
+"""
+
 import os
 
+import mlflow
+import numpy as np
+import pandas as pd
+from loguru import logger
+from omegaconf import DictConfig
 
 from src.anomaly_detection.outlier_sklearn import eval_on_all_outlier_difficulty_levels
 from src.log_helpers.local_artifacts import load_results_dict
@@ -13,6 +24,32 @@ from src.log_helpers.local_artifacts import load_results_dict
 def get_anomaly_results_per_model(
     model_name: str, outlier_artifacts: dict, pred_masks: dict, labels: dict, idx: int
 ):
+    """
+    Extract prediction masks and labels from model artifacts.
+
+    Handles different artifact structures for various model types
+    (TimesNet, UniTS, MOMENT, sklearn-based).
+
+    Parameters
+    ----------
+    model_name : str
+        Name of the model architecture.
+    outlier_artifacts : dict
+        Loaded artifacts from MLflow.
+    pred_masks : dict
+        Accumulated prediction masks (modified in place).
+    labels : dict
+        Accumulated ground truth labels (modified in place).
+    idx : int
+        Index of current model (for logging).
+
+    Returns
+    -------
+    dict
+        Updated prediction masks.
+    dict
+        Updated labels.
+    """
     if model_name == "TimesNet" or model_name == "TimesNet-orig":
         arrays = outlier_artifacts["results_best"]["outlier_train"]["results_dict"][
             "split_results"
@@ -64,6 +101,17 @@ def get_anomaly_results_per_model(
 
 
 def write_granular_outlier_metrics(metrics):
+    """
+    Log granular outlier metrics to MLflow.
+
+    Writes metrics at different difficulty levels (easy, medium, hard)
+    for both train and test splits.
+
+    Parameters
+    ----------
+    metrics : dict
+        Dictionary of metrics per split and granularity level.
+    """
     if "outlier_test" not in metrics:
         metrics["outlier_test"] = metrics["test"]
         metrics["outlier_train"] = metrics["train"]
@@ -91,6 +139,23 @@ def write_granular_outlier_metrics(metrics):
 
 
 def get_granular_outlier_metrics(data_dict, pred_masks, idx):
+    """
+    Compute outlier metrics at different difficulty levels.
+
+    Parameters
+    ----------
+    data_dict : dict
+        Source data containing difficulty level information.
+    pred_masks : dict
+        Prediction masks per split.
+    idx : int
+        Index of model to evaluate.
+
+    Returns
+    -------
+    dict
+        Metrics per split and difficulty level.
+    """
     metrics = {}
     for split in pred_masks.keys():
         preds = pred_masks[split][idx]
@@ -110,6 +175,34 @@ def compute_granular_metrics(
     sources: dict,
     debug_verbose: bool = True,
 ):
+    """
+    Compute and log granular outlier metrics if not already computed.
+
+    Checks if granular metrics exist in MLflow, computes them if not,
+    and logs them to the original run.
+
+    Parameters
+    ----------
+    run_id : str
+        MLflow run ID.
+    mlflow_run : pd.Series
+        MLflow run data.
+    model_name : str
+        Name of the model.
+    pred_masks : dict
+        Prediction masks per split.
+    idx : int
+        Index of current model.
+    sources : dict
+        Source data.
+    debug_verbose : bool, default True
+        If True, log debug information.
+
+    Returns
+    -------
+    dict
+        Computed metrics.
+    """
     if "metrics.train/f1__easy_DEBUG" not in mlflow_run:
         # computing the granular metrics as they were not initially computed during the run
         metrics = get_granular_outlier_metrics(sources, pred_masks, idx)
@@ -131,6 +224,23 @@ def compute_granular_metrics(
 
 
 def get_anomaly_masks_and_labels(ensembled_output: dict, sources: dict):
+    """
+    Load and aggregate anomaly masks from all ensemble submodels.
+
+    Parameters
+    ----------
+    ensembled_output : dict
+        Dictionary mapping model names to MLflow run data.
+    sources : dict
+        Source data.
+
+    Returns
+    -------
+    dict
+        Stacked prediction masks (n_models x n_subjects x n_timepoints).
+    dict
+        Ground truth labels (from last model, should be same for all).
+    """
     pred_masks = {"train": [], "test": []}
     labels = {"train": [], "test": []}
     # assert (
@@ -186,6 +296,23 @@ def get_anomaly_masks_and_labels(ensembled_output: dict, sources: dict):
 
 
 def ensemble_masks(preds_3d: np.ndarray, method: str = "over_0.5"):
+    """
+    Combine prediction masks using averaging and thresholding.
+
+    Parameters
+    ----------
+    preds_3d : np.ndarray
+        Stacked prediction masks (n_models x n_subjects x n_timepoints).
+    method : str, default 'over_0.5'
+        Thresholding method:
+        - 'over_0.5': Majority voting (>50% agreement)
+        - 'over_0': Any positive vote
+
+    Returns
+    -------
+    np.ndarray
+        Ensembled binary mask (n_subjects x n_timepoints).
+    """
     preds_2d_float = np.mean(preds_3d, axis=0)
     if method == "over_0.5":
         preds_2d = (preds_2d_float > 0.5).astype(int)
@@ -205,7 +332,28 @@ def ensemble_masks(preds_3d: np.ndarray, method: str = "over_0.5"):
 
 def compute_ensemble_anomaly_metrics(pred_masks, labels, sources):
     """
-    see e.g. metrics_per_split() in src/anomaly_detection/anomaly_detection_metrics_wrapper.py
+    Compute anomaly detection metrics for ensemble predictions.
+
+    Applies majority voting to combine masks, then evaluates
+    at all difficulty levels.
+
+    Parameters
+    ----------
+    pred_masks : dict
+        Stacked 3D prediction masks per split.
+    labels : dict
+        Ground truth labels per split.
+    sources : dict
+        Source data with difficulty level information.
+
+    Returns
+    -------
+    dict
+        Metrics per split and difficulty level.
+
+    See Also
+    --------
+    src.anomaly_detection.anomaly_detection_metrics_wrapper.metrics_per_split
     """
     assert (
         len(pred_masks["train"].shape) == 3
@@ -234,6 +382,32 @@ def ensemble_anomaly_detection(
     ensemble_name: str,
     sources: dict,
 ):
+    """
+    Create anomaly detection ensemble from multiple models.
+
+    Main entry point for anomaly detection ensembling. Loads masks from
+    submodels, combines them via majority voting, and computes metrics.
+
+    Parameters
+    ----------
+    ensembled_output : dict
+        Dictionary mapping model names to MLflow run data.
+    cfg : DictConfig
+        Main Hydra configuration.
+    experiment_name : str
+        MLflow experiment name.
+    ensemble_name : str
+        Name for the ensemble.
+    sources : dict
+        Source data.
+
+    Returns
+    -------
+    dict
+        Ensemble metrics per split and difficulty level.
+    dict
+        Stacked prediction masks from all submodels.
+    """
     pred_masks, labels = get_anomaly_masks_and_labels(ensembled_output, sources)
     metrics = compute_ensemble_anomaly_metrics(pred_masks, labels, sources)
 

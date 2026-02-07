@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import math
 from functools import partial
-from typing_extensions import override
 
 import torch
 from torch.utils.checkpoint import checkpoint
+from typing_extensions import override
 
 from src.classification.tabpfn.model.memory import support_save_peak_mem_factor
 

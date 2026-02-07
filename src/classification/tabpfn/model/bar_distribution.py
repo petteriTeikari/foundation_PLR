@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
-from typing_extensions import override
 
 import torch
 from torch import nn
+from typing_extensions import override
 
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt

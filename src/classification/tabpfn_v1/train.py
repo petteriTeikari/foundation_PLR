@@ -1,27 +1,26 @@
-import itertools
 import argparse
+import itertools
 import time
-import yaml
 from contextlib import nullcontext
 
-
 import torch
+import yaml
 from torch import nn
+from torch.cuda.amp import GradScaler, autocast
 
+import src.classification.tabpfn_v1.encoders as encoders
+import src.classification.tabpfn_v1.positional_encodings as positional_encodings
+import src.classification.tabpfn_v1.priors as priors
 import src.classification.tabpfn_v1.utils as utils
 from src.classification.tabpfn_v1.transformer import TransformerModel
 from src.classification.tabpfn_v1.utils import (
+    StoreDictKeyPair,
     get_cosine_schedule_with_warmup,
     get_openai_lr,
-    StoreDictKeyPair,
-    get_weighted_single_eval_pos_sampler,
     get_uniform_single_eval_pos_sampler,
+    get_weighted_single_eval_pos_sampler,
+    init_dist,
 )
-import src.classification.tabpfn_v1.priors as priors
-import src.classification.tabpfn_v1.encoders as encoders
-import src.classification.tabpfn_v1.positional_encodings as positional_encodings
-from src.classification.tabpfn_v1.utils import init_dist
-from torch.cuda.amp import autocast, GradScaler
 
 
 class Losses:
@@ -141,7 +140,7 @@ def train(
         model.init_from_small_model(initialize_with_model)
 
     print(
-        f"Using a Transformer with {sum(p.numel() for p in model.parameters())/1000/1000:.{2}f} M parameters"
+        f"Using a Transformer with {sum(p.numel() for p in model.parameters()) / 1000 / 1000:.{2}f} M parameters"
     )
 
     try:
@@ -317,11 +316,11 @@ def train(
             if verbose:
                 print("-" * 89)
                 print(
-                    f'| end of epoch {epoch:3d} | time: {(time.time() - epoch_start_time):5.2f}s | mean loss {total_loss:5.2f} | '
+                    f"| end of epoch {epoch:3d} | time: {(time.time() - epoch_start_time):5.2f}s | mean loss {total_loss:5.2f} | "
                     f"pos losses {','.join([f'{l:5.2f}' for l in total_positional_losses])}, lr {scheduler.get_last_lr()[0]}"  # noqa E741
-                    f' data time {time_to_get_batch:5.2f} step time {step_time:5.2f}'
-                    f' forward time {forward_time:5.2f}'
-                    f' nan share {nan_share:5.2f} ignore share (for classification tasks) {ignore_share:5.4f}'
+                    f" data time {time_to_get_batch:5.2f} step time {step_time:5.2f}"
+                    f" forward time {forward_time:5.2f}"
+                    f" nan share {nan_share:5.2f} ignore share (for classification tasks) {ignore_share:5.4f}"
                     + (f"val score {val_score}" if val_score is not None else "")
                 )
                 print("-" * 89)

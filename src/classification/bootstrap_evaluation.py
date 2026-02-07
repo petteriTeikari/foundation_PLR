@@ -4,17 +4,17 @@ from copy import deepcopy
 
 import mlflow
 import numpy as np
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
 from sklearn.utils import resample
 from tqdm import tqdm
 
 from src.classification.cls_model_utils import bootstrap_model_selector
 from src.classification.stats_metric_utils import (
-    bootstrap_metrics,
+    bootstrap_compute_global_subject_stats,
     bootstrap_compute_stats,
     bootstrap_compute_subject_stats,
-    bootstrap_compute_global_subject_stats,
+    bootstrap_metrics,
     compute_uq_for_subjectwise_stats,
 )
 from src.classification.weighing_utils import return_weights_as_dict
@@ -22,9 +22,31 @@ from src.stats.classifier_calibration import bootstrap_calibrate_classifier
 
 
 def prepare_for_bootstrap(dict_arrays: dict, method_cfg: DictConfig):
-    # https://machinelearningmastery.com/calculate-bootstrap-confidence-intervals-machine-learning-results-python/
-    # https://ogrisel.github.io/scikit-learn.org/sklearn-tutorial/modules/generated/sklearn.cross_validation.Bootstrap.html
+    """
+    Prepare data arrays for bootstrap evaluation.
 
+    Sets up index arrays for stratified bootstrap resampling. The train split
+    will be resampled into new train/val splits while test remains untouched.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing:
+        - x_train, y_train: Training features and labels
+        - x_test, y_test: Test features and labels
+        - subject_codes_train, subject_codes_test: Subject identifiers
+    method_cfg : DictConfig
+        Bootstrap configuration with 'join_test_and_train' option.
+
+    Returns
+    -------
+    dict
+        Updated dict_arrays with 'X_idxs' array for bootstrap sampling.
+
+    References
+    ----------
+    - https://machinelearningmastery.com/calculate-bootstrap-confidence-intervals-machine-learning-results-python/
+    """
     # Bootstrap resample is splitting the train split into -> new train and val
     # Test will be untouched
     dict_arrays["X_idxs"] = np.linspace(
@@ -58,6 +80,27 @@ def prepare_for_bootstrap(dict_arrays: dict, method_cfg: DictConfig):
 
 
 def select_bootstrap_samples(dict_arrays, n_samples, method_cfg) -> dict:
+    """
+    Select bootstrap samples for a single iteration.
+
+    Performs stratified bootstrap resampling to create new train/val splits
+    from the original training data.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Data arrays including X_idxs for sampling.
+    n_samples : int
+        Number of samples to draw for training.
+    method_cfg : DictConfig
+        Bootstrap configuration.
+
+    Returns
+    -------
+    dict
+        Dictionary with resampled train/val data arrays.
+    """
+
     def reample_split_indices(X_idxs: np.ndarray, n_samples: int, y: np.ndarray):
         train_idxs = resample(X_idxs, n_samples=n_samples, stratify=y)
         val_idxs = np.array(
@@ -118,6 +161,20 @@ def select_bootstrap_samples(dict_arrays, n_samples, method_cfg) -> dict:
 
 
 def splits_as_dicts(dict_arrays_iter: dict):
+    """
+    Convert flat array dictionary to nested split-based structure.
+
+    Parameters
+    ----------
+    dict_arrays_iter : dict
+        Flat dictionary with keys like 'x_train', 'y_train', etc.
+
+    Returns
+    -------
+    dict
+        Nested dictionary with structure:
+        {split: {'X': ..., 'y': ..., 'w': ..., 'codes': ...}}
+    """
     splits = ["train", "val", "test"]
     dict_splits = {}
     for split in splits:
@@ -135,6 +192,26 @@ def splits_as_dicts(dict_arrays_iter: dict):
 
 
 def check_bootstrap_iteration_quality(metrics_iter, dict_arrays_iter, dict_arrays):
+    """
+    Validate that bootstrap iteration used all expected samples.
+
+    Checks that train/val splits used all subject codes from the original
+    training data and that test samples match expected count.
+
+    Parameters
+    ----------
+    metrics_iter : dict
+        Metrics collected from all bootstrap iterations.
+    dict_arrays_iter : dict
+        Data arrays from the current iteration.
+    dict_arrays : dict
+        Original data arrays before bootstrap resampling.
+
+    Raises
+    ------
+    AssertionError
+        If train/val codes don't match original or test samples count is wrong.
+    """
     train_codes_used = list(
         metrics_iter["train"]["preds_dict"]["arrays"]["y_pred_proba"].keys()
     )
@@ -168,6 +245,34 @@ def get_ensemble_stats(
     sort_list: bool = True,
     verbose: bool = True,
 ):
+    """
+    Compute aggregate statistics from bootstrap iterations.
+
+    Aggregates per-iteration metrics into final statistics including:
+    - Mean and CI for AUROC, Brier, etc.
+    - Per-subject prediction statistics
+    - Global uncertainty metrics
+
+    Parameters
+    ----------
+    metrics_iter : dict
+        Per-iteration metrics from bootstrap.
+    dict_arrays : dict
+        Original data arrays.
+    method_cfg : DictConfig
+        Bootstrap configuration.
+    call_from : str, optional
+        Caller identifier for logging.
+    sort_list : bool, default True
+        Sort subject statistics.
+    verbose : bool, default True
+        Enable verbose logging.
+
+    Returns
+    -------
+    tuple
+        (metrics_stats, subjectwise_stats, subject_global_stats)
+    """
     # Compute the final stats of the metrics (scalar AUROC, array ROC curves, etc.)
     try:
         metrics_stats = bootstrap_compute_stats(
@@ -213,6 +318,28 @@ def get_ensemble_stats(
 
 
 def append_models_to_list_for_mlflow(models: list, model, model_name: str, i: int):
+    """
+    Add a trained model to the list for MLflow logging.
+
+    Handles special cases like moving TabM models from GPU to CPU to avoid
+    memory issues during serialization.
+
+    Parameters
+    ----------
+    models : list
+        List of trained models from previous iterations.
+    model : object
+        The trained model from current iteration.
+    model_name : str
+        Name of the classifier (e.g., 'TabM', 'CatBoost').
+    i : int
+        Current bootstrap iteration index.
+
+    Returns
+    -------
+    list
+        Updated list of models with the new model appended.
+    """
     if model_name == "TabM":
         # classifier is now on CUDA and will cause possible memory issues if you don't detach it and use CPU
         model = model.to("cpu")
@@ -231,6 +358,48 @@ def bootstrap_evaluator(
     cfg: DictConfig,
     debug_aggregation: bool = False,
 ):
+    """
+    Run bootstrap evaluation for classifier performance estimation.
+
+    Performs n_iterations of bootstrap resampling to estimate:
+    - STRATOS-compliant metrics (AUROC, calibration, clinical utility)
+    - Confidence intervals via percentile bootstrap
+    - Per-subject prediction uncertainty
+
+    Parameters
+    ----------
+    model_name : str
+        Classifier name (e.g., 'CatBoost', 'XGBoost').
+    run_name : str
+        MLflow run name.
+    dict_arrays : dict
+        Data arrays with train/test splits.
+    best_params : dict
+        Best hyperparameters from optimization.
+    cls_model_cfg : DictConfig
+        Classifier model configuration.
+    method_cfg : DictConfig
+        Bootstrap configuration with 'n_iterations', 'data_ratio'.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    debug_aggregation : bool, default False
+        Enable debug logging for metric aggregation.
+
+    Returns
+    -------
+    tuple
+        (models, results_dict) where:
+        - models: List of trained models (one per iteration)
+        - results_dict: Contains metrics_iter, metrics_stats,
+          subjectwise_stats, subject_global_stats
+
+    Notes
+    -----
+    Uses stratified resampling to maintain class balance across iterations.
+    Test set remains fixed; only train is resampled into train/val.
+    """
     warnings.simplefilter("ignore")
     start_time = time.time()
     dict_arrays = prepare_for_bootstrap(dict_arrays, method_cfg)

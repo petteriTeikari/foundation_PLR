@@ -1,1 +1,7 @@
-from . import fast_gp, mlp, flexible_categorical, differentiable_prior, prior_bag  # noqa: F401
+from . import (  # noqa: F401
+    differentiable_prior,
+    fast_gp,
+    flexible_categorical,
+    mlp,
+    prior_bag,
+)

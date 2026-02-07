@@ -1,34 +1,36 @@
-import time
-
-import torch
-import random
+import io
+import os
 import pathlib
-
-from torch.utils.checkpoint import checkpoint
-
-from src.classification.tabpfn_v1.utils import (
-    normalize_data,
-    to_ranking_low_mem,
-    remove_outliers,
-)
-from src.classification.tabpfn_v1.utils import NOP, normalize_by_used_features_f
-
-from sklearn.preprocessing import PowerTransformer, QuantileTransformer, RobustScaler
+import pickle
+import random
+import time
+from pathlib import Path
 
 import numpy as np
+import torch
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-from sklearn.utils.multiclass import check_classification_targets
+from sklearn.preprocessing import (
+    LabelEncoder,
+    PowerTransformer,
+    QuantileTransformer,
+    RobustScaler,
+)
 from sklearn.utils import column_or_1d
-from sklearn.preprocessing import LabelEncoder
-from pathlib import Path
+from sklearn.utils.multiclass import check_classification_targets
+from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from torch.utils.checkpoint import checkpoint
+
 from src.classification.tabpfn_v1.scripts.model_builder import (
     load_model,
     load_model_only_inference,
 )
-import os
-import pickle
-import io
+from src.classification.tabpfn_v1.utils import (
+    NOP,
+    normalize_by_used_features_f,
+    normalize_data,
+    remove_outliers,
+    to_ranking_low_mem,
+)
 
 
 class CustomUnpickler(pickle.Unpickler):

@@ -6,7 +6,6 @@ from omegaconf import DictConfig
 
 from src.classification.catboost.catboost_main import catboost_main
 from src.classification.sklearn_simple_classifiers import sklearn_simple_cls_main
-
 from src.classification.tabm.tabm_main import tabm_main
 from src.classification.tabpfn_main import tabpfn_main
 from src.classification.xgboost_cls.xgboost_main import xgboost_main

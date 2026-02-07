@@ -8,6 +8,26 @@ from src.log_helpers.local_artifacts import load_results_dict
 
 
 def import_cls_artifacts(mlflow_runs: pd.DataFrame, cfg: DictConfig):
+    """Import classification artifacts from MLflow runs.
+
+    Downloads bootstrap metrics and baseline model results for each
+    classification run.
+
+    Parameters
+    ----------
+    mlflow_runs : pd.DataFrame
+        DataFrame containing MLflow run metadata with columns
+        'run_id', 'tags.mlflow.runName', 'params.model_name'.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping run names to their metrics:
+        - 'bootstrap': Bootstrap evaluation results
+        - 'baseline': Baseline model results (if available)
+    """
     metrics = {}
 
     for idx, mlflow_run in tqdm(
@@ -35,6 +55,26 @@ def import_cls_artifacts(mlflow_runs: pd.DataFrame, cfg: DictConfig):
 
 
 def get_classification_summary_data(cfg: DictConfig, experiment_name: str):
+    """Get summary data for classification experiment.
+
+    Retrieves all MLflow runs from the classification experiment and
+    imports their artifacts (bootstrap metrics, baseline results).
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary.
+    experiment_name : str
+        Name of the classification experiment in MLflow.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'data_df': Placeholder DataFrame
+        - 'mlflow_runs': DataFrame of all classification runs
+        - 'artifacts_dict_summary': Metrics dictionary per run
+    """
     # this is now same as importing data for the classification ensemble
     mlflow_runs_dict = get_results_from_mlflow_for_ensembling(
         experiment_name=experiment_name, cfg=cfg, task="classification"

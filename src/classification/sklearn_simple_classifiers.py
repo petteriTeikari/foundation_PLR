@@ -3,11 +3,11 @@ import time
 import mlflow
 import numpy as np
 import polars as pl
+from loguru import logger
 from omegaconf import DictConfig
-from sklearn.model_selection import RepeatedStratifiedKFold
-from sklearn.model_selection import GridSearchCV
+from sklearn import preprocessing
 from sklearn.linear_model import LogisticRegression
-
+from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 
 from src.classification.classifier_evaluation import (
     evaluate_sklearn_classifier,
@@ -16,15 +16,26 @@ from src.classification.classifier_log_utils import log_classifier_sources_as_pa
 from src.classification.weighing_utils import (
     weights_dict_wrapper,
 )
-from sklearn import preprocessing
 from src.classification.xgboost_cls.xgboost_utils import (
     data_transform_wrapper,
     join_test_and_train_arrays,
 )
-from loguru import logger
 
 
 def display_grid_search_results(grid_result: GridSearchCV, scoring: str):
+    """
+    Display and log grid search results.
+
+    Prints all parameter combinations with scores and logs best params
+    to MLflow.
+
+    Parameters
+    ----------
+    grid_result : GridSearchCV
+        Completed grid search object.
+    scoring : str
+        Name of the scoring metric.
+    """
     means = grid_result.cv_results_["mean_test_score"]
     stds = grid_result.cv_results_["std_test_score"]
     params = grid_result.cv_results_["params"]
@@ -45,6 +56,20 @@ def display_grid_search_results(grid_result: GridSearchCV, scoring: str):
 
 
 def standardize_features(X):
+    """
+    Standardize features to zero mean and unit variance.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Feature matrix (n_samples, n_features).
+
+    Returns
+    -------
+    tuple
+        (X_scaled, scaler) where X_scaled is standardized features and
+        scaler is the fitted StandardScaler.
+    """
     scaler = preprocessing.StandardScaler().fit(X)
     X = scaler.transform(X)
     logger.info("Standardizing features:")
@@ -54,6 +79,30 @@ def standardize_features(X):
 
 
 def prepare_for_logistic_hpo(X, y, hparam_cfg):
+    """
+    Prepare data and grid for logistic regression hyperparameter optimization.
+
+    Standardizes features and constructs parameter grid from config.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Feature matrix.
+    y : np.ndarray
+        Labels.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration with SEARCH_SPACE.
+
+    Returns
+    -------
+    tuple
+        (X_scaled, y, grid) where grid is dict of hyperparameter lists.
+
+    Raises
+    ------
+    AssertionError
+        If X and y have different sample counts or X contains NaNs.
+    """
     assert X.shape[0] == y.shape[0], "X and y must have the same number of rows"
     assert np.sum(np.isnan(X)) == 0, "X must not contain NaNs"
 
@@ -76,6 +125,30 @@ def prepare_for_logistic_hpo(X, y, hparam_cfg):
 def logistic_regression_hpo_grid_search(
     X, y, weights_dict: dict, hparam_cfg: DictConfig, cls_model_cfg: DictConfig
 ):
+    """
+    Perform grid search hyperparameter optimization for logistic regression.
+
+    Uses RepeatedStratifiedKFold cross-validation to find optimal hyperparameters.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Feature matrix.
+    y : np.ndarray
+        Labels.
+    weights_dict : dict
+        Sample weights (currently unused).
+    hparam_cfg : DictConfig
+        Hyperparameter configuration with SEARCH_SPACE and cv_params.
+    cls_model_cfg : DictConfig
+        Classifier model configuration with default hyperparams.
+
+    Returns
+    -------
+    tuple
+        (grid_result, best_params) where grid_result is GridSearchCV object
+        and best_params is dict of optimal hyperparameters.
+    """
     # https://machinelearningmastery.com/hyperparameters-for-classification-machine-learning-algorithms/
     X, y, grid = prepare_for_logistic_hpo(X, y, hparam_cfg)
 
@@ -124,6 +197,33 @@ def logistic_regression(
     features_per_source: dict,
     join_test_and_train: bool = True,
 ):
+    """
+    Train and evaluate logistic regression classifier with MLflow tracking.
+
+    Performs hyperparameter optimization via grid search, trains final model,
+    and evaluates with bootstrap confidence intervals.
+
+    Parameters
+    ----------
+    model_name : str
+        Model name for logging.
+    dict_arrays : dict
+        Data arrays with train/test splits.
+    weights_dict : dict
+        Sample weights.
+    cls_model_cfg : DictConfig
+        Classifier model configuration.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    run_name : str
+        MLflow run name.
+    features_per_source : dict
+        Feature source metadata for logging.
+    join_test_and_train : bool, default True
+        Join train and test for HPO (currently not used for final model).
+    """
     with mlflow.start_run(run_name=run_name):
         mlflow.log_params(hparam_cfg)
 
@@ -171,6 +271,36 @@ def sklearn_simple_cls_main(
     run_name: str,
     features_per_source: dict,
 ):
+    """
+    Main entry point for sklearn-based simple classifiers.
+
+    Converts dataframes to arrays and dispatches to appropriate classifier
+    training function.
+
+    Parameters
+    ----------
+    train_df : pl.DataFrame
+        Training data as Polars DataFrame.
+    test_df : pl.DataFrame
+        Test data as Polars DataFrame.
+    model_name : str
+        Classifier name (e.g., 'LogisticRegression').
+    cfg : DictConfig
+        Full Hydra configuration.
+    cls_model_cfg : DictConfig
+        Classifier model configuration.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration.
+    run_name : str
+        MLflow run name.
+    features_per_source : dict
+        Feature source metadata.
+
+    Raises
+    ------
+    ValueError
+        If unknown model_name specified.
+    """
     # Convert Polars DataFrames to arrays
     _, _, dict_arrays = data_transform_wrapper(train_df, test_df, cls_model_cfg, None)
 

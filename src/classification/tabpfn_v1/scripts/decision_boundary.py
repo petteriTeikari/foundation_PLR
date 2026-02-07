@@ -1,11 +1,9 @@
 from functools import reduce
 
 import numpy as np
-
-from sklearn.preprocessing import LabelEncoder
-from sklearn.utils import check_matplotlib_support
-from sklearn.utils import _safe_indexing
 from sklearn.base import is_regressor
+from sklearn.preprocessing import LabelEncoder
+from sklearn.utils import _safe_indexing, check_matplotlib_support
 from sklearn.utils.validation import check_is_fitted
 
 

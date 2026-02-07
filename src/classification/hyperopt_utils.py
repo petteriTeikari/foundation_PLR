@@ -1,7 +1,7 @@
 import numpy as np
-from omegaconf import DictConfig
-from loguru import logger
 from hyperopt import hp
+from loguru import logger
+from omegaconf import DictConfig
 
 
 def parse_hyperopt_search_space(

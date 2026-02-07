@@ -1,25 +1,58 @@
+"""
+Imputation ensemble module.
+
+Provides functionality to combine imputation outputs from multiple models
+by averaging reconstructions and computing ensemble statistics.
+
+Cross-references:
+- src/metrics/evaluate_imputation_metrics.py for metric computation
+- src/ensemble/ensemble_utils.py for run retrieval
+"""
+
 import warnings
-from loguru import logger
 
 import numpy as np
 import pandas as pd
+from loguru import logger
 from omegaconf import DictConfig
 
 from src.anomaly_detection.anomaly_utils import get_artifact
 from src.ensemble.ensemble_utils import (
-    get_metadata_dict_from_sources,
     get_gt_imputation_labels,
+    get_metadata_dict_from_sources,
 )
 from src.log_helpers.local_artifacts import load_results_dict
 from src.metrics.evaluate_imputation_metrics import (
     compute_imputation_metrics,
     recompute_submodel_imputation_metrics,
 )
-from src.preprocess.preprocess_PLR import standardize_recons_arrays
 from src.preprocess.preprocess_data import destandardize_for_imputation_metric
+from src.preprocess.preprocess_PLR import standardize_recons_arrays
 
 
 def get_imputation_results_per_model(model_name, outlier_artifacts):
+    """
+    Extract imputation reconstructions from model artifacts.
+
+    Handles different artifact structures and destandardizes values
+    for proper metric computation.
+
+    Parameters
+    ----------
+    model_name : str
+        Name of the imputation model.
+    outlier_artifacts : dict
+        Loaded artifacts from MLflow.
+
+    Returns
+    -------
+    dict
+        Reconstructions per split (destandardized).
+    dict
+        True pupil values per split (destandardized).
+    dict
+        Imputation indicating masks per split.
+    """
     reconstructions = {"train": [], "test": []}
     true_pupil = {"train": [], "test": []}
     labels = {"train": [], "test": []}
@@ -125,6 +158,29 @@ def get_imputation_preds_and_labels(
     gt_preprocess: dict,
     cfg: DictConfig,
 ):
+    """
+    Load and stack imputation reconstructions from all submodels.
+
+    Parameters
+    ----------
+    ensemble_model_runs : pd.DataFrame
+        DataFrame of MLflow imputation runs.
+    gt_dict : dict
+        Ground truth data dictionary.
+    gt_preprocess : dict
+        Ground truth preprocessing parameters.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    dict
+        Stacked reconstructions (n_models x n_subjects x n_timepoints).
+    dict
+        True pupil values (from last model).
+    dict
+        Imputation masks (from last model).
+    """
     reconstructions = {"train": [], "test": []}
     no_submodel_runs = ensemble_model_runs.shape[0]
     no_submodel_ensembled = 0
@@ -135,7 +191,7 @@ def get_imputation_preds_and_labels(
         run_name = submodel_mlflow_run["tags.mlflow.runName"]
         model_name = submodel_mlflow_run["params.model"]
         logger.info(
-            f"{i+1}/{no_submodel_runs}: Ensembling model: {model_name}, run_id: {run_id}, run_name: {run_name}"
+            f"{i + 1}/{no_submodel_runs}: Ensembling model: {model_name}, run_id: {run_id}, run_name: {run_name}"
         )
         try:
             outlier_artifacts_path = get_artifact(
@@ -215,6 +271,29 @@ def get_imputation_preds_and_labels(
 
 
 def compute_ensemble_imputation_metrics(recons, true_pupil, labels, cfg, metadata_dict):
+    """
+    Compute imputation metrics for ensemble (averaged) predictions.
+
+    Parameters
+    ----------
+    recons : dict
+        Stacked reconstructions per split.
+    true_pupil : dict
+        Ground truth values per split.
+    labels : dict
+        Imputation masks per split.
+    cfg : DictConfig
+        Main Hydra configuration.
+    metadata_dict : dict
+        Metadata per split.
+
+    Returns
+    -------
+    dict
+        Metrics per split.
+    np.ndarray
+        Ensemble predictions (mean of reconstructions).
+    """
     metrics = {}
     for split in true_pupil.keys():
         targets = true_pupil[split]
@@ -232,6 +311,25 @@ def compute_ensemble_imputation_metrics(recons, true_pupil, labels, cfg, metadat
 
 
 def get_imputation_stats_dict(ensembled_recon, labels, p=0.05):
+    """
+    Compute ensemble statistics from stacked reconstructions.
+
+    Calculates mean, std, and confidence intervals across submodels.
+
+    Parameters
+    ----------
+    ensembled_recon : np.ndarray
+        Stacked reconstructions (n_models x n_subjects x n_timepoints).
+    labels : np.ndarray
+        Imputation indicating mask.
+    p : float, default 0.05
+        Percentile for confidence interval bounds.
+
+    Returns
+    -------
+    dict
+        Dictionary with imputation statistics ready for downstream use.
+    """
     warnings.simplefilter("ignore")
     ci = np.nanpercentile(ensembled_recon, [p, 100 - p], axis=0)
     stats_dict = {
@@ -251,8 +349,30 @@ def get_imputation_stats_dict(ensembled_recon, labels, p=0.05):
 
 def add_imputation_dict(recons, predictions, labels, stdz_dict):
     """
-    # this is needed by the downstream code to read the imputation results
-    see get_arrays_for_splits_from_imputer_artifacts()
+    Create imputation output dictionary for downstream processing.
+
+    Standardizes reconstructions and computes ensemble statistics
+    in format expected by featurization code.
+
+    Parameters
+    ----------
+    recons : dict
+        Stacked reconstructions per split.
+    predictions : np.ndarray
+        Ensemble mean predictions.
+    labels : dict
+        Imputation masks per split.
+    stdz_dict : dict
+        Standardization parameters.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'model_artifacts' key containing imputation data.
+
+    See Also
+    --------
+    src.featurization.get_arrays_for_splits_from_imputer_artifacts
     """
     logger.info("Compute Imputation ensemble stats")
     dict_out = {}
@@ -276,7 +396,33 @@ def ensemble_imputation(
     recompute_metrics: bool = False,
 ):
     """
-    see get_anomaly_masks_and_labels()
+    Create imputation ensemble from multiple models.
+
+    Main entry point for imputation ensembling. Loads reconstructions from
+    submodels, averages them, and computes metrics.
+
+    Parameters
+    ----------
+    ensemble_model_runs : pd.DataFrame
+        DataFrame of MLflow imputation runs to ensemble.
+    cfg : DictConfig
+        Main Hydra configuration.
+    sources : dict
+        Source data including ground truth.
+    ensemble_name : str
+        Name for the ensemble.
+    recompute_metrics : bool, default False
+        If True, only recompute submodel metrics without creating ensemble.
+
+    Returns
+    -------
+    dict or None
+        Ensemble output dictionary with metrics, reconstructions, and
+        model artifacts, or None if recompute_metrics=True.
+
+    See Also
+    --------
+    ensemble_anomaly_detection.get_anomaly_masks_and_labels
     """
 
     # Get imputation mask and labels for each model

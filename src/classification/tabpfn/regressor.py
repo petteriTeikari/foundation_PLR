@@ -21,7 +21,6 @@ from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
-from typing_extensions import Self, overload
 
 import numpy as np
 import torch
@@ -31,6 +30,7 @@ from sklearn.base import (
     TransformerMixin,
     check_is_fitted,
 )
+from typing_extensions import Self, overload
 
 from src.classification.tabpfn.base import (
     create_inference_engine,

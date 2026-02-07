@@ -1,6 +1,6 @@
 import mlflow
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.data_io.flow_data import flow_import_data
 from src.log_helpers.log_naming_uris_and_dirs import experiment_name_wrapper
@@ -17,6 +17,27 @@ from src.summarization.summary_analysis_main import summary_analysis_main
 def get_summarization_data(
     cfg: DictConfig, experiment_name: str, summary_exp_name: str
 ):
+    """Collect summarization data from all pipeline stages.
+
+    Gathers results from outlier detection, imputation, featurization,
+    and classification experiments into a unified dictionary.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration containing PREFECT.FLOW_NAMES for each stage.
+    experiment_name : str
+        Name of the summary experiment.
+    summary_exp_name : str
+        MLflow experiment name for summaries.
+
+    Returns
+    -------
+    dict
+        Dictionary with keys 'outlier_detection', 'imputation',
+        'featurization', and 'classification', each containing
+        that stage's summarization data.
+    """
     flow_results = {}
 
     # Summarize outlier detection experiment
@@ -44,7 +65,7 @@ def get_summarization_data(
     flow_results["classification"] = get_summarization_flow_data(
         cfg,
         experiment_name=cfg["PREFECT"]["FLOW_NAMES"]["CLASSIFICATION"],
-        summary_exp_name=experiment_name
+        summary_exp_name=experiment_name,
     )
 
     return flow_results
@@ -56,6 +77,19 @@ def get_summarization_data(
 #     description="Visualization, statistics and summary of the PLR pipeline",
 # )
 def flow_summarization(cfg: DictConfig):
+    """Main summarization flow for the PLR pipeline.
+
+    Orchestrates the collection, analysis, and export of results from
+    all pipeline stages. Initializes MLflow tracking and coordinates
+    data import and analysis tasks.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary containing:
+        - PREFECT.FLOW_NAMES: Experiment names for each stage
+        - SUMMARIZATION: Import/export settings
+    """
     experiment_name = experiment_name_wrapper(
         experiment_name=cfg["PREFECT"]["FLOW_NAMES"]["SUMMARY"], cfg=cfg
     )

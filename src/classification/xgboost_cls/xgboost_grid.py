@@ -1,10 +1,25 @@
 import itertools
 from copy import deepcopy
+
 from loguru import logger
 from omegaconf import DictConfig, open_dict
 
 
 def do_grid_search(hparam_cfg: DictConfig):
+    """
+    Check if grid search is enabled in the hyperparameter configuration.
+
+    Parameters
+    ----------
+    hparam_cfg : DictConfig
+        Hyperparameter configuration containing search space settings.
+
+    Returns
+    -------
+    tuple[bool, list | None]
+        A tuple of (run_grid, grid_contains) where run_grid indicates if grid
+        search should be run, and grid_contains lists the parameters to grid over.
+    """
     if "GRID" in hparam_cfg["SEARCH_SPACE"]:
         run_grid = hparam_cfg["SEARCH_SPACE"]["GRID"]["run_grid_hyperparam_search"]
         if run_grid:
@@ -17,6 +32,21 @@ def do_grid_search(hparam_cfg: DictConfig):
 
 
 def get_weight_choice_name(choice, params):
+    """
+    Generate a descriptive name for a weighing choice combination.
+
+    Parameters
+    ----------
+    choice : tuple
+        A tuple of boolean values indicating which weights are enabled.
+    params : dict
+        Dictionary mapping parameter names to their possible values.
+
+    Returns
+    -------
+    str
+        A string identifier for the weighing choice (e.g., 'w-featW-classW').
+    """
     choice_name = "w"
     for i, key in enumerate(params.keys()):
         if "features" in key:
@@ -32,6 +62,26 @@ def get_weight_choice_name(choice, params):
 
 
 def define_weighing_grid(xgboost_cfg, key1="MODEL", key2="WEIGHING"):
+    """
+    Create grid of XGBoost configs with all combinations of weighing options.
+
+    Generates 8 configurations covering all permutations of sample, class,
+    and feature weighing (3 binary parameters = 2^3 combinations).
+
+    Parameters
+    ----------
+    xgboost_cfg : DictConfig
+        Base XGBoost configuration to modify.
+    key1 : str, optional
+        First-level config key for weighing settings, by default "MODEL".
+    key2 : str, optional
+        Second-level config key for weighing settings, by default "WEIGHING".
+
+    Returns
+    -------
+    dict[str, DictConfig]
+        Dictionary mapping choice names to modified XGBoost configurations.
+    """
     # Maybe there is some easier way to combine grid with hyperopt?
     params = {
         "weigh_the_samples": [True, False],
@@ -55,6 +105,26 @@ def define_weighing_grid(xgboost_cfg, key1="MODEL", key2="WEIGHING"):
 
 
 def define_grid_cfgs(xgboost_cfg, grid_contains):
+    """
+    Generate grid configurations based on the specified grid parameters.
+
+    Parameters
+    ----------
+    xgboost_cfg : DictConfig
+        Base XGBoost configuration to expand into a grid.
+    grid_contains : list[str]
+        List of parameter groups to include in grid search (e.g., ["weights"]).
+
+    Returns
+    -------
+    dict[str, DictConfig]
+        Dictionary mapping configuration names to XGBoost configs.
+
+    Raises
+    ------
+    ValueError
+        If an unknown grid key is specified in grid_contains.
+    """
     for key in grid_contains:
         if key == "weights":
             grid_cfgs = define_weighing_grid(xgboost_cfg)
@@ -68,6 +138,24 @@ def define_grid_cfgs(xgboost_cfg, grid_contains):
 def define_xgboost_grid_search_space(
     hparam_cfg: DictConfig, xgboost_cfg: DictConfig, cfg: DictConfig
 ):
+    """
+    Define the complete XGBoost grid search space based on configuration.
+
+    Parameters
+    ----------
+    hparam_cfg : DictConfig
+        Hyperparameter configuration with grid search settings.
+    xgboost_cfg : DictConfig
+        Base XGBoost model configuration.
+    cfg : DictConfig
+        Overall experiment configuration (unused but kept for interface).
+
+    Returns
+    -------
+    dict[str, DictConfig]
+        Dictionary of XGBoost configurations to evaluate. Contains either
+        multiple grid configurations or a single "no_grid" configuration.
+    """
     run_grid, grid_contains = do_grid_search(hparam_cfg)
 
     if run_grid:

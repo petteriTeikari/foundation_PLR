@@ -1,16 +1,17 @@
 import math
+
+import mlflow
+import numpy as np
+import polars as pl
 import scipy.special
 import sklearn.metrics
 import sklearn.model_selection
-import numpy as np
-import polars as pl
 import torch
-from omegaconf import DictConfig
 import torch.nn.functional as F
-from torch import Tensor
 from loguru import logger
+from omegaconf import DictConfig
 from sklearn.metrics import roc_auc_score
-import mlflow
+from torch import Tensor
 
 from src.classification.classifier_log_utils import (
     classifier_log_cls_evaluation_to_mlflow,
@@ -35,7 +36,39 @@ def tabm_train_script(
     debug_verbose: bool = True,
 ):
     """
-    https://github.com/yandex-research/tabm/blob/main/example.ipynb
+    Train a TabM model for tabular classification.
+
+    TabM is a modern deep learning architecture for tabular data that
+    uses k predictions per object for improved uncertainty estimation.
+
+    Parameters
+    ----------
+    data : dict
+        Data dictionary with 'train', 'test', optionally 'val' splits,
+        each containing 'x_cont', optionally 'x_cat', and 'y' tensors.
+    device : torch.device
+        Device to train on (cuda or cpu).
+    cls_model_cfg : DictConfig
+        Model configuration with arch_type, d_block, dropout, etc.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration with metric_val.
+    cfg : DictConfig
+        Full Hydra configuration.
+    compile_model : bool, default False
+        Use torch.compile for faster training.
+    debug_verbose : bool, default True
+        Log training progress.
+
+    Returns
+    -------
+    tuple
+        (model, results) where model is trained TabM and results contains
+        scores and predictions per split.
+
+    References
+    ----------
+    TabM: https://github.com/yandex-research/tabm
+    Paper: https://arxiv.org/abs/2410.24210
     """
     # TaskType = Literal["regression", "binclass", "multiclass"]
     # task_type: TaskType = "binclass"
@@ -204,10 +237,32 @@ def tabm_main(
     features_per_source: dict,
 ):
     """
-    https://github.com/yandex-research/tabm
-    https://arxiv.org/abs/2410.24210
-    https://github.com/yandex-research/tabm/blob/main/tabm_reference.py
-    https://github.com/yandex-research/tabm/blob/main/example.ipynb
+    Main entry point for TabM classifier training with MLflow tracking.
+
+    Converts data, performs optional hyperparameter search, trains TabM
+    with bootstrap evaluation, and logs results to MLflow.
+
+    Parameters
+    ----------
+    train_df : pl.DataFrame
+        Training data as Polars DataFrame.
+    test_df : pl.DataFrame
+        Test data as Polars DataFrame.
+    run_name : str
+        MLflow run name.
+    cfg : DictConfig
+        Full Hydra configuration.
+    cls_model_cfg : DictConfig
+        TabM model configuration.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration.
+    features_per_source : dict
+        Feature source metadata for logging.
+
+    References
+    ----------
+    TabM: https://github.com/yandex-research/tabm
+    Paper: https://arxiv.org/abs/2410.24210
     """
     from src.classification.bootstrap_evaluation import bootstrap_evaluator
 
@@ -240,7 +295,7 @@ def tabm_main(
 
         metrics = {}
         for i, cls_model_cfg in enumerate(model_cfgs):
-            logger.info(f"{i+1}/{len(model_cfgs)}: Hyperparameter grid search")
+            logger.info(f"{i + 1}/{len(model_cfgs)}: Hyperparameter grid search")
             # e.g. Bootstrap iterations:  11%|█         | 110/1000 [01:19<07:53,
             models, metrics[i] = bootstrap_evaluator(
                 model_name="TabM",

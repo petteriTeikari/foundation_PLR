@@ -4,7 +4,23 @@ import numpy as np
 from loguru import logger
 
 
-def rearrange_the_split(results):
+def rearrange_the_split(results: dict) -> dict:
+    """
+    Rearrange CatBoost ensemble results to match bootstrap structure.
+
+    Converts from {split: {metrics}} to {metric_type: {split: metrics}}
+    structure used by bootstrap evaluation.
+
+    Parameters
+    ----------
+    results : dict
+        Results dictionary keyed by split name.
+
+    Returns
+    -------
+    dict
+        Rearranged results with metric types as top-level keys.
+    """
     # Match the bootstrap eval structure and add the split "inside the dict"
     splits = list(results.keys())
     split_picked = splits[0]
@@ -19,7 +35,28 @@ def rearrange_the_split(results):
     return results_out
 
 
-def get_ensembled_response(dict_of_subjects: dict, p=0.05):
+def get_ensembled_response(
+    dict_of_subjects: dict, p: float = 0.05
+) -> tuple[np.ndarray, dict]:
+    """
+    Compute mean response and statistics from subject-keyed predictions.
+
+    Aggregates predictions from multiple ensemble members per subject.
+
+    Parameters
+    ----------
+    dict_of_subjects : dict
+        Predictions keyed by subject index, values are lists of predictions
+        from ensemble members.
+    p : float, default 0.05
+        Percentile for confidence interval (e.g., 0.05 for 5-95% CI).
+
+    Returns
+    -------
+    tuple
+        (array, stats_dict) where array is mean predictions per subject and
+        stats_dict contains mean, std, CI per subject.
+    """
     # TODO! get the p from the cfg rather than being hard-coded
     array, stats_dict = [], {}
     warnings.simplefilter("ignore")
@@ -35,7 +72,22 @@ def get_ensembled_response(dict_of_subjects: dict, p=0.05):
     return np.array(array), stats_dict
 
 
-def get_ensembled_response_from_array(array_dict):
+def get_ensembled_response_from_array(array_dict: dict) -> tuple[dict, dict]:
+    """
+    Compute mean response and statistics from 2D prediction arrays.
+
+    Parameters
+    ----------
+    array_dict : dict
+        Dictionary with prediction keys, values are arrays of shape
+        (n_subjects, n_ensemble_members).
+
+    Returns
+    -------
+    tuple
+        (mean_arrays, stats_dict) where mean_arrays contains mean per subject
+        and stats_dict contains mean, std, CI per prediction key.
+    """
     mean_arrays = {}
     stats_dict = {}
     for key, array in array_dict.items():
@@ -52,17 +104,23 @@ def get_ensembled_response_from_array(array_dict):
     return mean_arrays, stats_dict
 
 
-def convert_array_dicts_to_arrays(array_dicts) -> dict:
+def convert_array_dicts_to_arrays(array_dicts: dict) -> tuple[dict, dict]:
     """
-    array_dicts: dict
-        y_pred: dict (no_subjects,)
-            '0': list (no_of_submodels in an ensemble)
-            '1':  list (no_of_submodels in an ensemble)
-            ...
-        y_pred_proba_ dict
-            same as above
-        labels: dict
-            same as above
+    Convert subject-keyed prediction dicts to aggregated arrays.
+
+    Parameters
+    ----------
+    array_dicts : dict
+        Predictions with structure:
+        - y_pred: dict with subject indices as keys, lists of predictions as values
+        - y_pred_proba: same structure
+        - labels: same structure
+
+    Returns
+    -------
+    tuple
+        (arrays, stats_dict) where arrays contains mean predictions per key
+        and stats_dict contains per-subject statistics.
     """
     arrays = {}
     stats_dict = {}
@@ -72,7 +130,32 @@ def convert_array_dicts_to_arrays(array_dicts) -> dict:
     return arrays, stats_dict
 
 
-def get_catboost_preds_from_results_for_bootstrap(split_results: dict, split: str):
+def get_catboost_preds_from_results_for_bootstrap(
+    split_results: dict, split: str
+) -> dict:
+    """
+    Extract predictions from CatBoost ensemble results for bootstrap.
+
+    Handles both dict-based (train/val) and array-based (test) prediction
+    storage formats.
+
+    Parameters
+    ----------
+    split_results : dict
+        Results dictionary for a split with metrics_iter.
+    split : str
+        Split name ('train', 'val', 'test').
+
+    Returns
+    -------
+    dict
+        Predictions with 'y_pred_proba' and 'y_pred' keys.
+
+    Raises
+    ------
+    ValueError
+        If predictions not found in expected locations.
+    """
     split_results = split_results["metrics_iter"][split]
     if "preds_dict" in split_results:
         array_dicts = split_results["preds_dict"]["arrays"]
