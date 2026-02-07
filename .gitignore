@@ -65,7 +65,6 @@ scripts/*.duckdb
 
 # Node.js
 **/node_modules
-apps/visualization/node_modules/*
 
 # MkDocs build output — regenerate with: mkdocs build
 # This directory can safely be deleted; it will be rebuilt automatically.
@@ -129,4 +128,3 @@ figures/synthetic/
 # Test figure outputs (generated during test runs)
 **/*_TEST.png
 **/*_TEST.json
-apps/visualization/node_modules/*
