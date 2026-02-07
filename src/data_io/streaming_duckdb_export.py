@@ -502,6 +502,14 @@ class StreamingDuckDBExporter:
 
         return sorted(run_dirs, key=lambda x: x.name)
 
+    # Canonical classifier names per registry (configs/mlflow_registry/parameters/classification.yaml)
+    _CLASSIFIER_CANONICAL = {
+        "CATBOOST": "CatBoost",
+        "XGBOOST": "XGBoost",
+        "catboost": "CatBoost",
+        "xgboost": "XGBoost",
+    }
+
     def _parse_run_name(self, run_name: str) -> Dict[str, str]:
         """Parse configuration from run name."""
         config = {"source_name": run_name}
@@ -509,7 +517,8 @@ class StreamingDuckDBExporter:
         parts = run_name.split("__")
         if len(parts) >= 1:
             clf_part = parts[0].split("_")
-            config["classifier"] = clf_part[0]
+            raw_clf = clf_part[0]
+            config["classifier"] = self._CLASSIFIER_CANONICAL.get(raw_clf, raw_clf)
 
         if len(parts) >= 2:
             config["featurization"] = parts[1]
