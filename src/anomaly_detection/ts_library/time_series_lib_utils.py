@@ -1,15 +1,42 @@
 import math
 from copy import deepcopy
 
-from loguru import logger
 import numpy as np
 import torch
+from loguru import logger
 from omegaconf import DictConfig
 
 from src.imputation.momentfm.moment_utils import reshape_array_to_original_shape
 
 
 class EarlyStopping:
+    """
+    Early stopping callback for training.
+
+    Monitors validation loss and stops training when no improvement
+    is observed for a specified number of epochs.
+
+    Parameters
+    ----------
+    patience : int, optional
+        Number of epochs to wait for improvement. Default is 7.
+    verbose : bool, optional
+        Whether to print messages on checkpoint save. Default is False.
+    delta : float, optional
+        Minimum change to qualify as improvement. Default is 0.
+
+    Attributes
+    ----------
+    counter : int
+        Number of epochs since last improvement.
+    best_score : float or None
+        Best validation score seen.
+    early_stop : bool
+        Flag indicating training should stop.
+    val_loss_min : float
+        Minimum validation loss seen.
+    """
+
     def __init__(self, patience=7, verbose=False, delta=0):
         self.patience = patience
         self.verbose = verbose
@@ -20,6 +47,18 @@ class EarlyStopping:
         self.delta = delta
 
     def __call__(self, val_loss, model, path):
+        """
+        Check if training should stop and save checkpoint if improved.
+
+        Parameters
+        ----------
+        val_loss : float
+            Current validation loss.
+        model : torch.nn.Module
+            Model to checkpoint.
+        path : str
+            Directory for checkpoint file.
+        """
         score = -val_loss
         if self.best_score is None:
             self.best_score = score
@@ -35,6 +74,18 @@ class EarlyStopping:
             self.counter = 0
 
     def save_checkpoint(self, val_loss, model, path):
+        """
+        Save model checkpoint.
+
+        Parameters
+        ----------
+        val_loss : float
+            Current validation loss.
+        model : torch.nn.Module
+            Model to save.
+        path : str
+            Directory for checkpoint file.
+        """
         if self.verbose:
             print(
                 f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ..."
@@ -46,6 +97,28 @@ class EarlyStopping:
 def adjust_learning_rate(
     optimizer, epoch, lradj: str, learning_rate: float, train_epochs: int
 ):
+    """
+    Adjust learning rate based on epoch and schedule type.
+
+    Parameters
+    ----------
+    optimizer : torch.optim.Optimizer
+        Optimizer to adjust.
+    epoch : int
+        Current epoch number.
+    lradj : str
+        Learning rate adjustment type: 'type1', 'type2', or 'cosine'.
+    learning_rate : float
+        Base learning rate.
+    train_epochs : int
+        Total number of training epochs (for cosine schedule).
+
+    Notes
+    -----
+    - type1: Halves LR every epoch
+    - type2: Predefined schedule at specific epochs
+    - cosine: Cosine annealing schedule
+    """
     # lr = args.learning_rate * (0.2 ** (epoch // 2))
     if lradj == "type1":
         lr_adjust = {epoch: learning_rate * (0.5 ** ((epoch - 1) // 1))}
@@ -66,7 +139,33 @@ def reshape_arrays_to_original_shape(
     best_arrays: dict, cfg: DictConfig, outlier_model_cfg: DictConfig
 ):
     """
-    reshape flattened arrays back to input shape, e.g. (32000,) -> (16,1981) (or (16,2000) with padding
+    Reshape flattened arrays back to original input shape.
+
+    Converts arrays from batched/flattened format back to
+    (n_subjects, n_timepoints) format.
+
+    Parameters
+    ----------
+    best_arrays : dict
+        Dictionary of arrays per split to reshape.
+    cfg : DictConfig
+        Full Hydra configuration with PLR_length.
+    outlier_model_cfg : DictConfig
+        Model configuration with window size.
+
+    Returns
+    -------
+    dict
+        Reshaped arrays per split.
+
+    Raises
+    ------
+    ValueError
+        If array shape is not 1D or 2D.
+
+    Examples
+    --------
+    Reshapes (32000,) -> (16, 1981) or (16, 2000) with padding.
     """
     best_arrays_out = deepcopy(best_arrays)
     for split in best_arrays.keys():

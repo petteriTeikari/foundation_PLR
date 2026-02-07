@@ -1,6 +1,7 @@
 import mlflow
 import numpy as np
 import polars as pl
+import torch
 from omegaconf import DictConfig
 
 from src.anomaly_detection.log_anomaly_detection import log_outlier_artifacts_dict
@@ -10,7 +11,17 @@ from src.data_io.data_wrangler import convert_df_to_dict
 from src.imputation.momentfm.moment_utils import init_torch_training
 
 
-def log_mlflow_params(model, outlier_model_cfg):
+def log_mlflow_params(model: torch.nn.Module, outlier_model_cfg: DictConfig) -> None:
+    """
+    Log TimesNet model parameters to MLflow.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        TimesNet model.
+    outlier_model_cfg : DictConfig
+        Model configuration containing PARAMS and MODEL sections.
+    """
     # Get number of parameters
     mlflow.log_param(
         "num_params", sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -21,7 +32,21 @@ def log_mlflow_params(model, outlier_model_cfg):
         mlflow.log_param(key, value)
 
 
-def log_timesnet_mlflow_metrics(metrics: dict, results_best: dict, best_epoch: int):
+def log_timesnet_mlflow_metrics(
+    metrics: dict, results_best: dict, best_epoch: int
+) -> None:
+    """
+    Log TimesNet training metrics to MLflow.
+
+    Parameters
+    ----------
+    metrics : dict
+        Dictionary of metrics per split containing 'global' scalar values.
+    results_best : dict
+        Best epoch results containing losses per split.
+    best_epoch : int
+        Index of the best training epoch.
+    """
     mlflow.log_metric("best_epoch", best_epoch)
 
     for split in metrics:
@@ -46,14 +71,45 @@ def timesnet_outlier_wrapper(
     outlier_model_cfg: DictConfig,
     experiment_name: str,
     run_name: str,
-    task="outlier_detection",
+    task: str = "outlier_detection",
     model_name: str = "TimesNet",
-):
+) -> tuple[dict, torch.nn.Module]:
     """
-    See e.g.
+    Run TimesNet-based outlier detection on PLR data.
+
+    TimesNet uses temporal 2D variations for time series analysis.
+    This wrapper handles data preparation, training, and MLflow logging.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input PLR data.
+    cfg : DictConfig
+        Full Hydra configuration.
+    outlier_model_cfg : DictConfig
+        TimesNet model configuration.
+    experiment_name : str
+        MLflow experiment name.
+    run_name : str
+        MLflow run name.
+    task : str, optional
+        Task name. Default is 'outlier_detection'.
+    model_name : str, optional
+        Model name for logging. Default is 'TimesNet'.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - outlier_artifacts : dict
+            Dictionary with metrics, predictions, and metadata.
+        - model : torch.nn.Module
+            The trained TimesNet model.
+
+    References
+    ----------
     "4.3 Anomaly Detection"
     https://github.com/thuml/Time-Series-Library/blob/main/tutorial/TimesNet_tutorial.ipynb
-
     """
     data_dict = convert_df_to_dict(data_df=df, cfg=cfg)
     dataloaders = init_torch_training(

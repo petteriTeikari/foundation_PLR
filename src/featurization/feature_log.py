@@ -1,15 +1,16 @@
 import os.path
+from typing import Optional
 
+import mlflow
 import numpy as np
 import pandas as pd
 from loguru import logger
 from omegaconf import DictConfig
-import mlflow
 
 from src.data_io.define_sources_for_flow import (
+    drop_ensemble_runs,
     get_best_dict,
     get_best_run_dict,
-    drop_ensemble_runs,
 )
 from src.ensemble.ensemble_utils import (
     get_best_imputation_col_name,
@@ -20,14 +21,30 @@ from src.featurization.feature_utils import (
 )
 from src.log_helpers.local_artifacts import load_results_dict
 from src.log_helpers.log_naming_uris_and_dirs import (
-    get_feature_pickle_artifact_uri,
     experiment_name_wrapper,
+    get_feature_pickle_artifact_uri,
 )
 
 
 def get_best_outlier_detection_run(
-    simple_outlier_name: str, cfg: DictConfig, id: str = None
-):
+    simple_outlier_name: str, cfg: DictConfig, id: Optional[str] = None
+) -> Optional[pd.DataFrame]:
+    """Retrieve the best outlier detection run from MLflow.
+
+    Parameters
+    ----------
+    simple_outlier_name : str
+        Simplified outlier method name (e.g., 'MOMENT-gt-finetune', 'LOF').
+    cfg : DictConfig
+        Configuration dictionary with PREFECT flow names.
+    id : str, optional
+        Specific run ID to retrieve, by default None.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Single-row DataFrame with best run info, or None if not found.
+    """
     # hacky fix for TimesNet ambiguities
     if simple_outlier_name == "TimesNet-gt":
         # the -gt was not used when running the anomaly detection, was only added now later for better
@@ -104,7 +121,25 @@ def get_best_outlier_detection_run(
         return run
 
 
-def get_best_outlier_run(mlflow_run: pd.Series, source_name: str, cfg: DictConfig):
+def get_best_outlier_run(
+    mlflow_run: pd.Series, source_name: str, cfg: DictConfig
+) -> tuple[Optional[pd.DataFrame], Optional[str]]:
+    """Get best outlier detection run associated with an imputation source.
+
+    Parameters
+    ----------
+    mlflow_run : pd.Series
+        MLflow run information for the imputation.
+    source_name : str
+        Source name containing outlier method (e.g., 'simple1.0__LOF__SAITS').
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    tuple
+        (best_outlier_run, outlier_run_id) or (None, None) for pupil-gt.
+    """
     simple_outlier_name = source_name.split("__")[1]
     if "pupil" in simple_outlier_name:
         logger.debug("Using human-annotated Pupil data, no outlier detection")
@@ -142,7 +177,16 @@ def get_best_outlier_run(mlflow_run: pd.Series, source_name: str, cfg: DictConfi
         return best_outlier_run, outlier_run_id
 
 
-def metrics_when_anomaly_detection_pupil_gt(best_outlier_string: str):
+def metrics_when_anomaly_detection_pupil_gt(best_outlier_string: str) -> None:
+    """Log MLflow metrics for human-annotated ground truth outlier detection.
+
+    Sets perfect metrics (F1=1, FP=0) for ground truth data.
+
+    Parameters
+    ----------
+    best_outlier_string : str
+        Metric name suffix for logging.
+    """
     mlflow.log_param("Outlier_run_id", None)
     mlflow.log_metric(f"Outlier_{best_outlier_string}", 1)
     mlflow.log_metric("Outlier_fp", 0)
@@ -150,8 +194,21 @@ def metrics_when_anomaly_detection_pupil_gt(best_outlier_string: str):
 
 
 def featurization_mlflow_metrics_and_params(
-    mlflow_run: pd.Series, source_name: str, cfg: DictConfig
-):
+    mlflow_run: Optional[pd.Series], source_name: str, cfg: DictConfig
+) -> None:
+    """Log featurization metrics and parameters to MLflow.
+
+    Logs imputation and outlier detection metrics from upstream runs.
+
+    Parameters
+    ----------
+    mlflow_run : pd.Series or None
+        MLflow run series from imputation, or None for baseline data.
+    source_name : str
+        Source name containing outlier and imputation method info.
+    cfg : DictConfig
+        Configuration dictionary.
+    """
     best_imput_dict = get_best_dict("imputation", cfg)
     best_imput_string = best_imput_dict["string"].replace("metrics.", "")
     best_outlier_dict = get_best_dict("outlier_detection", cfg)
@@ -206,7 +263,18 @@ def featurization_mlflow_metrics_and_params(
 #     name="Export PLR features to MLflow",
 #     description=" ",
 # )
-def export_features_to_mlflow(features: dict, run_name: str, cfg: DictConfig):
+def export_features_to_mlflow(features: dict, run_name: str, cfg: DictConfig) -> None:
+    """Export features to local pickle and log to MLflow.
+
+    Parameters
+    ----------
+    features : dict
+        Features dictionary to export.
+    run_name : str
+        Run name used for file naming.
+    cfg : DictConfig
+        Configuration dictionary.
+    """
     # Local pickle export
     output_path = export_features_pickle_file(features, run_name, cfg)
 
@@ -214,7 +282,22 @@ def export_features_to_mlflow(features: dict, run_name: str, cfg: DictConfig):
     log_features_to_mlflow(run_name, output_path, features["mlflow_run"], cfg)
 
 
-def log_features_to_mlflow(run_name, output_path, mlflow_run, cfg):
+def log_features_to_mlflow(
+    run_name: str, output_path: str, mlflow_run: Optional[pd.Series], cfg: DictConfig
+) -> None:
+    """Log feature pickle file as MLflow artifact.
+
+    Parameters
+    ----------
+    run_name : str
+        Run name for logging.
+    output_path : str
+        Path to the pickle file.
+    mlflow_run : pd.Series or None
+        MLflow run information (currently unused).
+    cfg : DictConfig
+        Configuration dictionary (currently unused).
+    """
     logger.info(
         "Logging features ({}) as a pickled artifact to MLflow".format(run_name)
     )
@@ -225,14 +308,43 @@ def get_best_run_per_source(
     cfg: DictConfig,
     experiment_name: str = "PLR_Featurization",
     skip_embeddings: bool = True,
-):
+) -> dict[str, pd.Series]:
+    """Get the latest MLflow run for each unique data source.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary.
+    experiment_name : str, optional
+        MLflow experiment name, by default 'PLR_Featurization'.
+    skip_embeddings : bool, optional
+        If True, exclude embedding sources, by default True.
+
+    Returns
+    -------
+    dict
+        Dictionary keyed by source name containing best run Series.
+
+    Raises
+    ------
+    ValueError
+        If no runs found for the experiment or a specific source.
+    """
     mlflow_runs: pd.DataFrame = mlflow.search_runs(experiment_names=[experiment_name])
     if mlflow_runs.shape[0] == 0:
-        logger.error('No MLflow featurization runs found from {}'.format(experiment_name))
-        logger.error('Did you run the previous steps (anomaly/outlier detection, '
-                     'imputation and featurization for this experiment?)?')
-        logger.error('Check values in "PROCESS_FLOWS" of your defaults.yaml for example? Should be True')
-        raise ValueError('No MLflow featurization runs found from {}'.format(experiment_name))
+        logger.error(
+            "No MLflow featurization runs found from {}".format(experiment_name)
+        )
+        logger.error(
+            "Did you run the previous steps (anomaly/outlier detection, "
+            "imputation and featurization for this experiment?)?"
+        )
+        logger.error(
+            'Check values in "PROCESS_FLOWS" of your defaults.yaml for example? Should be True'
+        )
+        raise ValueError(
+            "No MLflow featurization runs found from {}".format(experiment_name)
+        )
 
     unique_sources = mlflow_runs["tags.mlflow.runName"].unique()
     if skip_embeddings:
@@ -264,11 +376,33 @@ def get_best_run_per_source(
 def get_mlflow_run_by_id(
     run_id: str,
     source: str,
-    data_source: str,
-    model_name: str,
+    data_source: Optional[str],
+    model_name: Optional[str],
     cfg: DictConfig,
     task_key: str = "OUTLIER_DETECTION",
-):
+) -> Optional[pd.Series]:
+    """Retrieve a specific MLflow run by its ID.
+
+    Parameters
+    ----------
+    run_id : str
+        MLflow run ID to retrieve.
+    source : str
+        Source name for logging.
+    data_source : str
+        Data source identifier.
+    model_name : str
+        Model name for logging.
+    cfg : DictConfig
+        Configuration dictionary.
+    task_key : str, optional
+        Task key for experiment name lookup, by default 'OUTLIER_DETECTION'.
+
+    Returns
+    -------
+    pd.Series or None
+        Run information as Series, or None if not found.
+    """
     experiment_name = experiment_name_wrapper(
         experiment_name=cfg["PREFECT"]["FLOW_NAMES"][task_key], cfg=cfg
     )
@@ -294,17 +428,33 @@ def get_mlflow_run_by_id(
         return run.iloc[0]
 
 
-def import_features_per_source(source, run, cfg, subdir: str = "features"):
-    """
-    Import the features from the best MLflow run
-    features_per_source: dict
-      - data: dict
-        - test: pl.DataFrame
-            - column_names=
-              ['subject_code', 'Red_MAX_CONSTRICTION_value', 'Red_MAX_CONSTRICTION_std', ...,
-               'Blue_PHASIC_value', 'Blue_PHASIC_std', ..., 'metadata_Age']
-        - train: pl.DataFrame
-      - mlflow_run_imputation: type?
+def import_features_per_source(
+    source: str, run: pd.Series, cfg: DictConfig, subdir: str = "features"
+) -> dict:
+    """Import features from an MLflow run artifact.
+
+    Parameters
+    ----------
+    source : str
+        Data source name.
+    run : pd.Series
+        MLflow run information.
+    cfg : DictConfig
+        Configuration dictionary.
+    subdir : str, optional
+        Artifact subdirectory, by default 'features'.
+
+    Returns
+    -------
+    dict
+        Features dictionary with structure:
+        - data: dict with 'train' and 'test' pl.DataFrames
+        - mlflow_run_imputation: MLflow run info
+
+    Raises
+    ------
+    Exception
+        If artifact download fails.
     """
     # TODO! You could check here if there any artifacts saved (mlflow did not run until the end),
     #  or you simply have the name incorrect
@@ -314,25 +464,38 @@ def import_features_per_source(source, run, cfg, subdir: str = "features"):
         features_per_source = load_results_dict(feature_pickle)
     except Exception as e:
         try:
-            # quick'n'dirty fix, if you have the incorrect MLflow URI if you want to do non-debug work
-            # on a laptop: (reminder to always use some remote server :P)
+            # Try to extract file path from error and load directly
+            # This handles cases where MLflow URI doesn't match current system
             file_path = e.args[0].split(": '/")[1].replace('"', "").replace("'", "")
-            if not os.path.exists(file_path):
-                exp_path = "/home/petteri/Dropbox/manuscriptDrafts/foundationPLR/repo_desktop_clone (Selective Sync Conflict)/foundation_PLR/src/mlruns/393094052990429979/"
-                artifact_path = "1958771273844452a9aaf6fb26f6837f/artifacts/features/simple1.0__pupil-gt__pupil-gt.pickle"
-                file_path = os.path.join(exp_path, artifact_path)
-                if os.path.exists(file_path):
-                    features_per_source = load_results_dict(file_path)
-                else:
-                    logger.error(f"File not found: {file_path}")
-                    raise e
-        except Exception as e:
-            logger.error(f"Error downloading artifact: {e}")
+            if os.path.exists(file_path):
+                features_per_source = load_results_dict(file_path)
+            else:
+                logger.error(f"File not found: {file_path}")
+                raise e
+        except Exception as e2:
+            logger.error(f"Error downloading artifact: {e2}")
             raise e
     return features_per_source
 
 
-def import_features_from_best_runs(best_runs: dict, cfg: DictConfig):
+def import_features_from_best_runs(
+    best_runs: dict[str, pd.Series], cfg: DictConfig
+) -> dict:
+    """Import features from multiple best runs and add MLflow metadata.
+
+    Parameters
+    ----------
+    best_runs : dict
+        Dictionary keyed by source name with MLflow run Series.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    dict
+        Features dictionary with added mlflow_run_featurization and
+        mlflow_run_outlier_detection information.
+    """
     features = {}
     for source, run in best_runs.items():
         if "embedding" in source:
@@ -382,7 +545,23 @@ def import_features_from_best_runs(best_runs: dict, cfg: DictConfig):
 # )
 def import_features_from_mlflow(
     cfg: DictConfig, experiment_name: str = "PLR_Featurization"
-):
+) -> dict:
+    """Import features from MLflow for all data sources.
+
+    Retrieves best runs and downloads feature artifacts.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary.
+    experiment_name : str, optional
+        MLflow experiment name, by default 'PLR_Featurization'.
+
+    Returns
+    -------
+    dict
+        Features dictionary keyed by source name.
+    """
     # Get the best (latest) MLflow run for each data source
     best_runs = get_best_run_per_source(
         cfg,

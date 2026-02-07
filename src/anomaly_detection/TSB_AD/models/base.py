@@ -53,7 +53,7 @@ class BaseDetector(metaclass=abc.ABCMeta):
         if isinstance(contamination, (float, int)):
             if not (0.0 < contamination <= 0.5):
                 raise ValueError(
-                    "contamination must be in (0, 0.5], " "got: %f" % contamination
+                    "contamination must be in (0, 0.5], got: %f" % contamination
                 )
 
         # allow arbitrary input such as PyThreshld object
@@ -357,7 +357,7 @@ class BaseDetector(metaclass=abc.ABCMeta):
             score = precision_n_scores(y, self.decision_scores_)
         else:
             raise NotImplementedError(
-                "PyOD built-in scoring only supports " "ROC and Precision @ rank n"
+                "PyOD built-in scoring only supports ROC and Precision @ rank n"
             )
 
         print("{metric}: {score}".format(metric=scoring, score=score))

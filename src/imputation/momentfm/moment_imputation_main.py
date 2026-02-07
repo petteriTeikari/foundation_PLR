@@ -1,16 +1,17 @@
 import time
+
 import mlflow
 import numpy as np
 import torch
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.anomaly_detection.momentfm_outlier.moment_outlier_zeroshot import (
     momentfm_outlier_zeroshot,
 )
 from src.imputation.momentfm.moment_utils import (
-    init_torch_training,
     import_moment_model,
+    init_torch_training,
 )
 from src.imputation.train_utils import create_imputation_dict_from_moment
 from src.metrics.evaluate_imputation_metrics import compute_imputation_metrics
@@ -21,6 +22,15 @@ from src.preprocess.preprocess_data import (
 
 
 def log_moment_mlflow_params(model, model_cfg: DictConfig):
+    """Log MOMENT model parameters to MLflow.
+
+    Parameters
+    ----------
+    model : MOMENTPipeline
+        MOMENT model instance to extract parameter count from.
+    model_cfg : DictConfig
+        Model configuration containing pretrained model path and kwargs.
+    """
     mlflow.log_param("model_name", model_cfg["MODEL"]["pretrained_model_name_or_path"])
     mlflow.log_param("num_params", sum(p.numel() for p in model.encoder.parameters()))
     for k, v in model_cfg["MODEL"]["model_kwargs"].items():
@@ -35,6 +45,40 @@ def compute_moment_imputation_metrics(
     use_training_data_as_gt=False,
     checks_on: bool = False,
 ):
+    """Compute imputation metrics from MOMENT model outputs.
+
+    Calculates MSE, MAE metrics comparing imputed values to ground truth,
+    with optional destandardization for interpretable units.
+
+    Parameters
+    ----------
+    imputation_results : dict
+        Dictionary of imputation results keyed by split name, containing
+        'results_dict' with 'split_results' arrays.
+    data_dict : dict
+        Data dictionary with 'preprocess' standardization stats and 'df'
+        containing ground truth data per split.
+    cfg : DictConfig
+        Configuration for metric computation.
+    imputation_time : float
+        Time taken for imputation in seconds.
+    use_training_data_as_gt : bool, optional
+        If True, use training input as ground truth (noisy). If False,
+        use human-annotated denoised ground truth. Default is False.
+    checks_on : bool, optional
+        If True, perform additional validation checks. Default is False.
+
+    Returns
+    -------
+    tuple
+        (metrics, imputation_dict) where metrics is a dict of metrics per
+        split and imputation_dict is in PyPOTS-compatible format.
+
+    Raises
+    ------
+    ValueError
+        If split names between imputation results and data don't match.
+    """
     stdz_dict = data_dict["preprocess"]["standardization"]
     metrics = {}
     imputation_dict = {}
@@ -121,6 +165,32 @@ def moment_imputation_wrapper(
     cfg: DictConfig,
     run_name: str,
 ):
+    """Execute MOMENT imputation with zero-shot or fine-tuned model.
+
+    Applies the MOMENT model for time series imputation, leveraging the
+    reconstruction capability trained during outlier detection.
+
+    Parameters
+    ----------
+    model : MOMENTPipeline
+        MOMENT model (pretrained or fine-tuned).
+    dataloaders : dict[str, DataLoader]
+        Dictionary of PyTorch DataLoaders keyed by split name.
+    data_dict : dict
+        Data dictionary with preprocessing stats and metadata.
+    cfg : DictConfig
+        Full Hydra configuration.
+    run_name : str
+        MLflow run name for logging.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'imputation_results': Raw model outputs per split
+        - 'metrics': Computed imputation metrics
+        - 'imputation': PyPOTS-compatible imputation dictionary
+    """
     # Re-using the same outlier detection function for zero-shot evaluation
     # This is now "zeroshot", it is either
     # 1) zeroshot, with the model coming from Moment people

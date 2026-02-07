@@ -1,6 +1,11 @@
+from typing import Any, Dict, List, Tuple, Union
+
 import numpy as np
 import torch
+import torch.nn as nn
 from loguru import logger
+from omegaconf import DictConfig
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from src.anomaly_detection.extra_eval.eval_outlier_detection import (
@@ -11,7 +16,33 @@ from src.anomaly_detection.ts_library.time_series_lib_utils import (
 )
 
 
-def init_training(model, outlier_model_cfg):
+def init_training(
+    model: nn.Module, outlier_model_cfg: DictConfig
+) -> Tuple[torch.optim.Optimizer, nn.Module]:
+    """
+    Initialize optimizer and criterion for TimesNet training.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        TimesNet model to train.
+    outlier_model_cfg : DictConfig
+        Model configuration with PARAMS section.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - model_optim : torch.optim.Optimizer
+            Configured optimizer.
+        - criterion : torch.nn.Module
+            Loss criterion.
+
+    Raises
+    ------
+    NotImplementedError
+        If optimizer or criterion is not supported.
+    """
     if outlier_model_cfg["PARAMS"]["optimizer"] == "Adam":
         model_optim = torch.optim.Adam(
             model.parameters(), lr=outlier_model_cfg["PARAMS"]["lr"]
@@ -38,14 +69,39 @@ def init_training(model, outlier_model_cfg):
 
 
 def timesnet_forward(
-    batch_x, model, device, criterion, features, return_score: bool = False
-):
+    batch_x: torch.Tensor,
+    model: nn.Module,
+    device: str,
+    criterion: nn.Module,
+    features: str,
+    return_score: bool = False,
+) -> Tuple[torch.Tensor, Union[torch.Tensor, np.ndarray]]:
     """
-    args:
-        batch_x: torch.Tensor
-            expected size (batch_size, seq_len, num_features), e.g. (128,100,25) for the demo PSM dataset
-        batch_y: torch.Tensor
-            expected size (batch_size, seq_len, 1), e.g. (128,100,1) for the demo PSM dataset
+    Execute forward pass through TimesNet model.
+
+    Parameters
+    ----------
+    batch_x : torch.Tensor
+        Input batch of shape (batch_size, seq_len) or (batch_size, seq_len, num_features).
+    model : torch.nn.Module
+        TimesNet model.
+    device : str
+        Device to run on.
+    criterion : torch.nn.Module
+        Loss criterion.
+    features : str
+        Feature mode: 'MS' (multivariate) or 'S' (univariate).
+    return_score : bool, optional
+        If True, return anomaly scores instead of loss. Default is False.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - outputs : torch.Tensor
+            Model reconstructions of shape (batch_size, seq_len, 1).
+        - loss : torch.Tensor or np.ndarray
+            Reconstruction loss or anomaly scores.
     """
     batch_x = batch_x.float().to(device)  # e.g (16,100)
     batch_x = batch_x.unsqueeze(2)  # e.g. (16,100,1)
@@ -64,19 +120,60 @@ def timesnet_forward(
 
 
 def timesnet_train(
-    model,
-    device,
-    outlier_model_cfg,
-    cfg,
-    run_name,
-    experiment_name,
-    train_loader,
-    test_loader,
-    outlier_train_loader,
-    outlier_test_loader,
+    model: nn.Module,
+    device: str,
+    outlier_model_cfg: DictConfig,
+    cfg: DictConfig,
+    run_name: str,
+    experiment_name: str,
+    train_loader: DataLoader,
+    test_loader: DataLoader,
+    outlier_train_loader: DataLoader,
+    outlier_test_loader: DataLoader,
     recon_on_outliers: bool = False,
-):
+) -> Tuple[Dict[str, Any], nn.Module]:
     """
+    Train TimesNet model for outlier detection.
+
+    Implements the training loop with validation, early stopping based on
+    loss, and outlier detection evaluation.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        TimesNet model to train.
+    device : str
+        Device to run on.
+    outlier_model_cfg : DictConfig
+        Model configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    run_name : str
+        MLflow run name.
+    experiment_name : str
+        MLflow experiment name.
+    train_loader : torch.utils.data.DataLoader
+        Training data loader.
+    test_loader : torch.utils.data.DataLoader
+        Test data loader.
+    outlier_train_loader : torch.utils.data.DataLoader
+        Training data loader with outlier labels.
+    outlier_test_loader : torch.utils.data.DataLoader
+        Test data loader with outlier labels.
+    recon_on_outliers : bool, optional
+        Whether to train on noisy data. Default is False.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - metrics_out : dict
+            Training results with metrics, losses, and metadata.
+        - model : torch.nn.Module
+            Trained model.
+
+    References
+    ----------
     https://github.com/thuml/Time-Series-Library/blob/main/exp/exp_anomaly_detection.py#L20
     """
 
@@ -163,7 +260,29 @@ def timesnet_train(
     return metrics_out, model
 
 
-def get_best_metrics(test_metrics, best_epoch):
+def get_best_metrics(
+    test_metrics: Dict[str, Dict[str, Any]], best_epoch: int
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Extract metrics for the best epoch.
+
+    Parameters
+    ----------
+    test_metrics : dict
+        Metrics per split with lists of values per epoch.
+    best_epoch : int
+        Index of the best epoch.
+
+    Returns
+    -------
+    dict
+        Metrics for the best epoch per split.
+
+    Raises
+    ------
+    ValueError
+        If metric values are not in list format.
+    """
     metrics = {}
     for split in test_metrics:
         metrics[split] = {}
@@ -178,7 +297,35 @@ def get_best_metrics(test_metrics, best_epoch):
     return metrics
 
 
-def combine_results(best_arrays, losses, cfg, outlier_model_cfg):
+def combine_results(
+    best_arrays: Dict[str, Dict[str, np.ndarray]],
+    losses: Dict[str, List[float]],
+    cfg: DictConfig,
+    outlier_model_cfg: DictConfig,
+) -> Tuple[Dict[str, Any], Dict[str, Dict[str, np.ndarray]]]:
+    """
+    Combine arrays and losses into results structure.
+
+    Parameters
+    ----------
+    best_arrays : dict
+        Arrays from best epoch per split.
+    losses : dict
+        Training and test losses.
+    cfg : DictConfig
+        Full Hydra configuration.
+    outlier_model_cfg : DictConfig
+        Model configuration.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - results_best : dict
+            Combined results in expected format.
+        - best_arrays : dict
+            Original best arrays.
+    """
     results_best = {}
     # e.g. results_best[split]["results_dict"]["split_results"]["arrays"]["preds"]
     for split in losses:
@@ -196,7 +343,26 @@ def combine_results(best_arrays, losses, cfg, outlier_model_cfg):
     return results_best, best_arrays
 
 
-def get_best_arrays(metrics_test):
+def get_best_arrays(
+    metrics_test: Dict[str, Dict[str, Any]],
+) -> Dict[str, Dict[str, np.ndarray]]:
+    """
+    Extract arrays from test metrics for the current epoch.
+
+    Parameters
+    ----------
+    metrics_test : dict
+        Test metrics containing arrays and arrays_flat per split.
+
+    Returns
+    -------
+    dict
+        Arrays per split combining flat and regular arrays.
+
+    Notes
+    -----
+    Consider not saving all arrays every epoch to reduce RAM usage.
+    """
     # If you need so save up some RAM, no need to save necessarily all the values on every epoch?
     best_arrays = {}
     for split in metrics_test:
@@ -211,7 +377,28 @@ def get_best_arrays(metrics_test):
     return best_arrays
 
 
-def get_best_metadata(losses, test_metrics, best_epoch):
+def get_best_metadata(
+    losses: Dict[str, List[float]],
+    test_metrics: Dict[str, Dict[str, Any]],
+    best_epoch: int,
+) -> Dict[str, Any]:
+    """
+    Compile metadata for the best training epoch.
+
+    Parameters
+    ----------
+    losses : dict
+        Training and test losses per epoch.
+    test_metrics : dict
+        Test metrics per epoch.
+    best_epoch : int
+        Index of the best epoch.
+
+    Returns
+    -------
+    dict
+        Metadata including best epoch, losses, and F1 scores.
+    """
     metadata = {
         "best_epoch": best_epoch,
         "best_loss_train": losses["train"][best_epoch],
@@ -229,7 +416,24 @@ def get_best_metadata(losses, test_metrics, best_epoch):
     return metadata
 
 
-def append_keys(metrics_test, test_metrics):
+def append_keys(
+    metrics_test: Dict[str, Dict[str, Any]], test_metrics: Dict[str, Dict[str, Any]]
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Append current epoch metrics to accumulated metrics.
+
+    Parameters
+    ----------
+    metrics_test : dict
+        Current epoch's test metrics.
+    test_metrics : dict
+        Accumulated metrics across epochs.
+
+    Returns
+    -------
+    dict
+        Updated accumulated metrics with current epoch appended.
+    """
     for split in metrics_test.keys():
         if split not in test_metrics:
             test_metrics[split] = {}
@@ -250,7 +454,34 @@ def append_keys(metrics_test, test_metrics):
     return test_metrics
 
 
-def timesnet_val(model, loader, criterion, device, features: str):
+def timesnet_val(
+    model: nn.Module,
+    loader: DataLoader,
+    criterion: nn.Module,
+    device: str,
+    features: str,
+) -> float:
+    """
+    Validate TimesNet model on a data loader.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        TimesNet model to validate.
+    loader : torch.utils.data.DataLoader
+        Validation data loader.
+    criterion : torch.nn.Module
+        Loss criterion.
+    device : str
+        Device to run on.
+    features : str
+        Feature mode: 'MS' or 'S'.
+
+    Returns
+    -------
+    float
+        Average validation loss.
+    """
     total_loss = []
     model.eval()
     with torch.no_grad():

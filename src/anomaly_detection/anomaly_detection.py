@@ -1,30 +1,31 @@
 import polars as pl
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
+
 from src.anomaly_detection.anomaly_utils import (
-    if_remote_anomaly_detection,
     get_anomaly_detection_results_from_mlflow,
+    if_remote_anomaly_detection,
 )
+from src.anomaly_detection.momentfm_outlier.momentfm_outlier import (
+    momentfm_outlier_main,
+)
+from src.anomaly_detection.outlier_prophet import outlier_prophet_wrapper
 from src.anomaly_detection.outlier_sigllm import outlier_sigllm_wrapper
 from src.anomaly_detection.outlier_sklearn import (
     outlier_sklearn_wrapper,
 )
-from src.anomaly_detection.outlier_tsb_ad import outlier_tsb_ad_wrapper
+
+# NOTE: TSB_AD archived - see archived/TSB_AD/ (not used in final paper)
+# from src.anomaly_detection.outlier_tsb_ad import outlier_tsb_ad_wrapper
 from src.anomaly_detection.timesnet_wrapper import timesnet_outlier_wrapper
 from src.anomaly_detection.units.units_outlier import units_outlier_wrapper
-
 from src.log_helpers.log_naming_uris_and_dirs import update_outlier_detection_run_name
-from src.anomaly_detection.momentfm_outlier.momentfm_outlier import (
-    momentfm_outlier_main,
-)
 from src.log_helpers.mlflow_utils import (
+    init_mlflow_experiment,
     init_mlflow_run,
     log_mlflow_params,
-    init_mlflow_experiment,
 )
 from src.orchestration.debug_utils import debug_train_only_for_one_epoch
-from src.anomaly_detection.outlier_prophet import outlier_prophet_wrapper
-
 
 # from src.outlier_prophet import outlier_prophet_wrapper
 
@@ -36,6 +37,42 @@ def outlier_detection_selector(
     run_name: str,
     model_name: str,
 ):
+    """
+    Select and execute outlier detection method.
+
+    Dispatches to the appropriate outlier detection implementation based on
+    model_name. Supports foundation models (MOMENT, UniTS, TimesNet),
+    traditional methods (LOF, OneClassSVM, SubPCA), and Prophet.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input PLR data with columns: pupil_raw, pupil_gt, etc.
+    cfg : DictConfig
+        Full Hydra configuration.
+    experiment_name : str
+        MLflow experiment name for tracking.
+    run_name : str
+        MLflow run name.
+    model_name : str
+        Name of outlier detection method. One of:
+        'MOMENT', 'TimesNet', 'UniTS', 'LOF', 'OneClassSVM',
+        'PROPHET', 'SigLLM'.
+
+    Note: SubPCA/EIF (TSB_AD) was archived - see archived/TSB_AD/ (not used in final paper).
+
+    Returns
+    -------
+    tuple
+        (outlier_artifacts, model) where:
+        - outlier_artifacts: dict with detection results and metrics
+        - model: trained outlier detection model
+
+    Raises
+    ------
+    NotImplementedError
+        If model_name is not supported.
+    """
     # Init the MLflow experiment
     init_mlflow_experiment(experiment_name=experiment_name)
 
@@ -118,15 +155,16 @@ def outlier_detection_selector(
             experiment_name=experiment_name,
             run_name=run_name,
         )
-    elif model_name == "SubPCA" or model_name == "EIF":
-        outlier_artifacts, model = outlier_tsb_ad_wrapper(
-            df=df,
-            cfg=cfg,
-            model_cfg=cfg["OUTLIER_MODELS"][model_name],
-            experiment_name=experiment_name,
-            run_name=run_name,
-            model_name=model_name,
-        )
+    # NOTE: TSB_AD archived - see archived/TSB_AD/ (not used in final paper)
+    # elif model_name == "SubPCA" or model_name == "EIF":
+    #     outlier_artifacts, model = outlier_tsb_ad_wrapper(
+    #         df=df,
+    #         cfg=cfg,
+    #         model_cfg=cfg["OUTLIER_MODELS"][model_name],
+    #         experiment_name=experiment_name,
+    #         run_name=run_name,
+    #         model_name=model_name,
+    #     )
     else:
         logger.error(f"{model_name} Model not implemented yet")
         raise NotImplementedError(f"{model_name} Model not implemented yet")
@@ -137,6 +175,30 @@ def outlier_detection_selector(
 def outlier_detection_PLR_workflow(
     df: pl.DataFrame, cfg: DictConfig, experiment_name: str, run_name: str
 ) -> dict:
+    """
+    Run the complete outlier detection workflow for PLR data.
+
+    Orchestrates the outlier detection pipeline:
+    1. Check if recomputation is needed (vs loading existing results)
+    2. Run outlier detection if needed
+    3. Log results to MLflow
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input PLR data.
+    cfg : DictConfig
+        Full Hydra configuration.
+    experiment_name : str
+        MLflow experiment name.
+    run_name : str
+        MLflow run name.
+
+    Returns
+    -------
+    dict
+        Outlier detection artifacts including masks and metrics.
+    """
     # Set-up the workflow
     model_name = list(cfg["OUTLIER_MODELS"].keys())[0]
 
@@ -148,7 +210,7 @@ def outlier_detection_PLR_workflow(
     # If you wish to skip the recomputation, but no previous runs are found
     recompute_anomaly_detection = if_remote_anomaly_detection(
         try_to_recompute=cfg["OUTLIER_DETECTION"]["re_compute"],
-        anomaly_cfg=cfg["OUTLIER_DETECTION"],
+        _anomaly_cfg=cfg["OUTLIER_DETECTION"],
         experiment_name=experiment_name,
         cfg=cfg,
     )

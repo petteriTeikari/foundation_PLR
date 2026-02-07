@@ -1,19 +1,16 @@
 from copy import deepcopy
+from typing import Literal
 
+import mlflow
 import numpy as np
 import pandas as pd
 import torch
-from omegaconf import DictConfig
 from loguru import logger
 from momentfm import MOMENTPipeline
-import mlflow
-
+from omegaconf import DictConfig
 
 from src.data_io.data_utils import get_no_of_windows, unpad_glaucoma_PLR
 from src.imputation.train_torch_utils import create_torch_dataloaders
-
-from typing import Literal
-
 from src.log_helpers.log_naming_uris_and_dirs import (
     get_outlier_detection_experiment_name,
 )
@@ -22,6 +19,21 @@ _TASK_TYPES = Literal["imputation", "outlier_detection", "ts_cls"]
 
 
 def remove_none_variants(mlflow_runs):
+    """Filter out MLflow runs with None model variants.
+
+    Removes ensemble runs that have 'MOMENT' in the run name but lack
+    a pretrained model path in the expected parameter column.
+
+    Parameters
+    ----------
+    mlflow_runs : pd.DataFrame
+        DataFrame of MLflow runs with 'params.pretrained_model_name_or_path' column.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame with None variant rows removed.
+    """
     # ensembles have Momemnt in the run_name but no variant in the expected column name
     variant_col = mlflow_runs["params.pretrained_model_name_or_path"].to_numpy()
     variant_is_none = len(variant_col) * [False]
@@ -34,6 +46,32 @@ def remove_none_variants(mlflow_runs):
 def get_best_moment_run(
     experiment_name, cfg, model_variant: str, sort_by: str
 ) -> pd.Series:
+    """Get the best fine-tuned MOMENT run from MLflow.
+
+    Searches for MOMENT fine-tuned runs in the specified experiment
+    and returns the best one based on the specified metric.
+
+    Parameters
+    ----------
+    experiment_name : str
+        MLflow experiment name to search.
+    cfg : DictConfig
+        Configuration containing OUTLIER_DETECTION settings for sorting.
+    model_variant : str
+        MOMENT model variant to filter by (e.g., 'large', 'base', 'small').
+    sort_by : str
+        Metric key to sort runs by (e.g., 'best_loss').
+
+    Returns
+    -------
+    pd.Series or None
+        Best MLflow run as a Series, or None if no runs found.
+
+    Raises
+    ------
+    ValueError
+        If no MOMENT fine-tuned runs are found for the specified variant.
+    """
     from src.anomaly_detection.anomaly_utils import sort_anomaly_detection_runs
 
     # Get runs from the experiment
@@ -77,6 +115,29 @@ def get_best_moment_run(
 def load_finetuned_moment_model_from_mlflow(
     cfg, model, model_variant: str, task: str, sort_by="best_loss"
 ):
+    """Load a fine-tuned MOMENT model from MLflow artifacts.
+
+    Retrieves the best fine-tuned MOMENT run and loads the model weights
+    from the associated MLflow artifacts.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Full Hydra configuration.
+    model : MOMENTPipeline
+        Base MOMENT model to update with fine-tuned weights.
+    model_variant : str
+        Model variant identifier (e.g., 'large', 'base').
+    task : str
+        Task name for context ('imputation' or 'outlier_detection').
+    sort_by : str, optional
+        Metric to sort runs by. Default is 'best_loss'.
+
+    Returns
+    -------
+    MOMENTPipeline or None
+        Model with loaded fine-tuned weights, or None if no runs found.
+    """
     from src.anomaly_detection.anomaly_utils import (
         get_moment_model_from_mlflow_artifacts,
     )
@@ -106,6 +167,29 @@ def import_moment_from_mlflow(
     model_kwargs: dict,
     load_from_mlflow: bool = True,
 ):
+    """Import MOMENT model, optionally loading fine-tuned weights from MLflow.
+
+    Creates a MOMENT pipeline from pretrained weights and optionally updates
+    with fine-tuned weights stored in MLflow artifacts.
+
+    Parameters
+    ----------
+    model_cfg : DictConfig
+        Model configuration with pretrained model path.
+    cfg : DictConfig
+        Full Hydra configuration.
+    task : str
+        Task name ('imputation', 'outlier_detection', or 'embedding').
+    model_kwargs : dict
+        Additional keyword arguments for model initialization.
+    load_from_mlflow : bool, optional
+        Whether to load fine-tuned weights from MLflow. Default is True.
+
+    Returns
+    -------
+    MOMENTPipeline
+        Initialized MOMENT model, optionally with fine-tuned weights.
+    """
     model = MOMENTPipeline.from_pretrained(
         pretrained_model_name_or_path=model_cfg["MODEL"][
             "pretrained_model_name_or_path"
@@ -131,6 +215,33 @@ def import_moment_from_mlflow(
 
 
 def import_moment_model(model_cfg: DictConfig, task: str, cfg: DictConfig):
+    """Import and configure a MOMENT model for the specified task.
+
+    Creates and initializes a MOMENT pipeline, handling both zero-shot
+    (pretrained) and fine-tuned configurations based on detection_type.
+
+    Parameters
+    ----------
+    model_cfg : DictConfig
+        Model configuration containing MODEL settings (pretrained path,
+        model_kwargs, detection_type).
+    task : str
+        Task type: 'outlier_detection', 'imputation', or 'embedding'.
+    cfg : DictConfig
+        Full Hydra configuration.
+
+    Returns
+    -------
+    MOMENTPipeline
+        Configured MOMENT model ready for the specified task.
+
+    Raises
+    ------
+    ValueError
+        If task is not one of the supported types.
+    ImportError
+        If pretrained model cannot be loaded.
+    """
     logger.info("Importing pretrained MOMENT model")
     model_kwargs = dict(model_cfg["MODEL"]["model_kwargs"])
     if model_cfg["MODEL"]["detection_type"] == "fine-tune":
@@ -174,6 +285,27 @@ def import_moment_model(model_cfg: DictConfig, task: str, cfg: DictConfig):
 def check_outlier_detection_dataloader(
     split: str, model_cfg: DictConfig, no_of_outliers: int, i: int
 ):
+    """Validate dataloader batch for outlier detection task.
+
+    Ensures appropriate masking based on split type: outlier splits should
+    have masked points, while train/test splits should not (for reconstruction).
+
+    Parameters
+    ----------
+    split : str
+        Split type ('outlier', 'train', 'test', etc.).
+    model_cfg : DictConfig
+        Model configuration with detection_type setting.
+    no_of_outliers : int
+        Number of masked outlier points in the batch.
+    i : int
+        Batch index for error reporting.
+
+    Raises
+    ------
+    ValueError
+        If masking doesn't match expected behavior for the split type.
+    """
     if split == "outlier":
         # "outlier_train" and "outlier_test" are the "pupil_orig" pupil sizes and contain the blink artifacts,
         # and we would like to learn to detect them all, thus there should be the outliers masked
@@ -217,6 +349,26 @@ def check_outlier_detection_dataloader(
 def check_imputation_dataloader(
     split: str, model_cfg: DictConfig, no_of_outliers: int, i: int
 ):
+    """Validate dataloader batch for imputation task.
+
+    Ensures that batches contain some masked points for imputation.
+
+    Parameters
+    ----------
+    split : str
+        Split type (unused but kept for interface consistency).
+    model_cfg : DictConfig
+        Model configuration with detection_type setting.
+    no_of_outliers : int
+        Number of masked points in the batch.
+    i : int
+        Batch index for error reporting.
+
+    Raises
+    ------
+    ValueError
+        If no points are masked (nothing to impute) or unknown detection type.
+    """
     if (
         model_cfg["MODEL"]["detection_type"] == "fine-tune"
         or model_cfg["MODEL"]["detection_type"] == "zero-shot"
@@ -247,6 +399,35 @@ def check_dataloaders(
     # if getting output from a garbage outlier detection algorithm
     check_task_specific: bool = False,
 ):
+    """Validate PyTorch dataloader for NaN values and proper masking.
+
+    Iterates through all batches to check for invalid data and optionally
+    verify task-specific masking requirements.
+
+    Parameters
+    ----------
+    dataloader : DataLoader
+        PyTorch DataLoader to validate.
+    model_cfg : DictConfig
+        Model configuration for task-specific checks.
+    split : str, optional
+        Split name for error reporting. Default is 'train'.
+    task : str, optional
+        Task type for validation ('imputation' or 'outlier_detection').
+        Default is 'imputation'.
+    check_task_specific : bool, optional
+        Whether to perform task-specific masking checks. Default is False.
+
+    Returns
+    -------
+    DataLoader
+        The validated dataloader (unchanged).
+
+    Raises
+    ------
+    ValueError
+        If NaN values found in input data or task-specific checks fail.
+    """
     for i, (batch_x, batch_masks, input_masks) in enumerate(dataloader):
         batch_x = batch_x.float()
         nans_in_input_mask = torch.isnan(input_masks).sum()
@@ -277,6 +458,18 @@ def check_dataloaders(
 
 
 def print_out_missingness_ratios(dataloaders):
+    """Log the percentage of masked (missing) points per split.
+
+    Parameters
+    ----------
+    dataloaders : dict
+        Dictionary mapping split names to PyTorch DataLoaders.
+
+    Raises
+    ------
+    AssertionError
+        If outlier splits have 0% missing points (unexpected).
+    """
     for split, dataloader in dataloaders.items():
         no_mask_points = 0
         no_total_points = 0
@@ -297,6 +490,37 @@ def print_out_missingness_ratios(dataloaders):
 
 
 def check_output_for_nans(batch_x, output, input_masks, labels):
+    """Validate model output for NaN values and return valid arrays.
+
+    Checks reconstruction output for NaN values and extracts only the
+    valid (non-padded) portions of the data.
+
+    Parameters
+    ----------
+    batch_x : torch.Tensor
+        Input batch tensor.
+    output : object
+        Model output with 'reconstruction' attribute of shape (samples, channels, timepoints).
+    input_masks : torch.Tensor
+        Mask indicating valid input positions (1 = valid).
+    labels : torch.Tensor
+        Ground truth labels/targets.
+
+    Returns
+    -------
+    tuple
+        (valid_x, valid_recon, valid_labels) - tensors containing only
+        valid positions.
+
+    Raises
+    ------
+    ValueError
+        If all output values are NaN.
+
+    Warnings
+    --------
+    Logs warning if some (but not all) output values are NaN.
+    """
     no_samples, no_chans, no_timepoints = output.reconstruction.shape  # (1,16,512)
     size = no_samples * no_timepoints * no_chans  # (8192, )
     reconstruction = remove_empty_channel(output.reconstruction)  # (16,512)
@@ -329,6 +553,34 @@ def init_torch_training(
     task: _TASK_TYPES = "imputation",
     create_outlier_dataloaders=False,  # for outlier_detections True
 ):
+    """Initialize PyTorch dataloaders for MOMENT training/inference.
+
+    Creates dataloaders, prints missingness statistics, and optionally
+    validates dataloader contents.
+
+    Parameters
+    ----------
+    data_dict : dict
+        Data dictionary containing 'df' with data per split.
+    cfg : DictConfig
+        Full Hydra configuration.
+    model_cfg : DictConfig
+        Model-specific configuration with TORCH settings and check_dataloader flag.
+    run_name : str
+        Run name for logging context.
+    model_name : str, optional
+        Model name for dataset creation. Default is None.
+    task : {'imputation', 'outlier_detection', 'ts_cls'}, optional
+        Task type for dataloader configuration. Default is 'imputation'.
+    create_outlier_dataloaders : bool, optional
+        Whether to create separate outlier train/test dataloaders.
+        Default is False.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping split names to PyTorch DataLoaders.
+    """
     # Create torch dataloader for both zero-shot imputation and fine-tuning
     dataloaders = create_torch_dataloaders(
         task=task,
@@ -356,21 +608,70 @@ def init_torch_training(
 
 
 def get_ts_length(dataloader):
+    """Get the time series length from a DataLoader.
+
+    Parameters
+    ----------
+    dataloader : DataLoader
+        PyTorch DataLoader with TensorDataset.
+
+    Returns
+    -------
+    int
+        Number of timepoints in the time series.
+    """
     _, no_timepoints = dataloader.dataset.tensors[0].shape
     return no_timepoints
 
 
 def get_ts_no_of_subjects(dataloader):
+    """Get the number of subjects from a DataLoader.
+
+    Parameters
+    ----------
+    dataloader : DataLoader
+        PyTorch DataLoader with TensorDataset.
+
+    Returns
+    -------
+    int
+        Number of subjects (samples) in the dataset.
+    """
     no_subjects, _ = dataloader.dataset.tensors[0].shape
     return no_subjects
 
 
 def get_ts_batch_sz(dataloader):
+    """Get the batch size from a DataLoader.
+
+    Parameters
+    ----------
+    dataloader : DataLoader
+        PyTorch DataLoader.
+
+    Returns
+    -------
+    int
+        Batch size of the dataloader.
+    """
     batch_sz = dataloader.batch_size
     return batch_sz
 
 
 def init_arrays_for_moment_fm(dataloader):
+    """Initialize arrays for storing MOMENT model predictions.
+
+    Parameters
+    ----------
+    dataloader : DataLoader
+        PyTorch DataLoader to determine array dimensions.
+
+    Returns
+    -------
+    tuple
+        (trues, preds, masks) - zero-initialized numpy arrays of shape
+        (no_subjects, no_timepoints).
+    """
     no_subjects = get_ts_no_of_subjects(dataloader)
     no_timepoints = get_ts_length(dataloader)
     trues = np.zeros((no_subjects, no_timepoints))
@@ -381,6 +682,19 @@ def init_arrays_for_moment_fm(dataloader):
 
 
 def check_reshape_of_moment_arrays(results_out):
+    """Validate that flat and 2D array shapes are consistent.
+
+    Parameters
+    ----------
+    results_out : dict
+        Results dictionary containing 'split_results' with 'arrays_flat'
+        and 'arrays' sub-dictionaries.
+
+    Raises
+    ------
+    AssertionError
+        If the total number of elements differs between flat and 2D arrays.
+    """
     no_samples_flat = len(results_out["split_results"]["arrays_flat"]["trues_valid"])
     no_samples_2d_array = results_out["split_results"]["arrays"]["trues"].size
     assert (
@@ -389,7 +703,28 @@ def check_reshape_of_moment_arrays(results_out):
 
 
 def reshape_np_array_windows(array_dict, cfg, outlier_model_cfg):
+    """Reshape windowed arrays back to original PLR signal length.
+
+    Applies reshaping to all arrays in the dictionary, converting from
+    windowed format (e.g., 64x512) back to original format (e.g., 16x1981).
+
+    Parameters
+    ----------
+    array_dict : dict
+        Dictionary of arrays keyed by name to reshape.
+    cfg : DictConfig
+        Configuration with DATA.PLR_length.
+    outlier_model_cfg : DictConfig
+        Model configuration with TORCH.DATASET.trim_to_size.
+
+    Returns
+    -------
+    dict
+        Dictionary with reshaped arrays.
+    """
+
     def reshape_func(array, cfg, outlier_model_cfg):
+        """Reshape single array to original shape, or return unchanged if None or not 2D."""
         if array is not None:
             if len(array.shape) == 2:
                 array_2D = array
@@ -413,6 +748,26 @@ def reshape_np_array_windows(array_dict, cfg, outlier_model_cfg):
 
 
 def reshape_finetune_arrays(results, split, outlier_model_cfg, cfg):
+    """Reshape all arrays in fine-tuning results to original PLR length.
+
+    Iterates through results categories and reshapes any 'arrays' entries.
+
+    Parameters
+    ----------
+    results : dict
+        Results dictionary with nested structure containing 'arrays' entries.
+    split : str
+        Split name (unused but kept for logging/debugging).
+    outlier_model_cfg : DictConfig
+        Model configuration for window size.
+    cfg : DictConfig
+        Configuration for PLR length.
+
+    Returns
+    -------
+    dict
+        Deep copy of results with reshaped arrays.
+    """
     # Loop through all the 2D arrays and reshape them to the original shape
     results_out = deepcopy(results)
     for category_name, category in results.items():
@@ -462,6 +817,24 @@ def reshape_array_to_original_shape(array, cfg, outlier_model_cfg, dim: int = 2)
 def reshape_to_original_lengths(
     results: dict, split: str, outlier_model_cfg: DictConfig, cfg: DictConfig
 ):
+    """Reshape all result arrays from windowed to original PLR length.
+
+    Parameters
+    ----------
+    results : dict
+        Dictionary of arrays keyed by output type.
+    split : str
+        Split name for logging.
+    outlier_model_cfg : DictConfig
+        Model configuration with window size.
+    cfg : DictConfig
+        Configuration with PLR length.
+
+    Returns
+    -------
+    dict
+        Dictionary with reshaped arrays.
+    """
     results_out = {}
     logger.info(
         "{} | Reshaping the results to the original lengths (e.g. from (64,512) to (16,1981))".format(
@@ -478,10 +851,44 @@ def reshape_to_original_lengths(
 
 
 def add_empty_channel(x):
+    """Add a channel dimension to a 2D tensor.
+
+    Parameters
+    ----------
+    x : torch.Tensor
+        2D tensor of shape (batch, timepoints).
+
+    Returns
+    -------
+    torch.Tensor
+        3D tensor of shape (batch, 1, timepoints).
+
+    Raises
+    ------
+    AssertionError
+        If input is not 2D.
+    """
     assert len(x.shape) == 2, "Input must be 2D"
     return x.unsqueeze(1)
 
 
 def remove_empty_channel(x):
+    """Remove the channel dimension from a 3D tensor.
+
+    Parameters
+    ----------
+    x : torch.Tensor
+        3D tensor of shape (batch, 1, timepoints).
+
+    Returns
+    -------
+    torch.Tensor
+        2D tensor of shape (batch, timepoints).
+
+    Raises
+    ------
+    AssertionError
+        If input is not 3D.
+    """
     assert len(x.shape) == 3, "Input must be 3D"
     return x.squeeze(1)

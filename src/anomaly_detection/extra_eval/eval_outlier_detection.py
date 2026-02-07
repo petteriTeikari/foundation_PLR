@@ -1,32 +1,67 @@
 import warnings
 from copy import deepcopy
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-from loguru import logger
 import torch
-from torch import nn
-from sklearn.metrics import confusion_matrix
+from loguru import logger
 from omegaconf import DictConfig
+from torch import nn
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 # from src.submodules.UniTS.utils.extra_eval.adjf1 import adjbestf1_with_threshold
-
-from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import accuracy_score
-from tqdm import tqdm
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    precision_recall_fscore_support,
+)
 
 from src.anomaly_detection.anomaly_detection_metrics_wrapper import (
     adjbestf1_with_threshold,
 )
 
 
-def get_padding_indices(length_orig: int = 1981, length_padded: int = 2048):
+def get_padding_indices(
+    length_orig: int = 1981, length_padded: int = 2048
+) -> Tuple[int, int]:
+    """
+    Calculate start and end indices for extracting original signal from padded array.
+
+    Parameters
+    ----------
+    length_orig : int, optional
+        Original signal length before padding, by default 1981.
+    length_padded : int, optional
+        Length after padding, by default 2048.
+
+    Returns
+    -------
+    tuple of int
+        Start and end indices (start_idx, end_idx) for slicing the padded array.
+    """
     no_points_pad = length_padded - length_orig  # 67
     start_idx = no_points_pad // 2  # 33
     end_idx = start_idx + length_orig  # 2014
     return start_idx, end_idx
 
 
-def unpad_glaucoma_PLR(array: np.ndarray, length_PLR: int = 1981):
+def unpad_glaucoma_PLR(array: np.ndarray, length_PLR: int = 1981) -> np.ndarray:
+    """
+    Remove padding from PLR signal array to restore original length.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Padded array with shape (n_subjects, padded_length).
+    length_PLR : int, optional
+        Original PLR signal length to restore, by default 1981.
+
+    Returns
+    -------
+    np.ndarray
+        Unpadded array with shape (n_subjects, length_PLR).
+    """
     start_idx, end_idx = get_padding_indices(
         length_orig=length_PLR, length_padded=array.shape[1]
     )
@@ -34,15 +69,53 @@ def unpad_glaucoma_PLR(array: np.ndarray, length_PLR: int = 1981):
     return array_out
 
 
-def get_no_of_windows(length_PLR: int = 1981, window_size: int = 512):
+def get_no_of_windows(length_PLR: int = 1981, window_size: int = 512) -> int:
+    """
+    Calculate the number of windows needed to cover the full PLR signal.
+
+    Parameters
+    ----------
+    length_PLR : int, optional
+        Total length of the PLR signal, by default 1981.
+    window_size : int, optional
+        Size of each window, by default 512.
+
+    Returns
+    -------
+    int
+        Number of windows (ceiling division).
+    """
     return np.ceil(length_PLR / window_size).astype(int)
 
 
-def reshape_array(array, window_size: int = 500, length_PLR: int = 1981):
+def reshape_array(
+    array: np.ndarray, window_size: int = 500, length_PLR: int = 1981
+) -> np.ndarray:
     """
-    Reshape the array to the original shape (e.g. from (64,512) to (16,1981))
-    array: np.array
-        shape: (no_subjects, no_timepoints)
+    Reshape windowed array back to original subject-wise shape.
+
+    Converts from windowed format (e.g., 64 windows x 512 points) back to
+    subject format (e.g., 16 subjects x 1981 points) and removes padding.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Input array in windowed format, shape (n_windows, window_size) or
+        (n_windows, window_size, 1) or flattened 1D.
+    window_size : int, optional
+        Size of each window, by default 500.
+    length_PLR : int, optional
+        Original PLR signal length, by default 1981.
+
+    Returns
+    -------
+    np.ndarray
+        Reshaped array with shape (n_subjects, length_PLR).
+
+    Raises
+    ------
+    ValueError
+        If array has more than 3 dimensions.
     """
     windows_per_subject = get_no_of_windows(
         length_PLR=length_PLR,
@@ -75,7 +148,25 @@ def reshape_array(array, window_size: int = 500, length_PLR: int = 1981):
     return array
 
 
-def adjustment(gt, pred):
+def adjustment(gt: np.ndarray, pred: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Apply point-adjustment to predictions based on ground truth anomaly segments.
+
+    When a prediction correctly identifies any point within an anomaly segment,
+    all points in that segment are marked as correctly predicted.
+
+    Parameters
+    ----------
+    gt : array-like
+        Ground truth binary labels (1 = anomaly, 0 = normal).
+    pred : array-like
+        Predicted binary labels (1 = anomaly, 0 = normal).
+
+    Returns
+    -------
+    tuple of array-like
+        Adjusted (gt, pred) arrays with point-adjustment applied.
+    """
     anomaly_state = False
     for i in range(len(gt)):
         if gt[i] == 1 and pred[i] == 1 and not anomaly_state:
@@ -102,10 +193,32 @@ def adjustment(gt, pred):
 def outlier_scalar_metric_wrapper(
     preds: np.ndarray,
     gt: np.ndarray,
-    score: np.ndarray = None,
-    cfg: DictConfig = None,
-    adj_f1_threshold: float = None,
-):
+    score: Optional[np.ndarray] = None,
+    cfg: Optional[DictConfig] = None,
+    adj_f1_threshold: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Compute scalar metrics for outlier detection evaluation.
+
+    Parameters
+    ----------
+    preds : np.ndarray
+        Binary predictions (1 = outlier, 0 = normal).
+    gt : np.ndarray
+        Ground truth binary labels.
+    score : np.ndarray, optional
+        Continuous anomaly scores for adjusted F1 computation.
+    cfg : DictConfig, optional
+        Configuration object (currently unused).
+    adj_f1_threshold : float, optional
+        Pre-computed threshold for adjusted F1; if None, optimal is found.
+
+    Returns
+    -------
+    dict
+        Dictionary containing accuracy, precision, recall, f1, support, fp,
+        unadjusted_f1, and adj_f1_threshold.
+    """
     warnings.simplefilter("ignore")
     if len(gt.shape) > 1:
         gt = gt.flatten()
@@ -152,9 +265,30 @@ def subjectwise_outlier_metric_wrapper(
     preds: np.ndarray,
     gt: np.ndarray,
     score: np.ndarray,
-    cfg: DictConfig = None,
-    global_metrics: dict = None,
-):
+    cfg: Optional[DictConfig] = None,
+    global_metrics: Optional[Dict[str, Any]] = None,
+) -> Dict[str, List[Any]]:
+    """
+    Compute outlier detection metrics for each subject individually.
+
+    Parameters
+    ----------
+    preds : np.ndarray
+        Binary predictions with shape (n_subjects, n_timepoints).
+    gt : np.ndarray
+        Ground truth labels with shape (n_subjects, n_timepoints).
+    score : np.ndarray
+        Continuous anomaly scores with shape (n_subjects, n_timepoints).
+    cfg : DictConfig, optional
+        Configuration object passed to metric wrapper.
+    global_metrics : dict, optional
+        Dictionary containing global adj_f1_threshold to use for all subjects.
+
+    Returns
+    -------
+    dict
+        Dictionary with lists of per-subject metric values for each metric key.
+    """
     no_subjects, no_timepoints = gt.shape
     metrics_subjectwise = {}
 
@@ -185,7 +319,28 @@ def subjectwise_outlier_metric_wrapper(
     return metrics_subjectwise
 
 
-def update_CI_to_outlier_scalars(metrics_subjectwise, global_metrics, p=0.05):
+def update_CI_to_outlier_scalars(
+    metrics_subjectwise: Dict[str, List[Any]],
+    global_metrics: Dict[str, Any],
+    p: float = 0.05,
+) -> Dict[str, Any]:
+    """
+    Add confidence interval bounds to global metrics from subject-wise values.
+
+    Parameters
+    ----------
+    metrics_subjectwise : dict
+        Dictionary with lists of per-subject metric values.
+    global_metrics : dict
+        Dictionary of global metrics to update with CI bounds.
+    p : float, optional
+        Percentile for CI bounds (lower=p, upper=100-p), by default 0.05.
+
+    Returns
+    -------
+    dict
+        Updated global_metrics with '{key}_CI' entries containing [lower, upper] bounds.
+    """
     for key in metrics_subjectwise.keys():
         array_of_values = np.array(metrics_subjectwise[key])
         if np.all(array_of_values == None):  # noqa E711
@@ -201,10 +356,33 @@ def get_scalar_outlier_metrics(
     preds: np.ndarray,
     gt: np.ndarray,
     score: np.ndarray,
-    cfg: DictConfig = None,
-    threshold: float = None,
+    cfg: Optional[DictConfig] = None,
+    threshold: Optional[float] = None,
     use_detection_adjustment: bool = True,
-):
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Compute global and subject-wise outlier detection metrics.
+
+    Parameters
+    ----------
+    preds : np.ndarray
+        Binary predictions with shape (n_subjects, n_timepoints).
+    gt : np.ndarray
+        Ground truth labels with shape (n_subjects, n_timepoints).
+    score : np.ndarray
+        Continuous anomaly scores with shape (n_subjects, n_timepoints).
+    cfg : DictConfig, optional
+        Configuration object passed to metric wrappers.
+    threshold : float, optional
+        Pre-computed threshold for adjusted F1.
+    use_detection_adjustment : bool, optional
+        Whether to apply point-adjustment to predictions, by default True.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'global' and 'subjectwise' metric dictionaries.
+    """
     if use_detection_adjustment:
         gt, preds = detection_adjustment(gt=gt, pred=preds)
 
@@ -222,7 +400,29 @@ def get_scalar_outlier_metrics(
     return metrics
 
 
-def metrics_per_split(energy, labels, threshold):
+def metrics_per_split(
+    energy: np.ndarray,
+    labels: np.ndarray,
+    threshold: float,
+) -> Dict[str, Any]:
+    """
+    Compute outlier detection metrics for a data split (train or test).
+
+    Parameters
+    ----------
+    energy : np.ndarray
+        Anomaly scores/energy values with shape (n_subjects, n_timepoints).
+    labels : np.ndarray
+        Ground truth binary labels with shape (n_subjects, n_timepoints).
+    threshold : float
+        Threshold for converting energy scores to binary predictions.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'scalars' (metrics), 'arrays' (trues, pred_mask),
+        and 'arrays_flat' keys.
+    """
     metrics_test = {"scalars": {}, "arrays": {}, "arrays_flat": {}}
     metrics_test["arrays"]["trues"] = labels
 
@@ -241,7 +441,28 @@ def metrics_per_split(energy, labels, threshold):
     return metrics_test
 
 
-def detection_adjustment(gt, pred):
+def detection_adjustment(
+    gt: np.ndarray,
+    pred: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Apply point-adjustment to predictions, handling both 1D and 2D arrays.
+
+    Wrapper around adjustment() that preserves array shape after flattening
+    and adjustment.
+
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground truth binary labels, 1D or 2D (n_subjects, n_timepoints).
+    pred : np.ndarray
+        Predicted binary labels, same shape as gt.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        Adjusted (gt, pred) arrays with original shape preserved.
+    """
     if gt.ndim == 1:
         # no_subjects, no_timepoints = None, gt.shape
         gt, pred = adjustment(gt.flatten(), pred.flatten())
@@ -256,19 +477,61 @@ def detection_adjustment(gt, pred):
     return gt, pred
 
 
-def get_score(criterion, batch_x, outputs):
+def get_score(
+    criterion: nn.Module,
+    batch_x: torch.Tensor,
+    outputs: torch.Tensor,
+) -> np.ndarray:
+    """
+    Compute reconstruction error score from model outputs.
+
+    Parameters
+    ----------
+    criterion : nn.Module
+        Loss function (e.g., MSELoss with reduction='none').
+    batch_x : torch.Tensor
+        Input batch with shape (batch_size, seq_len, n_features).
+    outputs : torch.Tensor
+        Model reconstruction outputs with same shape as batch_x.
+
+    Returns
+    -------
+    np.ndarray
+        Mean reconstruction error per sample, shape (batch_size, seq_len).
+    """
     score = torch.mean(criterion(batch_x, outputs), dim=-1)
     score = score.detach().cpu().numpy()
     return score
 
 
-def forward_three_item_loader(loader, model, device, criterion):
+def forward_three_item_loader(
+    loader: DataLoader,
+    model: nn.Module,
+    device: torch.device,
+    criterion: nn.Module,
+) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
     """
-    args:
-        batch_x: torch.Tensor
-            expected size (batch_size, seq_len, num_features), e.g. (128,100,25) for the demo PSM dataset
-        batch_y: torch.Tensor
-            expected size (batch_size, seq_len, 1), e.g. (128,100,1) for the demo PSM dataset
+    Forward pass through dataloader returning 3 items per batch.
+
+    Used for Foundation_PLR loaders that return (batch_x, batch_y, input_mask).
+
+    Parameters
+    ----------
+    loader : DataLoader
+        PyTorch DataLoader yielding (batch_x, batch_y, mask) tuples.
+        batch_x: shape (batch_size, seq_len, n_features), e.g., (128, 100, 25).
+        batch_y: shape (batch_size, seq_len, 1), e.g., (128, 100, 1).
+    model : nn.Module
+        Reconstruction model to evaluate.
+    device : torch.device
+        Device to run inference on.
+    criterion : nn.Module
+        Loss function for computing reconstruction error.
+
+    Returns
+    -------
+    tuple of lists
+        (attens_energy, recon, labels) where each is a list of np.ndarray batches.
     """
     attens_energy = []
     labels = []
@@ -288,14 +551,34 @@ def forward_three_item_loader(loader, model, device, criterion):
 
 
 def forward_two_item_loader(
-    loader,
-    model,
-    device,
-    criterion,
-    task_id=0,
-):
+    loader: DataLoader,
+    model: nn.Module,
+    device: torch.device,
+    criterion: nn.Module,
+    task_id: int = 0,
+) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
     """
-    See test_anomaly_detection() in exp_sup.py
+    Forward pass through dataloader returning 2 items per batch.
+
+    Used for UniTS-style loaders that return only (batch_x, batch_y).
+
+    Parameters
+    ----------
+    loader : DataLoader
+        PyTorch DataLoader yielding (batch_x, batch_y) tuples.
+    model : nn.Module
+        Reconstruction model with task_id and task_name support.
+    device : torch.device
+        Device to run inference on.
+    criterion : nn.Module
+        Loss function for computing reconstruction error.
+    task_id : int, optional
+        Task identifier for multi-task models, by default 0.
+
+    Returns
+    -------
+    tuple of lists
+        (attens_energy, recon, labels) where each is a list of np.ndarray batches.
     """
 
     attens_energy = []
@@ -324,8 +607,33 @@ def forward_two_item_loader(
 
 
 def reshape_arrays_to_input_lengths(
-    attens_energy, labels, recon, length_PLR: int = 1981, window_size: int = 500
-):
+    attens_energy: np.ndarray,
+    labels: np.ndarray,
+    recon: np.ndarray,
+    length_PLR: int = 1981,
+    window_size: int = 500,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Reshape all output arrays from windowed format back to original PLR length.
+
+    Parameters
+    ----------
+    attens_energy : np.ndarray
+        Anomaly scores in windowed format.
+    labels : np.ndarray
+        Ground truth labels in windowed format.
+    recon : np.ndarray
+        Reconstruction outputs in windowed format.
+    length_PLR : int, optional
+        Original PLR signal length, by default 1981.
+    window_size : int, optional
+        Size of each window, by default 500.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        (attens, labels, recon) all with shape (n_subjects, length_PLR).
+    """
     attens = reshape_array(
         attens_energy, window_size=window_size, length_PLR=length_PLR
     )
@@ -336,8 +644,44 @@ def reshape_arrays_to_input_lengths(
 
 
 def get_attens_energy(
-    loader, model, device, criterion, window_size: int = 100, length_PLR: int = 1981
-):
+    loader: DataLoader,
+    model: nn.Module,
+    device: torch.device,
+    criterion: nn.Module,
+    window_size: int = 100,
+    length_PLR: int = 1981,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Compute anomaly scores, labels, and reconstructions from a dataloader.
+
+    Automatically detects loader format (2-item or 3-item) and processes
+    accordingly.
+
+    Parameters
+    ----------
+    loader : DataLoader
+        PyTorch DataLoader for the dataset.
+    model : nn.Module
+        Reconstruction model to evaluate.
+    device : torch.device
+        Device to run inference on.
+    criterion : nn.Module
+        Loss function for computing reconstruction error.
+    window_size : int, optional
+        Size of each window, by default 100.
+    length_PLR : int, optional
+        Original PLR signal length, by default 1981.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        (attens_energy, labels, recon) all with shape (n_subjects, length_PLR).
+
+    Raises
+    ------
+    ValueError
+        If dataloader returns unsupported number of items per batch.
+    """
     example: list = next(iter(loader))
     no_of_items_in_batch = len(example)
 
@@ -379,8 +723,39 @@ def get_attens_energy(
     return attens_energy, labels, recon
 
 
-def combine_lists_of_ndarrays(list1: list, list2: list):
-    def convert_list_to_array(list):
+def combine_lists_of_ndarrays(
+    list1: List[np.ndarray], list2: List[np.ndarray]
+) -> np.ndarray:
+    """
+    Combine two lists of numpy arrays into a single concatenated array.
+
+    Parameters
+    ----------
+    list1 : list
+        First list of numpy arrays to combine.
+    list2 : list
+        Second list of numpy arrays to combine.
+
+    Returns
+    -------
+    np.ndarray
+        Flattened and concatenated 1D array from both input lists.
+    """
+
+    def convert_list_to_array(list: List[np.ndarray]) -> np.ndarray:
+        """
+        Stack and flatten a list of numpy arrays into a 1D array.
+
+        Parameters
+        ----------
+        list : list of np.ndarray
+            List of numpy arrays to combine.
+
+        Returns
+        -------
+        np.ndarray
+            Flattened 1D array containing all elements from the input arrays.
+        """
         return np.vstack(list).flatten()
 
     array1 = convert_list_to_array(list=list1)
@@ -389,8 +764,27 @@ def combine_lists_of_ndarrays(list1: list, list2: list):
 
 
 def convert_flat_to_2d_array(
-    flat_arrays: dict, window_size: int = 500, length_PLR: int = 1981
-):
+    flat_arrays: Dict[str, np.ndarray],
+    window_size: int = 500,
+    length_PLR: int = 1981,
+) -> Dict[str, np.ndarray]:
+    """
+    Convert dictionary of flat arrays to 2D subject-wise format.
+
+    Parameters
+    ----------
+    flat_arrays : dict
+        Dictionary mapping keys to flattened numpy arrays.
+    window_size : int, optional
+        Size of each window for reshaping, by default 500.
+    length_PLR : int, optional
+        Original PLR signal length, by default 1981.
+
+    Returns
+    -------
+    dict
+        Dictionary with same keys, values reshaped to (n_subjects, length_PLR).
+    """
     dict_out = {}
     for key, array in flat_arrays.items():
         dict_out[key] = reshape_array(
@@ -399,18 +793,54 @@ def convert_flat_to_2d_array(
 
 
 def eval_outlier_detection(
-    model,
-    train_loader,
-    test_loader,
-    device_id: int = 0,
-    device=None,
-    task_id: int = None,
+    model: nn.Module,
+    train_loader: DataLoader,
+    test_loader: DataLoader,
+    _device_id: int = 0,
+    device: Optional[torch.device] = None,
+    task_id: Optional[int] = None,
     features: str = "S",
     anomaly_ratio: float = 10,
     # these are now annoyingly hard-coded :(
     window_size: int = 500,
     length_PLR: int = 1981,
-):
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Evaluate anomaly detection model on train and test splits.
+
+    Computes reconstruction errors, determines threshold from combined data,
+    and evaluates detection performance on both splits.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Trained reconstruction model to evaluate.
+    train_loader : DataLoader
+        DataLoader for training data.
+    test_loader : DataLoader
+        DataLoader for test data.
+    _device_id : int, optional
+        GPU device ID (unused), by default 0.
+    device : torch.device, optional
+        Device for inference.
+    task_id : int, optional
+        Task identifier for multi-task models.
+    features : str, optional
+        Feature type indicator, by default "S".
+    anomaly_ratio : float, optional
+        Initial anomaly ratio estimate (overridden by actual ratio), by default 10.
+    window_size : int, optional
+        Size of each window, by default 500.
+    length_PLR : int, optional
+        Original PLR signal length, by default 1981.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'outlier_train' and 'outlier_test' keys, each containing
+        'scalars' (metrics), 'arrays' (predictions, ground truth), and
+        reconstruction outputs.
+    """
     # https://github.com/thuml/Time-Series-Library/blob/c80b851784184e088cc12afc9472fe55a06d6ada/exp/exp_anomaly_detection.py#L128
     model.eval()
     warnings.simplefilter("ignore")

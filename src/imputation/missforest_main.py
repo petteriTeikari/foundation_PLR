@@ -1,17 +1,40 @@
+import time
 from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-from loguru import logger
-import time
 import polars as pl
-from omegaconf import DictConfig
+from loguru import logger
 from missforest import MissForest
+from omegaconf import DictConfig
 
 from src.imputation.train_utils import imputation_per_split_of_dict
 
 
 def missforest_create_imputation_dicts(model, df_dict, source_data, cfg):
+    """Create imputation dictionaries from MissForest model outputs.
+
+    Transforms MissForest imputation results into the standardized format
+    used by PyPOTS models for downstream processing compatibility.
+
+    Parameters
+    ----------
+    model : MissForest
+        Trained MissForest model.
+    df_dict : dict
+        Dictionary of DataFrames keyed by split name ('train', 'test').
+    source_data : dict
+        Source data containing 'df' with data dictionaries per split
+        and 'preprocess' with standardization statistics.
+    cfg : DictConfig
+        Configuration for imputation settings.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping split names to imputation results in
+        PyPOTS-compatible format.
+    """
     # Harmonize the output with the PyPOTS outputs, so that the downstream code works well
     # see pypots_imputer_wrapper()
     imputed_dict = {}
@@ -34,6 +57,21 @@ def missforest_create_imputation_dicts(model, df_dict, source_data, cfg):
 
 
 def check_df(df: pd.DataFrame):
+    """Validate and convert DataFrame for MissForest compatibility.
+
+    Logs the number of NaN values and ensures all columns are float type
+    to prevent type errors during MissForest fitting.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame with potential NaN values.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with all columns cast to float type.
+    """
     no_of_nans_cols = df.isnull().sum()
     no_of_nans = no_of_nans_cols.sum()
     logger.info("Number of NaNs in train_df: {}".format(no_of_nans))
@@ -52,12 +90,27 @@ def check_df(df: pd.DataFrame):
 
     # dtypes = df.dtypes
     df = df.astype(float)
-    #logger.info(df.dtypes)
+    # logger.info(df.dtypes)
 
     return df
 
 
 def missforest_fit_script(train_df: pd.DataFrame, cfg: DictConfig):
+    """Fit a MissForest model on training data.
+
+    Parameters
+    ----------
+    train_df : pd.DataFrame
+        Training DataFrame with NaN values to learn imputation patterns from.
+    cfg : DictConfig
+        Configuration containing MODELS.MISSFOREST.MODEL parameters.
+
+    Returns
+    -------
+    tuple
+        (model, results) where model is the fitted MissForest instance and
+        results is a dict with 'train' timing in seconds.
+    """
     train_df = check_df(df=train_df)
     logger.info("Fitting the MissForest model")
     start_time = time.time()
@@ -75,7 +128,31 @@ def missforest_fit_script(train_df: pd.DataFrame, cfg: DictConfig):
 
 
 def get_dataframes_from_dict_for_missforest(source_data: dict):
+    """Convert source data dictionaries to DataFrames for MissForest.
+
+    Extracts arrays from source data, applies masks by setting masked
+    values to NaN, and converts to pandas DataFrames.
+
+    Parameters
+    ----------
+    source_data : dict
+        Source data containing 'df' with 'train' and 'test' splits,
+        each having 'data' with 'X' arrays and 'mask' arrays.
+
+    Returns
+    -------
+    tuple
+        (df_train, df_test) as pandas DataFrames with NaN values where
+        mask indicates missing data.
+
+    Raises
+    ------
+    AssertionError
+        If input arrays contain unexpected NaN values or masking fails.
+    """
+
     def get_df_per_split(split_dict):
+        """Extract array from split dict, apply mask, and convert to DataFrame."""
         array = split_dict["data"]["X"]
         no_of_nans = np.sum(np.isnan(array))
         assert no_of_nans == 0, "There are NaNs in the data"
@@ -108,26 +185,9 @@ def missforest_main(
     """
     # MissForest is not learning from data, rather working on dataset-wise, so not even a good algorithm
     # to be used in production with new patients
-    raise NotImplementedError('Check for the output scaling, test/train seems differently scaled/standardized')
-    model_artifacts = {}
-
-    # Transform helper from data_df to easier to use data formats
-    df_train, df_test = get_dataframes_from_dict_for_missforest(source_data)
-
-    # Fit the model
-    model, model_artifacts["timing"] = missforest_fit_script(train_df=df_train, cfg=cfg)
-
-    # Impute the data
-    start_time = time.time()  # This is very slow then
-    df_dict = {"train": df_train, "test": df_test}
-    model_artifacts["imputation"] = missforest_create_imputation_dicts(
-        model, df_dict, source_data, cfg
+    # MissForest not implemented - placeholder for future work.
+    # See function docstring for references on implementation approach.
+    raise NotImplementedError(
+        "MissForest imputation not implemented. "
+        "Check for the output scaling, test/train seems differently scaled/standardized"
     )
-    model_artifacts["timing"]["imputation"] = time.time() - start_time
-    logger.info(
-        "Imputation done in {:.2f} seconds".format(
-            model_artifacts["timing"]["imputation"]
-        )
-    )
-
-    return model, model_artifacts

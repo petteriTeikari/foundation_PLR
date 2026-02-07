@@ -2,11 +2,11 @@
 # https://github.com/moment-timeseries-foundation-model/moment-research/blob/main/moment/tasks/anomaly_detection_finetune.py
 # Simplified adaptation to this codebase
 
-import torch.nn as nn
 import numpy as np
-from omegaconf import DictConfig
 import torch
+import torch.nn as nn
 from loguru import logger
+from omegaconf import DictConfig
 from tqdm import tqdm
 
 from src.anomaly_detection.anomaly_detection_metrics_wrapper import (
@@ -15,13 +15,13 @@ from src.anomaly_detection.anomaly_detection_metrics_wrapper import (
 )
 from src.anomaly_detection.anomaly_utils import log_anomaly_model_as_mlflow_artifact
 from src.anomaly_detection.momentfm_outlier.moment_anomaly_utils import (
-    select_criterion,
-    select_optimizer,
-    init_lr_scheduler,
+    check_if_improved,
     debug_model_outputs,
     dtype_map,
+    init_lr_scheduler,
     list_of_arrays_to_array,
-    check_if_improved,
+    select_criterion,
+    select_optimizer,
 )
 from src.anomaly_detection.momentfm_outlier.moment_forward import momentfm_forward_pass
 from src.anomaly_detection.momentfm_outlier.moment_io import save_model_to_disk
@@ -44,6 +44,40 @@ def evaluate_model(
     tqdm_string: str = "",
     task_name: str = "outlier_detection",
 ):
+    """
+    Evaluate MOMENT model on all data splits.
+
+    Parameters
+    ----------
+    dataloaders : dict[str, torch.utils.data.DataLoader]
+        Dictionary of dataloaders for each split.
+    data_dict : dict
+        Data dictionary with arrays and metadata.
+    model : torch.nn.Module
+        MOMENT model to evaluate.
+    device : str
+        Device to run evaluation on ('cpu' or 'cuda').
+    criterion : torch.nn.Module
+        Loss function.
+    finetune_cfg : DictConfig
+        Fine-tuning configuration.
+    outlier_model_cfg : DictConfig
+        Model configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    cur_epoch : int
+        Current training epoch.
+    tqdm_string : str, optional
+        Prefix for progress bar. Default is "".
+    task_name : str, optional
+        Task name. Default is "outlier_detection".
+
+    Returns
+    -------
+    dict
+        Evaluation results for each split containing average_loss,
+        best_metric, and results_dict.
+    """
     eval_dict = {}
     for split in dataloaders.keys():
         eval_dict[split] = eval_moment_outlier_finetune(
@@ -83,6 +117,27 @@ def evaluate_model(
 
 
 def post_eval_checks(dataloader, results_dict, split, cfg, finetune_cfg):
+    """
+    Validate evaluation results consistency.
+
+    Parameters
+    ----------
+    dataloader : torch.utils.data.DataLoader
+        The dataloader used for evaluation.
+    results_dict : dict
+        Evaluation results to validate.
+    split : str
+        Data split name.
+    cfg : DictConfig
+        Full Hydra configuration.
+    finetune_cfg : DictConfig
+        Fine-tuning configuration.
+
+    Raises
+    ------
+    AssertionError
+        If number of predictions doesn't match input samples.
+    """
     # Check if all the input samples got predicted (this is the outlier mask that came from the adjusted f1 score)
     if results_dict["preds"]["arrays"]["pred_mask"] is not None:
         no_of_input_samples = len(dataloader.dataset.tensors[0])
@@ -104,6 +159,40 @@ def eval_moment_outlier_finetune(
     tqdm_string: str = "",
     task_name: str = "outlier_detection",
 ):
+    """
+    Evaluate MOMENT model on a single data split.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        MOMENT model to evaluate.
+    dataloader : torch.utils.data.DataLoader
+        DataLoader for the split.
+    split : str
+        Split name ('train', 'test', 'outlier_train', 'outlier_test').
+    device : str
+        Device to run on.
+    criterion : torch.nn.Module
+        Loss function.
+    cfg : DictConfig
+        Full Hydra configuration.
+    outlier_model_cfg : DictConfig
+        Model configuration.
+    finetune_cfg : DictConfig
+        Fine-tuning configuration.
+    tqdm_string : str, optional
+        Progress bar prefix. Default is "".
+    task_name : str, optional
+        Task name. Default is "outlier_detection".
+
+    Returns
+    -------
+    dict
+        Evaluation results containing:
+        - 'average_loss': mean reconstruction loss
+        - 'best_metric': best outlier detection metric
+        - 'results_dict': detailed results with arrays and metrics
+    """
     (
         trues,
         preds,
@@ -222,6 +311,55 @@ def train_moment_outlier_finetune(
     checkpoint_path: str,
     run_name: str,
 ):
+    """
+    Train MOMENT model for outlier detection via fine-tuning.
+
+    Implements the training loop with gradient scaling, learning rate
+    scheduling, and model checkpointing.
+
+    Parameters
+    ----------
+    dataloaders : dict[str, torch.utils.data.DataLoader]
+        Dictionary of dataloaders.
+    data_dict : dict
+        Data dictionary.
+    model : torch.nn.Module
+        MOMENT model to train.
+    criterion : torch.nn.Module
+        Loss function.
+    optimizer : torch.optim.Optimizer
+        Optimizer.
+    scaler : torch.amp.GradScaler
+        Gradient scaler for mixed precision.
+    lr_scheduler : object
+        Learning rate scheduler.
+    outlier_model_cfg : DictConfig
+        Model configuration.
+    finetune_cfg : DictConfig
+        Fine-tuning configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    checkpoint_path : str
+        Directory for saving checkpoints.
+    run_name : str
+        MLflow run name.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - model : torch.nn.Module
+            Trained model.
+        - eval_dict_out : dict
+            Evaluation results for best epoch.
+        - best_epoch : int
+            Index of the best epoch.
+
+    References
+    ----------
+    https://github.com/moment-timeseries-foundation-model/moment-research/blob/
+    3ab637e413f35f2c317573c0ace280d825c558de/moment/tasks/anomaly_detection_finetune.py#L67
+    """
     # https://github.com/moment-timeseries-foundation-model/moment-research/blob/
     #    3ab637e413f35f2c317573c0ace280d825c558de/moment/tasks/anomaly_detection_finetune.py#L67
 
@@ -367,6 +505,48 @@ def init_momentfm_finetune(
     finetune_cfg: DictConfig,
     run_name: str,
 ):
+    """
+    Initialize MOMENT fine-tuning components.
+
+    Sets up criterion, optimizer, gradient scaler, and learning rate scheduler.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        MOMENT model to prepare for training.
+    dataloaders : dict[str, torch.utils.data.DataLoader]
+        Dictionary of dataloaders.
+    cfg : DictConfig
+        Full Hydra configuration.
+    outlier_model_cfg : DictConfig
+        Model configuration.
+    finetune_cfg : DictConfig
+        Fine-tuning configuration.
+    run_name : str
+        MLflow run name.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - model : torch.nn.Module
+            Prepared model.
+        - criterion : torch.nn.Module
+            Loss function.
+        - optimizer : torch.optim.Optimizer
+            Optimizer.
+        - scaler : torch.amp.GradScaler
+            Gradient scaler.
+        - lr_scheduler : object
+            Learning rate scheduler.
+        - checkpoint_path : str
+            Directory for checkpoints.
+
+    Raises
+    ------
+    ValueError
+        If model head is frozen or head parameters don't require grad.
+    """
     # Where do artifacts go
     checkpoint_path = get_artifacts_dir(
         service_name="outlier_detection", run_name=run_name
@@ -442,6 +622,38 @@ def momentfm_outlier_finetune(
     outlier_model_cfg: DictConfig,
     run_name: str,
 ):
+    """
+    Fine-tune MOMENT model for outlier detection.
+
+    Main entry point for fine-tuning. Initializes training components
+    and runs the training loop.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        MOMENT model to fine-tune.
+    dataloaders : dict[str, torch.utils.data.DataLoader]
+        Dictionary of dataloaders.
+    data_dict : dict
+        Data dictionary.
+    cfg : DictConfig
+        Full Hydra configuration.
+    outlier_model_cfg : DictConfig
+        Model configuration.
+    run_name : str
+        MLflow run name.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - model : torch.nn.Module
+            Fine-tuned model.
+        - eval_dicts : dict
+            Evaluation results.
+        - best_epoch : int
+            Index of the best epoch.
+    """
     # Init training
     finetune_cfg = outlier_model_cfg["LINEAR_PROBING"]
     model, criterion, optimizer, scaler, lr_scheduler, checkpoint_path = (

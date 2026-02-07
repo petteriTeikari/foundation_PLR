@@ -1,8 +1,9 @@
 import importlib
-import os
-from loguru import logger
+from pathlib import Path
+
 import polars as pl
 import torch
+from loguru import logger
 from omegaconf import DictConfig
 
 # from src.anomaly_detection.units.units_train import units_train_script
@@ -12,6 +13,22 @@ from src.data_io.ts_format import export_df_to_ts_format
 def units_model_wrapper(
     configs: DictConfig, path: str, device, model_cfg: DictConfig, cfg: DictConfig
 ):
+    """
+    Initialize and configure UniTS model for outlier detection.
+
+    Parameters
+    ----------
+    configs : DictConfig
+        Model configuration with model name and task config.
+    path : str
+        Path for logging and checkpoints.
+    device : str
+        Device to load model onto.
+    model_cfg : DictConfig
+        Model-specific configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    """
     # Define the model
     model = build_model(
         model_name=configs.model,
@@ -27,6 +44,27 @@ def units_model_wrapper(
 
 
 def build_model(model_name: str, device, task_data_config_list: list):
+    """
+    Build UniTS model from module.
+
+    Parameters
+    ----------
+    model_name : str
+        Name of the model module to import.
+    device : str
+        Device to load model onto.
+    task_data_config_list : list
+        List of task data configurations.
+
+    Returns
+    -------
+    torch.nn.Module
+        Initialized UniTS model.
+
+    References
+    ----------
+    https://github.com/mims-harvard/UniTS/blob/0e0281482864017cac8832b2651906ff5375a34e/exp/exp_pretrain.py#L83
+    """
     # https://github.com/mims-harvard/UniTS/blob/0e0281482864017cac8832b2651906ff5375a34e/exp/exp_pretrain.py#L83
     module = importlib.import_module("models." + model_name)
     model = module.Model(task_data_config_list, pretrain=True).to(device)
@@ -34,6 +72,19 @@ def build_model(model_name: str, device, task_data_config_list: list):
 
 
 def units_model_param_check(model, path: str):
+    """
+    Log UniTS model parameter counts.
+
+    Separates prompt-related parameters from core model parameters
+    for accurate parameter counting.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        UniTS model to analyze.
+    path : str
+        Path for logging context.
+    """
     # Model param check
     pytorch_total_params = sum(p.numel() for p in model.parameters())
     logger.info(
@@ -63,12 +114,29 @@ def units_model_param_check(model, path: str):
 
 def get_units_outlier_model(path: str, pretrained_weight: str, model):
     """
-    Load pretrained weights (Optional)
+    Load pretrained weights into UniTS model.
+
+    Parameters
+    ----------
+    path : str
+        Base path for checkpoint files.
+    pretrained_weight : str
+        Path to pretrained weights, 'auto' for default, or empty to skip.
+    model : torch.nn.Module
+        UniTS model to load weights into.
+
+    Returns
+    -------
+    torch.nn.Module
+        Model with loaded weights.
+
+    References
+    ----------
     https://github.com/mims-harvard/UniTS/blob/0e0281482864017cac8832b2651906ff5375a34e/exp/exp_sup.py#L275C9-L294C41
     """
     if pretrained_weight is not None:
         if pretrained_weight == "auto":
-            pretrain_weight_path = os.path.join(path, "pretrain_checkpoint.pth")
+            pretrain_weight_path = str(Path(path) / "pretrain_checkpoint.pth")
         else:
             pretrain_weight_path = pretrained_weight
         logger.info("loading pretrained model:", pretrain_weight_path, folder=path)
@@ -96,10 +164,39 @@ def units_outlier_wrapper(
     just_export_data_to_ts_format: bool = True,
 ):
     """
-    https://github.com/mims-harvard/UniTS
+    Run UniTS-based outlier detection on PLR data.
 
-    # please set the pretrianed model path in the script.
-    bash ./scripts/few_shot_anomaly_detection/UniTS_finetune_few_shot_anomaly_detection.sh
+    Currently primarily exports data to .ts format for external processing.
+    Full integration with training is in progress.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input PLR data.
+    cfg : DictConfig
+        Full Hydra configuration.
+    model_cfg : DictConfig
+        UniTS model configuration.
+    experiment_name : str
+        MLflow experiment name.
+    run_name : str
+        MLflow run name.
+    task : str, optional
+        Task name. Default is 'outlier_detection'.
+    model_name : str, optional
+        Model name. Default is 'UniTS'.
+    just_export_data_to_ts_format : bool, optional
+        If True, only export data to .ts format. Default is True.
+
+    Returns
+    -------
+    tuple
+        A tuple containing (None, None) if just exporting,
+        or (artifacts, model) when training is implemented.
+
+    References
+    ----------
+    https://github.com/mims-harvard/UniTS
     https://github.com/mims-harvard/UniTS/blob/main/scripts/few_shot_anomaly_detection/UniTS_finetune_few_shot_anomaly_detection.sh
     """
 

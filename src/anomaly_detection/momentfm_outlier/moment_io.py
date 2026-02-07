@@ -1,7 +1,8 @@
-import os
+from pathlib import Path
+
 import torch
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.log_helpers.log_naming_uris_and_dirs import get_torch_model_name
 
@@ -17,6 +18,42 @@ def save_model_to_disk(
     first_save: bool,
     run_name: str,
 ):
+    """
+    Save MOMENT model checkpoint to disk.
+
+    Saves model state, optimizer state, and scaler state. On first save,
+    performs a verification load to ensure checkpoint integrity.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Model to save.
+    optimizer : torch.optim.Optimizer
+        Optimizer state to save.
+    scaler : torch.amp.GradScaler
+        Gradient scaler state to save.
+    checkpoint_path : str
+        Directory for checkpoint file.
+    cfg : DictConfig
+        Hydra configuration.
+    best_epoch : int
+        Best epoch number for reference.
+    device : str
+        Device the model is on.
+    first_save : bool
+        Whether this is the first save (triggers verification).
+    run_name : str
+        Run name for filename generation.
+
+    Returns
+    -------
+    str
+        Full path to the saved checkpoint file.
+
+    References
+    ----------
+    https://github.com/moment-timeseries-foundation-model/moment-research/blob/main/moment/tasks/base.py#L169
+    """
     # https://github.com/moment-timeseries-foundation-model/moment-research/blob/main/moment/tasks/base.py#L169
     checkpoint = {
         "model_state_dict": model.state_dict(),
@@ -25,7 +62,7 @@ def save_model_to_disk(
         best_epoch: best_epoch,
     }
     fname = get_torch_model_name(run_name)
-    checkpoint_file = os.path.join(checkpoint_path, fname)
+    checkpoint_file = str(Path(checkpoint_path) / fname)
     if cfg["EXPERIMENT"]["debug"]:
         logger.info("Saving model to disk: {}".format(checkpoint_file))
     with open(checkpoint_file, "wb") as f:
@@ -46,6 +83,28 @@ def save_model_to_disk(
 
 
 def compare_state_dicts(state_dict_out, state_dict_in, same_ok: bool = True):
+    """
+    Compare two model state dictionaries.
+
+    Parameters
+    ----------
+    state_dict_out : str
+        String representation of output state dict.
+    state_dict_in : str
+        String representation of input state dict.
+    same_ok : bool, optional
+        If True, asserts dicts are same. If False, asserts they differ.
+        Default is True.
+
+    Raises
+    ------
+    AssertionError
+        If comparison fails based on same_ok parameter.
+
+    References
+    ----------
+    https://discuss.pytorch.org/t/check-if-models-have-same-weights/4351
+    """
     # https://discuss.pytorch.org/t/check-if-models-have-same-weights/4351
     if not same_ok:
         assert state_dict_out != state_dict_in, (
@@ -60,6 +119,27 @@ def compare_state_dicts(state_dict_out, state_dict_in, same_ok: bool = True):
 
 
 def remove_head_from_state_dict(checkpoint):
+    """
+    Remove head layer weights from checkpoint.
+
+    Used when loading a model fine-tuned for one task (e.g., outlier detection)
+    to use for another task (e.g., embedding extraction).
+
+    Parameters
+    ----------
+    checkpoint : dict
+        Model checkpoint dictionary with 'model_state_dict'.
+
+    Returns
+    -------
+    dict
+        Checkpoint with head weights removed.
+
+    Notes
+    -----
+    Removes 'head.linear.weight' and 'head.linear.bias' keys to avoid
+    "Unexpected key(s) in state_dict" errors when loading for different tasks.
+    """
     # drop the head (that came from anomaly detection pretraining, and we are just re-using the model now)
     # check if this okay as we get this error without the drop.
     # "Unexpected key(s) in state_dict: "head.linear.weight", "head.linear.bias"."
@@ -78,6 +158,23 @@ def remove_head_from_state_dict(checkpoint):
 
 
 def load_state_dict(model, checkpoint, task):
+    """
+    Load state dictionary into model.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Model to load weights into.
+    checkpoint : dict
+        Checkpoint dictionary with 'model_state_dict'.
+    task : str
+        Task name (currently unused, reserved for future task-specific handling).
+
+    Returns
+    -------
+    torch.nn.Module
+        Model with loaded weights.
+    """
     # if task == 'embedding':
     #     checkpoint = remove_head_from_state_dict(checkpoint)
     model.load_state_dict(checkpoint["model_state_dict"])
@@ -90,8 +187,43 @@ def load_model_from_disk(
     device: str,
     cfg: DictConfig,
     task: str,
-    load_to_cpu_if_fails_with_gpu: bool = True,
+    _load_to_cpu_if_fails_with_gpu: bool = True,
 ):
+    """
+    Load model checkpoint from disk.
+
+    Handles device mapping and fallback to CPU if GPU loading fails.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Model to load weights into.
+    checkpoint_file : str
+        Path to checkpoint file.
+    device : str
+        Target device ('cpu' or 'cuda').
+    cfg : DictConfig
+        Hydra configuration.
+    task : str
+        Task name for task-specific loading behavior.
+    load_to_cpu_if_fails_with_gpu : bool, optional
+        Whether to try CPU loading if GPU fails. Default is True.
+
+    Returns
+    -------
+    torch.nn.Module
+        Model with loaded weights.
+
+    Raises
+    ------
+    Exception
+        If loading fails on both GPU and CPU.
+
+    References
+    ----------
+    https://github.com/moment-timeseries-foundation-model/moment-research/blob/
+    3ab637e413f35f2c317573c0ace280d825c558de/moment/tasks/base.py#L206
+    """
     # https://github.com/moment-timeseries-foundation-model/moment-research/blob/3ab637e413f35f2c317573c0ace280d825c558de/moment/tasks/base.py#L206
     if device == "cpu":
         # You are using `torch.load` with `weights_only=False` (the current default value), which uses the default

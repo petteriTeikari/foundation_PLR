@@ -1,23 +1,25 @@
-import numpy as np
-from loguru import logger
-import os
 from copy import deepcopy
+from pathlib import Path
+from typing import Any, Optional, Tuple
+
+import numpy as np
 import polars as pl
+from loguru import logger
 from omegaconf import DictConfig
 
 from src.data_io.data_conv_utils import long_df_to_long_numpy
-from src.data_io.data_utils import set_missing_in_data, get_unique_polars_rows
-from src.preprocess.preprocess_data import preprocess_PLR_data, debug_triplet_stats
+from src.data_io.data_utils import get_unique_polars_rows, set_missing_in_data
+from src.preprocess.preprocess_data import debug_triplet_stats, preprocess_PLR_data
 from src.utils import get_artifacts_dir
 
 
 def pypots_split_preprocess_wrapper(
     df_split: pl.DataFrame,
     model_cfg: DictConfig,
-    cfg: dict,
-    preprocess_dict: dict = None,
+    cfg: dict[str, Any],
+    preprocess_dict: Optional[dict[str, Any]] = None,
     split: str = "train",
-):
+) -> dict[str, Any]:
     # The denoised "gold standard", or pseudo-GT
     X_gt = long_df_to_long_numpy(df=df_split, size_col_name="gt")
     X_gt, preprocess_dict = preprocess_PLR_data(
@@ -117,8 +119,12 @@ def pypots_split_preprocess_wrapper(
     }
 
 
-def create_dataset_dicts_for_pypots(source_data: dict):
-    def dataset_per_split(split_data: dict, split: str):
+def create_dataset_dicts_for_pypots(
+    source_data: dict[str, Any],
+) -> dict[str, dict[str, np.ndarray]]:
+    def dataset_per_split(
+        split_data: dict[str, Any], split: str
+    ) -> dict[str, np.ndarray]:
         # PyPOTS does not want mask per se, so X_ori is the ground truth (e.g. X for moment)
         # and we set the missing values to NaN and have that to be X
         X = split_data["X"].copy()
@@ -140,23 +146,28 @@ def create_dataset_dicts_for_pypots(source_data: dict):
     return dataset_dicts
 
 
-def define_pypots_outputs(model_name: str, artifact_type: str = "model"):
+def define_pypots_outputs(
+    model_name: str, artifact_type: str = "model"
+) -> Tuple[str, str, str]:
     fname = f"{artifact_type}_{model_name}.pickle"
     # Define artifact location (use the mlflow directory for the PyPOTS output)
-    output_dir = get_artifacts_dir(service_name="pypots")
-    os.makedirs(output_dir, exist_ok=True)
-    artifacts_path = os.path.join(output_dir, fname)
+    output_dir = Path(get_artifacts_dir(service_name="pypots"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    artifacts_path = output_dir / fname
     logger.info(
         "Saving PyPOTS ({}) {} artifacts to {}".format(
             model_name, artifact_type, output_dir
         )
     )
 
-    return output_dir, fname, artifacts_path
+    return str(output_dir), fname, str(artifacts_path)
 
 
 def add_metadata_dicts(
-    df_split: pl.DataFrame, X_gt: np.ndarray, split: str, cfg: DictConfig
+    df_split: pl.DataFrame,
+    X_gt: np.ndarray,
+    split: str,
+    cfg: DictConfig,
 ) -> pl.DataFrame:
     unique_codes = get_unique_polars_rows(
         df_split,
