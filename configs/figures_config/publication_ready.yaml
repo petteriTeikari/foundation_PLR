@@ -1,0 +1,62 @@
+_version: "1.0.0"
+# Figure Configuration: Publication Ready
+#
+# Settings for publication-quality figures in the Foundation PLR paper.
+# All dimensions and styles follow journal guidelines.
+
+figures:
+  quality: "publication"
+
+  # Output formats
+  formats:
+    png:
+      enabled: true
+      dpi: 300
+    pdf:
+      enabled: true
+    svg:
+      enabled: true
+
+  # Dimensions (in inches, following journal guidelines)
+  dimensions:
+    single_column:
+      width: 3.5  # inches
+    double_column:
+      width: 7.0  # inches
+    full_page:
+      width: 7.0
+      height: 9.5
+
+  # Typography
+  typography:
+    font_family: "serif"
+    font_size:
+      title: 12
+      axis_label: 10
+      tick_label: 8
+      legend: 8
+      annotation: 7
+
+  # Color palette (Economist-inspired, colorblind-safe)
+  colors:
+    primary: "#006BA2"    # Blue
+    secondary: "#DB444B"  # Red
+    tertiary: "#3EBCD2"   # Cyan
+    quaternary: "#379A8B" # Teal
+    background: "#FFFFFF"
+    grid: "#E5E5E5"
+
+  # Export settings
+  export:
+    json_sidecar: true  # Always save JSON data for reproducibility
+    private_subdir: "private"  # For subject-level data
+
+# Figure-specific overrides
+figure_overrides:
+  calibration:
+    line_width: 1.5
+    ci_alpha: 0.2
+  cd_diagram:
+    font_size: 9
+  traces:
+    privacy_level: "private"

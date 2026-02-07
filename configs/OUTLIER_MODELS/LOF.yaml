@@ -1,3 +1,4 @@
+_version: "1.0.0"
 LOF:
   # https://scikit-learn.org/dev/modules/generated/sklearn.neighbors.LocalOutlierFactor.html
   MODEL:

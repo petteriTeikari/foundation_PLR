@@ -1,3 +1,4 @@
+_version: "1.0.0"
 TimesNet:
   # https://github.com/thuml/Time-Series-Library (bash ./scripts/anomaly_detection/PSM/TimesNet.sh
   # https://openreview.net/pdf?id=ju_Uqw384Oq

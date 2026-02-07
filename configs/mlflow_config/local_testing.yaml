@@ -1,0 +1,35 @@
+_version: "1.0.0"
+# MLflow Configuration: Local Testing
+#
+# Settings for local testing and CI/CD.
+# Uses file-based backend (no server required).
+
+mlflow:
+  environment: "testing"
+
+  # Tracking settings (local file-based)
+  tracking:
+    uri: "mlruns/"  # Relative to project root
+    experiment_name: "synth_PLR_Classification"
+    artifact_location: null
+
+  # Experiment filtering (none for testing)
+  experiments:
+    classification_experiment_id: null  # Create new
+    required_artifact: null
+
+  # Logging settings (minimal for speed)
+  logging:
+    log_system_metrics: false
+    test_artifact_store: false
+
+  # Artifact directories
+  artifacts:
+    figures: "figures"
+    results: "results"
+    models: "models"
+
+  # Run filtering
+  extraction:
+    required_tags: []
+    exclude_patterns: []

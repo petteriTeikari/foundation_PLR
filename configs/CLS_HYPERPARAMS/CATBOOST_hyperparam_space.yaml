@@ -1,4 +1,11 @@
-# https://medium.com/@attud_bidirt/automatic-tuning-of-hyper-parameters-of-a-xgboost-classifier-c5588bceda4
+_version: "1.0.0"
+# ═══════════════════════════════════════════════════════════════════════════════
+# CATBOOST HYPERPARAMETER SEARCH SPACE
+# ═══════════════════════════════════════════════════════════════════════════════
+# See README.md for parameter explanations
+# See docs/repo-figures/generated/fig-repo-51.png for visual guide
+# HPO Method: Optuna | Metric: AUROC
+# ═══════════════════════════════════════════════════════════════════════════════
 CATBOOST:
   HYPERPARAMS:
     method: 'OPTUNA'

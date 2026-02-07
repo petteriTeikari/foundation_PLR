@@ -1,0 +1,95 @@
+_version: "1.0.0"
+# Hyperparam Combinations: Paper 2026
+#
+# Standard combinations for the Foundation PLR paper (2026).
+# These are the 4 main combos shown in main figures + extended set for supplementary.
+#
+# IMPORTANT: These values are derived from MLflow results.
+# DO NOT modify without re-running the experiments.
+
+combos:
+  # Standard 4 combos for main figures
+  standard:
+    # Ground truth baseline - human-annotated preprocessing
+    ground_truth:
+      id: "ground_truth"
+      outlier_method: "pupil-gt"
+      imputation_method: "pupil-gt"
+      classifier: "CatBoost"
+      auroc: 0.9110
+      description: "Human ground truth preprocessing"
+
+    # Best automated ensemble
+    best_ensemble:
+      id: "best_ensemble"
+      outlier_method: "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune"
+      imputation_method: "CSDI"
+      classifier: "CatBoost"
+      auroc: 0.9130
+      description: "Best automated preprocessing (ensemble)"
+
+    # Best single foundation model
+    best_single_fm:
+      id: "best_single_fm"
+      outlier_method: "MOMENT-gt-finetune"
+      imputation_method: "SAITS"
+      classifier: "CatBoost"
+      auroc: 0.9099
+      description: "Best single foundation model pipeline"
+
+    # Traditional methods baseline
+    traditional:
+      id: "traditional"
+      outlier_method: "LOF"
+      imputation_method: "SAITS"
+      classifier: "TabPFN"
+      auroc: 0.8599
+      description: "Traditional preprocessing methods"
+
+  # Extended combos for supplementary figures
+  extended:
+    moment_full:
+      id: "moment_full"
+      outlier_method: "MOMENT-gt-finetune"
+      imputation_method: "MOMENT-finetune"
+      classifier: "CatBoost"
+      auroc: 0.8986
+      description: "MOMENT for both outlier and imputation"
+
+    lof_moment:
+      id: "lof_moment"
+      outlier_method: "LOF"
+      imputation_method: "MOMENT-zeroshot"
+      classifier: "CatBoost"
+      auroc: 0.8830
+      description: "LOF outliers + MOMENT imputation"
+
+    timesnet_full:
+      id: "timesnet_full"
+      outlier_method: "TimesNet-gt"
+      imputation_method: "TimesNet"
+      classifier: "CatBoost"
+      auroc: 0.8970
+      description: "TimesNet for both outlier and imputation"
+
+    units_pipeline:
+      id: "units_pipeline"
+      outlier_method: "UniTS-gt-finetune"
+      imputation_method: "SAITS"
+      classifier: "CatBoost"
+      auroc: 0.9068
+      description: "UniTS outliers + SAITS imputation"
+
+    hybrid_ocsvm_moment:
+      id: "hybrid_ocsvm_moment"
+      outlier_method: "OneClassSVM"
+      imputation_method: "MOMENT-zeroshot"
+      classifier: "CatBoost"
+      auroc: 0.8824
+      description: "Traditional outlier detection with FM zero-shot imputation"
+
+# Visualization settings
+visualization:
+  max_main_curves: 4
+  max_supplementary_curves: 8
+  require_ground_truth: true

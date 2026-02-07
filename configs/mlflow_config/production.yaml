@@ -1,0 +1,39 @@
+_version: "1.0.0"
+# MLflow Configuration: Production
+#
+# Settings for production MLflow tracking in the Foundation PLR pipeline.
+
+mlflow:
+  environment: "production"
+
+  # Tracking settings
+  tracking:
+    uri: "file:///home/petteri/mlruns"
+    experiment_name: "PLR_Classification"
+    artifact_location: null  # Use default
+
+  # Experiment filtering
+  experiments:
+    classification_experiment_id: "253031330985650090"
+    required_artifact: "bootstrap_iterations.pkl"
+
+  # Logging settings
+  logging:
+    log_system_metrics: true
+    test_artifact_store: true
+
+  # Artifact directories
+  artifacts:
+    figures: "figures"
+    results: "results"
+    models: "models"
+
+  # Run filtering for extraction
+  extraction:
+    # Only extract runs with these required tags
+    required_tags:
+      - "mlflow.runName"
+    # Skip runs with these patterns
+    exclude_patterns:
+      - "_debug_"
+      - "_test_"

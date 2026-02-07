@@ -1,4 +1,4 @@
-VERSION: 0.1
+VERSION: "1.0.0"
 NAME: 'impPLR'
 
 defaults:
@@ -31,6 +31,9 @@ DEBUG:
   # Setting this to None gives you full dataset that could be useful for an end-to-end CI test
   # Number of epochs or iterations are set to minimum still
   debug_n_subjects: 8 # this is per label (2) and per split (2) (thus with 4, you get 4x2x2=16 subjects)
+  # If True, pick random subjects; if False, pick from high-outlier subjects (for testing preprocessing)
+  # Set to True for synthetic data where outlier filtering doesn't make sense
+  pick_random: False
 
 DEVICE:
   device: 'cuda' # 'cpu'
@@ -75,8 +78,7 @@ STRATIFICATION:
 ARTIFACTS:
   results_format: 'pickle'
 
-METADATA:
-  placeholder: 1
+METADATA: {} # Hydra structural key; metadata imported from XLSX files directly
 
 OUTLIER_DETECTION:
   # Atm as this is a placeholder, if you set this True, you will get a new MLflow run, with FaLse, we
@@ -118,11 +120,6 @@ IMPUTATION_TRAINING:
     # Set to false when you wanna see how the garbage might propagate through the steps, if your outlier detection
     # is not really doing a good job?
     use_orig_data: False
-
-IMPUTATION_EVAL:
-    # If you had standardized the data for training, it would nice to destandardize the data
-    # for visualization and further analysis
-    destandardize_output: True
 
 IMPUTATION_METRICS:
     recompute: True
@@ -208,8 +205,7 @@ CLASSIFICATION_SETTINGS:
     # https://openreview.net/forum?id=08Y5sFtRhN
     # Atm, no preprocessing happening, but this "preNone" or some new scheme will be added to the
     # MLflow run name
-    preNone: # Placeholder scheme
-       placeholder: 'dummy'
+    preNone: {} # No-op preprocessing; scheme name included in MLflow run names
   BEST_METRIC:
     # Using PPV with glaucoma prevalence correction (see below for the value)
     # You could use also AUROC, F1, tpAUC, etc.
@@ -259,7 +255,7 @@ CLS_EVALUATION:
     # Significance level for the confidence intervals (p = 1-alpha)
     alpha_CI: 0.95
 
-CLASSIFICATION_TS_SETTINGS:
+CLASSIFICATION_TS_SETTINGS: # Time-series classification settings (used by subflow_ts_classification)
   retrain_classifiers: True
 
 
@@ -273,6 +269,7 @@ VISUALIZATION:
     dpi: 100
     col_unit: 3.84 # *dpi -> x pixels (e.g 3.84 * 100 = 384 pixels), 10 cols will give you 3840px wide PNG
     row_unit: 3 # 2.16
+
     SNS:
       style: 'white'
       palette: 'colorblind'

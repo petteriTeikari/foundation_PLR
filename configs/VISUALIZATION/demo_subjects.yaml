@@ -1,0 +1,126 @@
+_version: "1.0.0"
+# Demo Subjects Configuration for Foundation PLR Manuscript
+# Created: 2026-01-21
+# Purpose: Reproducible subject selection for individual-level plots
+#
+# Selection Criteria:
+# - 6 Control + 6 Glaucoma subjects
+# - Distributed across outlier percentage: high (challenging), average, low (easy)
+# - IMPORTANT: Avoid cherry-picking easy cases - include challenging subjects!
+# - Mix of train/test splits for variety
+
+demo_subjects:
+  control:
+    # High outlier percentage - challenging cases
+    high_outlier:
+      - code: "PLR1071"
+        split: "train"
+        outlier_pct: 37.71
+        note: "Highest outlier % in controls - most challenging"
+      - code: "PLR1033"
+        split: "test"
+        outlier_pct: 26.75
+        note: "High outliers, test split"
+
+    # Average outlier percentage - typical cases
+    average_outlier:
+      - code: "PLR1063"
+        split: "test"
+        outlier_pct: 5.10
+        note: "Near median outlier percentage"
+      - code: "PLR1088"
+        split: "test"
+        outlier_pct: 4.90
+        note: "Typical control subject"
+
+    # Low outlier percentage - easier cases
+    low_outlier:
+      - code: "PLR1042"
+        split: "test"
+        outlier_pct: 0.86
+        note: "Few outliers but not zero"
+      - code: "PLR1002"
+        split: "test"
+        outlier_pct: 0.00
+        note: "No outliers - baseline quality"
+
+  glaucoma:
+    # High outlier percentage - challenging cases
+    high_outlier:
+      - code: "PLR4018"
+        split: "test"
+        outlier_pct: 26.45
+        note: "High outliers in glaucoma"
+      - code: "PLR4030"
+        split: "test"
+        outlier_pct: 22.92
+        note: "Challenging glaucoma case"
+
+    # Average outlier percentage - typical cases
+    average_outlier:
+      - code: "PLR4033"
+        split: "test"
+        outlier_pct: 12.67
+        note: "Near median for glaucoma"
+      - code: "PLR4034"
+        split: "test"
+        outlier_pct: 11.11
+        note: "Typical glaucoma subject"
+
+    # Low outlier percentage - easier cases
+    low_outlier:
+      - code: "PLR4051"
+        split: "test"
+        outlier_pct: 3.33
+        note: "Lower outliers for glaucoma"
+      - code: "PLR4001"
+        split: "test"
+        outlier_pct: 2.22
+        note: "Cleanest glaucoma signal"
+
+# Preprocessing combinations to show
+# pupil-gt + pupil-gt MUST be first as the gold standard
+preprocessing_combos:
+  - name: "Gold Standard"
+    outlier_method: "pupil-gt"
+    imputation_method: "pupil-gt"
+    description: "Human-annotated ground truth"
+
+  - name: "Best FM Combo"
+    outlier_method: "MOMENT-gt"
+    imputation_method: "SAITS"
+    description: "Best foundation model pipeline"
+
+  - name: "Traditional Best"
+    outlier_method: "LOF"
+    imputation_method: "linear"
+    description: "Best traditional methods"
+
+  - name: "Ensemble Outlier"
+    outlier_method: "ensemble-LOF-MOMENT"
+    imputation_method: "SAITS"
+    description: "Ensemble outlier detection"
+
+  - name: "UniTS Pipeline"
+    outlier_method: "UniTS-gt"
+    imputation_method: "SAITS"
+    description: "Alternative FM for outliers"
+
+  - name: "Simple Baseline"
+    outlier_method: "OneClassSVM"
+    imputation_method: "linear"
+    description: "Minimal preprocessing baseline"
+
+# Statistics from subject selection
+selection_statistics:
+  control:
+    total_subjects: 152
+    outlier_pct_range: [0.00, 37.71]
+    median_outlier_pct: 5.05
+  glaucoma:
+    total_subjects: 56
+    outlier_pct_range: [2.22, 27.66]
+    median_outlier_pct: 11.46
+
+  # Key observation: Glaucoma has higher median outlier % than controls
+  # This supports the hypothesis that glaucoma affects signal quality

@@ -1,0 +1,543 @@
+# Figure Layouts Configuration
+# ============================
+# Defines composable multi-panel figure layouts for publication.
+#
+# This is the SINGLE SOURCE OF TRUTH for:
+# - Layout definitions (2x1, 1x2, 2x2, etc.)
+# - Pre-composed figures with panel specifications
+# - Publication-ready dimensions
+# - Global output format settings
+#
+# Used by: src/r/figure_system/compose_figures.R
+#
+# Created: 2026-01-27
+# Author: Foundation PLR Team
+
+version: "1.0.0"
+schema_version: "1.0"
+
+# =============================================================================
+# GLOBAL OUTPUT SETTINGS
+# =============================================================================
+# These settings control output for ALL figures
+
+output_settings:
+  # Which formats to generate (global switch)
+  # Options: png, pdf, tiff, eps, svg
+  formats: ["png"]   # <-- CHANGE THIS to add/remove formats globally
+
+  # DPI for raster outputs
+  dpi: 300
+
+  # Output directory (relative to project root)
+  directory: "figures/generated/ggplot2/"
+
+# =============================================================================
+# LAYOUT DEFINITIONS
+# =============================================================================
+# Each layout specifies:
+#   - nrow, ncol: grid dimensions
+#   - n_panels: expected number of panels
+#   - description: human-readable description
+
+layouts:
+  "1x1":
+    nrow: 1
+    ncol: 1
+    n_panels: 1
+    description: "Single panel"
+
+  "2x1":
+    nrow: 2
+    ncol: 1
+    n_panels: 2
+    description: "Two panels stacked vertically (A on top, B on bottom)"
+
+  "1x2":
+    nrow: 1
+    ncol: 2
+    n_panels: 2
+    description: "Two panels side by side (A left, B right)"
+
+  "2x2":
+    nrow: 2
+    ncol: 2
+    n_panels: 4
+    description: "Four panels in 2x2 grid"
+
+  "3x1":
+    nrow: 3
+    ncol: 1
+    n_panels: 3
+    description: "Three panels stacked vertically"
+
+  "1x3":
+    nrow: 1
+    ncol: 3
+    n_panels: 3
+    description: "Three panels side by side"
+
+# =============================================================================
+# COMPOSED FIGURES
+# =============================================================================
+# Each figure specifies:
+#   - layout: which layout to use (must be defined above)
+#   - panels: list of panel specifications
+#   - dimensions: width/height in inches for publication
+#   - tag_levels: panel labeling style ("A", "a", "1", "i", or null for none)
+#   - filename: base filename (format extension added based on output_settings.formats)
+
+figures:
+
+  # ---------------------------------------------------------------------------
+  # FOREST PLOTS COMBINED (Main Manuscript)
+  # ---------------------------------------------------------------------------
+  fig_forest_combined:
+    display_name: "Combined Forest Plot - Outlier and Imputation Methods"
+    description: "Two-panel figure showing method performance for outlier detection (A) and imputation (B)"
+    section: "results"
+    latex_label: "fig:forest-combined"
+    filename: "fig_forest_combined"
+
+    layout: "2x1"
+    tag_levels: "A"
+    panel_titles:
+      - "Outlier Detection Method"
+      - "Imputation Method"
+
+    panels:
+      - id: "A"
+        figure_function: "create_forest_outlier"
+        data_source: "outlier_summary"
+        infographic: false
+        show_legend: false  # Legend only on last panel
+
+      - id: "B"
+        figure_function: "create_forest_imputation"
+        data_source: "imputation_summary"
+        infographic: false
+        show_legend: true  # Shared legend at bottom
+
+    dimensions:
+      width: 10
+      height: 12
+      units: "in"
+
+  # ---------------------------------------------------------------------------
+  # CALIBRATION + DCA COMBINED (Main Manuscript)
+  # ---------------------------------------------------------------------------
+  fig_calibration_dca_combined:
+    display_name: "Combined Calibration and Decision Curve Analysis"
+    description: "Two-panel figure showing calibration (A) and DCA (B) for top 4 combos"
+    section: "results"
+    latex_label: "fig:calibration-dca"
+    filename: "fig_calibration_dca_combined"
+
+    layout: "1x2"
+    tag_levels: "A"
+    panel_titles:
+      - "Calibration Curves"
+      - "Decision Curve Analysis"
+
+    panels:
+      - id: "A"
+        figure_function: "create_calibration_plot"
+        data_source: "calibration_data"
+        infographic: false
+        show_legend: false
+
+      - id: "B"
+        figure_function: "create_dca_plot"
+        data_source: "dca_data"
+        infographic: false
+        show_legend: true
+
+    dimensions:
+      width: 14
+      height: 6
+      units: "in"
+
+  # ---------------------------------------------------------------------------
+  # VARIANCE DECOMPOSITION COMBINED (Main Manuscript)
+  # ---------------------------------------------------------------------------
+  fig_variance_combined:
+    display_name: "Combined Variance Decomposition"
+    description: "Two-panel: (A) preprocessing-only effects, (B) full pipeline including classifier"
+    section: "results"
+    latex_label: "fig:variance-decomposition"
+    filename: "fig_variance_combined"
+
+    layout: "1x2"
+    tag_levels: "A"
+    panel_titles:
+      - "Preprocessing Effects (CatBoost)"
+      - "Full Pipeline (All Classifiers)"
+
+    panels:
+      - id: "A"
+        figure_function: "create_variance_preprocessing"
+        data_source: "essential_metrics"
+        description: "Within-CatBoost variance decomposition"
+        show_legend: false
+
+      - id: "B"
+        figure_function: "create_variance_full"
+        data_source: "essential_metrics"
+        description: "Full variance decomposition including classifier"
+        show_legend: true
+
+    dimensions:
+      width: 14
+      height: 5
+      units: "in"
+
+  # ---------------------------------------------------------------------------
+  # STANDALONE FOREST PLOTS (for supplementary or separate use)
+  # ---------------------------------------------------------------------------
+  fig_forest_outlier:
+    display_name: "Forest Plot - Outlier Detection Methods"
+    description: "Single panel showing outlier method AUROC with 95% CI"
+    section: "results"
+    latex_label: "fig:forest-outlier"
+    filename: "fig_forest_outlier"
+
+    layout: "1x1"
+    tag_levels: null  # No panel label for single panel
+
+    panels:
+      - id: "main"
+        figure_function: "create_forest_outlier"
+        data_source: "outlier_summary"
+        infographic: false
+        show_legend: true
+
+    dimensions:
+      width: 10
+      height: 8
+      units: "in"
+
+  fig_forest_imputation:
+    display_name: "Forest Plot - Imputation Methods"
+    description: "Single panel showing imputation method AUROC with 95% CI"
+    section: "results"
+    latex_label: "fig:forest-imputation"
+    filename: "fig_forest_imputation"
+
+    layout: "1x1"
+    tag_levels: null
+
+    panels:
+      - id: "main"
+        figure_function: "create_forest_imputation"
+        data_source: "imputation_summary"
+        infographic: false
+        show_legend: true
+
+    dimensions:
+      width: 10
+      height: 6
+      units: "in"
+
+# ---------------------------------------------------------------------------
+  # SELECTIVE CLASSIFICATION (Main Manuscript - NEW)
+  # ---------------------------------------------------------------------------
+  fig_selective_classification:
+    display_name: "Selective Classification Analysis"
+    description: "3-panel showing metrics vs rejection ratio (samples rejected by uncertainty)"
+    section: "results"
+    latex_label: "fig:selective-classification"
+    filename: "fig_selective_classification"
+
+    layout: "1x3"
+    tag_levels: "A"
+    panel_titles:
+      - "Discrimination (AUROC)"
+      - "Clinical Utility (Net Benefit)"
+      - "Overall Performance (Scaled Brier)"
+
+    combo_source: "main_4"  # Uses preset group from plot_hyperparam_combos.yaml
+    data_source: "selective_classification_data.json"
+
+    panels:
+      - id: "A"
+        metric: "auroc"
+        y_label: "AUROC at Retention Level"
+        y_range: [0.7, 1.0]
+
+      - id: "B"
+        metric: "net_benefit"
+        y_label: "Net Benefit (threshold=15%)"
+        threshold: 0.15
+
+      - id: "C"
+        metric: "scaled_brier"
+        y_label: "Scaled Brier (IPA)"
+        y_range: [0, 0.6]
+
+    dimensions:
+      width: 14
+      height: 5
+      units: "in"
+
+  # ---------------------------------------------------------------------------
+  # ROC + RC COMBINED (Supplementary - NEW)
+  # ---------------------------------------------------------------------------
+  fig_roc_rc_combined:
+    display_name: "ROC and Risk-Coverage Curves"
+    description: "Supplementary figure with all 9 combos (4 standard + 5 extended) + Top-10 Mean"
+    section: "supplementary"
+    latex_label: "fig:roc-rc"
+    filename: "fig_roc_rc_combined"
+
+    layout: "1x2"
+    tag_levels: "A"
+    panel_titles:
+      - "ROC Curves"
+      - "Risk-Coverage Curves"
+
+    combo_source: "all_9"  # Uses preset group + Top-10 Mean
+    data_source: "roc_rc_data.json"
+
+    panels:
+      - id: "A"
+        plot_type: "roc"
+        x_label: "False Positive Rate"
+        y_label: "True Positive Rate"
+        show_diagonal: true  # Reference line
+
+      - id: "B"
+        plot_type: "rc"
+        x_label: "Coverage"
+        y_label: "Risk (Error Rate)"
+        show_legend: true
+
+    dimensions:
+      width: 14
+      height: 7
+      units: "in"
+
+  # ---------------------------------------------------------------------------
+  # SUBJECT TRACES - Control (Supplementary)
+  # ---------------------------------------------------------------------------
+  fig_subject_traces_control:
+    display_name: "Control Subject PLR Traces"
+    description: "Raw and processed PLR signals for 6 control subjects showing preprocessing quality range"
+    section: "supplementary"
+    latex_label: "fig:subject-traces-control"
+    filename: "fig_subject_traces_control"
+
+    privacy_level: "public"  # Anonymized JSON is public
+    data_source: "subject_traces.json"  # data/r_data/
+
+    # Light protocol timing (from actual data: Blue first, then Red)
+    # Reference: configs/PLR_FEATURIZATION/featuresSimple.yaml for derived features
+    light_protocol:
+      # Actual timing from DuckDB (Blue/Red columns)
+      blue_onset: 15.5         # ~15.5s Blue stimulus starts
+      blue_offset: 24.5        # ~24.5s Blue stimulus ends
+      red_onset: 46.5          # ~46.5s Red stimulus starts
+      red_offset: 55.5         # ~55.5s Red stimulus ends
+      # Display settings
+      show_stimulus: true      # Show light stimulus regions
+      style: "fill"            # "fill" = low opacity boxes, "vline" = dashed vertical lines
+      alpha: 0.15              # Fill opacity for stimulus regions
+
+    # Feature annotation time bins (from featuresSimple.yaml)
+    # Relative to onset/offset - shows derived feature windows
+    feature_annotations:
+      show_annotations: false   # Set true to show feature extraction windows
+      annotations:
+        - name: "MAX_CONSTRICTION"
+          reference: "blue_onset"
+          start_offset: 0
+          end_offset: 15
+          color: "--color-text-muted"
+        - name: "PHASIC"
+          reference: "blue_onset"
+          start_offset: 0
+          end_offset: 5
+          color: "--color-text-muted"
+        - name: "PIPR_AUC"
+          reference: "blue_offset"
+          start_offset: 0
+          end_offset: 12
+          color: "--color-text-muted"
+
+    y_axis:
+      fixed: false             # Let y-axis auto-scale per panel
+      label: "Pupil Size (normalized)"
+
+    x_axis:
+      unit: "time"
+      label: "Time (s)"
+
+    display:
+      show_raw: true
+      show_processed: true
+      show_outliers: true
+      alpha_raw: 0.4
+      alpha_processed: 1.0
+
+    layout: "3x2"              # 6 subjects: high/avg/low outlier × 2 columns
+    tag_levels: "A"
+
+    dimensions:
+      width: 14
+      height: 12
+      units: "in"
+
+  # ---------------------------------------------------------------------------
+  # SUBJECT TRACES - Glaucoma (Supplementary)
+  # ---------------------------------------------------------------------------
+  fig_subject_traces_glaucoma:
+    display_name: "Glaucoma Subject PLR Traces"
+    description: "Raw and processed PLR signals for 6 glaucoma subjects showing preprocessing quality range"
+    section: "supplementary"
+    latex_label: "fig:subject-traces-glaucoma"
+    filename: "fig_subject_traces_glaucoma"
+
+    privacy_level: "public"
+    data_source: "subject_traces.json"
+
+    # Same light protocol as control
+    light_protocol:
+      blue_onset: 15.5
+      blue_offset: 24.5
+      red_onset: 46.5
+      red_offset: 55.5
+      show_stimulus: true
+      style: "fill"
+      alpha: 0.15
+
+    feature_annotations:
+      show_annotations: false
+
+    y_axis:
+      fixed: false
+      label: "Pupil Size (normalized)"
+
+    x_axis:
+      unit: "time"
+      label: "Time (s)"
+
+    display:
+      show_raw: true
+      show_processed: true
+      show_outliers: true
+      alpha_raw: 0.4
+      alpha_processed: 1.0
+
+    layout: "3x2"
+    tag_levels: "A"
+
+    dimensions:
+      width: 14
+      height: 12
+      units: "in"
+
+# =============================================================================
+# FONT SETTINGS
+# =============================================================================
+
+fonts:
+  # Panel label font (A, B, C)
+  tag_family: "Neue Haas Grotesk Display Pro"
+  tag_size: 14
+  tag_face: "bold"
+
+  # Body text font
+  body_family: "sans"
+  body_size: 11
+
+# =============================================================================
+# TAG STYLES
+# =============================================================================
+
+tag_styles:
+  "A":
+    prefix: ""
+    suffix: ""
+    style: "bold"
+    position: "topleft"
+  "a":
+    prefix: ""
+    suffix: ""
+    style: "bold"
+    position: "topleft"
+  "1":
+    prefix: ""
+    suffix: "."
+    style: "bold"
+    position: "topleft"
+  "i":
+    prefix: "("
+    suffix: ")"
+    style: "italic"
+    position: "topleft"
+
+# =============================================================================
+# FIGURE CATEGORIES (Publication Destinations)
+# =============================================================================
+# Categorization for routing figures to appropriate output directories:
+#   - main: Main article body
+#   - supplementary: Journal supplementary materials
+#   - extra_supplementary: Internal research archive only
+
+figure_categories:
+  main:
+    description: "Main article figures"
+    output_dir: "figures/generated/ggplot2/main"
+    figures:
+      - fig_forest_combined           # A: Outlier, B: Imputation (2x1)
+      - fig_calibration_dca_combined  # A: Calibration, B: DCA (1x2)
+      - fig_calibration_stratos       # STRATOS calibration with annotations
+      - fig_dca_stratos               # STRATOS DCA curves
+      - fig_prob_dist_combined        # A: Single, B: Faceted (1x2)
+      # fig_prob_dist_by_outcome - REMOVED per user request (redundant with combined)
+      - fig_variance_combined         # A: Preprocessing, B: Full pipeline (1x2)
+      - fig_variance_decomposition    # Lollipop chart - preprocessing ANOVA
+      - fig_multi_metric_raincloud    # 2x2 raincloud: AUROC, IPA, NB, Cal slope
+      - fig_roc_rc_combined           # A: ROC, B: RC curves (1x2)
+      - fig_shap_importance_combined  # A: GT, B: Ensemble (1x2)
+
+  supplementary:
+    description: "Journal supplementary materials"
+    output_dir: "figures/generated/ggplot2/supplementary"
+    figures:
+      - fig_cd_diagrams               # CD diagrams (3-panel Demšar style) - Nemenyi comparison
+      - fig_cd_preprocessing          # CD diagram alternative (rank plot)
+      - fig_selective_classification  # A: AUROC, B: NB, C: Scaled Brier (1x3)
+      - fig_shap_importance_multi     # Top configs SHAP comparison
+      - fig_specification_curve       # Specification curve analysis
+      - fig_prob_dist_faceted         # Probability distributions, all 4 configs
+      - fig_raincloud_auroc           # AUROC raincloud by pipeline type
+
+  extra_supplementary:
+    description: "Internal research archive - NOT thoroughly validated"
+    output_dir: "figures/generated/ggplot2/extra-supplementary"
+    archive_to: "/home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR/background-research/latent-methods-results/"
+    warning: "These figures have NOT been manually debugged - use with caution"
+    figures:
+      - fig_factorial_matrix          # Factorial design matrix
+      - fig_featurization_comparison  # Handcrafted vs FM embeddings
+      - fig_fm_dashboard              # Foundation model dashboard
+      - fig_heatmap_preprocessing     # AUROC heatmap
+      - fig_shap_beeswarm             # SHAP beeswarm plot
+      - fig_shap_gt_vs_ensemble       # SHAP GT vs Ensemble scatter
+      - fig_shap_gt_vs_ensemble_bars  # SHAP GT vs Ensemble bars
+      - fig_shap_heatmap              # SHAP importance heatmap
+      - fig_shap_importance_ensemble  # Ensemble aggregated SHAP
+      - fig_shap_importance_gt        # Ground truth SHAP
+      - fig_stratos_core              # STRATOS core 2x2 - needs debugging
+      - fig_vif_analysis              # VIF bar chart
+      - fig_vif_by_wavelength         # VIF faceted by wavelength
+      - fig_vif_combined              # A: Analysis, B: By Wavelength (1x2)
+
+# =============================================================================
+# METADATA
+# =============================================================================
+
+metadata:
+  created: "2026-01-27"
+  author: "Foundation PLR Team"
+  purpose: "Composable figure layouts for publication"

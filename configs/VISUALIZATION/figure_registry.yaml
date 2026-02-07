@@ -1,0 +1,1069 @@
+# Figure Registry - Complete Catalog of All Manuscript Figures
+# ============================================================
+# AIDEV-NOTE: This is the SINGLE SOURCE OF TRUTH for figure specifications.
+# All figure generation scripts MUST read from here, never hardcode figure specs.
+# When adding a new figure, register it here FIRST before writing the script.
+#
+# This file is the SINGLE SOURCE OF TRUTH for figure generation.
+# Every figure must be registered here with its:
+# - Dependencies (data sources, config files)
+# - Combo requirements (which hyperparam combos to show)
+# - Privacy level (can JSON be committed to git?)
+# - Generation script
+# - Output paths
+#
+# RULES:
+# - Main figures: MAX 4 combos (standard_combos)
+# - Supplementary figures: MAX 9 combos (standard + extended)
+# - ground_truth combo REQUIRED in all comparison figures
+# - All figures MUST have JSON data for reproducibility
+# - PRIVATE JSON files MUST be in .gitignore
+#
+# Created: 2026-01-22
+# Last Updated: 2026-01-22
+
+version: "1.0.0"
+schema_version: "1.0"
+
+# =============================================================================
+# MAIN MANUSCRIPT FIGURES
+# =============================================================================
+
+main_figures:
+
+  # ---------------------------------------------------------------------------
+  # METHODS SECTION
+  # ---------------------------------------------------------------------------
+
+  fig_M3_factorial_matrix:
+    display_name: "Factorial Experimental Design"
+    section: "methods"
+    latex_label: "fig:factorial-matrix"
+    description: "Shows 11 outlier × 8 imputation × 2 featurization × 5 classifier design"
+    priority: "P3"
+    status: "done"
+
+    generation:
+      script: "src/viz/factorial_matrix.py"
+      function: "main()"
+      entry_point: "python src/viz/generate_all_figures.py --figure M3"
+
+    data_dependencies:
+      - type: "static"
+        source: "Methods counts from MLflow"
+        notes: "Factor counts are hardcoded from MLflow analysis"
+
+    combo_requirement: "none"
+    max_curves: 0
+    required_combos: []
+
+    styling:
+      width: "double"
+      aspect: 0.5
+      grid: "none"
+      background: "white"
+
+    outputs:
+      pdf: "fig_M3_factorial_matrix.pdf"
+      png: "fig_M3_factorial_matrix.png"
+      json: "data/fig_M3_factorial_matrix.json"
+      json_privacy: "public"
+
+  # ---------------------------------------------------------------------------
+  # RESULTS SECTION
+  # ---------------------------------------------------------------------------
+
+  fig_R7_featurization_comparison:
+    display_name: "Featurization Method Comparison"
+    section: "results"
+    latex_label: "fig:featurization"
+    description: "Handcrafted features (0.830) vs FM embeddings (0.740) - 9pp gap"
+    priority: "P2"
+    status: "done"
+
+    generation:
+      script: "src/viz/featurization_comparison.py"
+      function: "main()"
+      entry_point: "python src/viz/generate_all_figures.py --figure R7"
+
+    data_dependencies:
+      - type: "database"
+        source: "foundation_plr_results.db"
+        table: "essential_metrics"
+        query: "SELECT featurization, AVG(auroc) GROUP BY featurization"
+
+    combo_requirement: "none"
+    max_curves: 0
+    required_combos: []
+
+    styling:
+      width: "single"
+      aspect: 0.8
+      grid: "y"
+
+    outputs:
+      pdf: "fig_R7_featurization_comparison.pdf"
+      png: "fig_R7_featurization_comparison.png"
+      json: "data/fig_R7_featurization_comparison.json"
+      json_privacy: "public"
+
+  fig_R8_foundation_model_dashboard:
+    display_name: "Foundation Model Performance Dashboard"
+    section: "results"
+    latex_label: "fig:fm-dashboard"
+    description: "3-panel showing FM performance for outlier/imputation/featurization"
+    priority: "P2"
+    status: "done"
+
+    generation:
+      script: "src/viz/foundation_model_dashboard.py"
+      function: "main()"
+      entry_point: "python src/viz/generate_all_figures.py --figure R8"
+
+    data_dependencies:
+      - type: "database"
+        source: "foundation_plr_results.db"
+        table: "essential_metrics"
+
+    combo_requirement: "none"
+    max_curves: 0
+    required_combos: []
+
+    styling:
+      width: "double"
+      aspect: 0.4
+      grid: "y"
+
+    outputs:
+      pdf: "fig_R8_foundation_model_dashboard.pdf"
+      png: "fig_R8_foundation_model_dashboard.png"
+      json: "data/fig_R8_foundation_model_dashboard.json"
+      json_privacy: "public"
+
+  fig_retained_multi_metric:
+    display_name: "Selective Classification Performance"
+    section: "results"
+    latex_label: "fig:retention-curves"
+    description: "3-panel: AUROC, Scaled Brier, Net Benefit vs retention rate for 4 combos"
+    priority: "P0"
+    status: "broken"
+    issues:
+      - "Currently shows only 1 combo instead of 4"
+      - "Needs Economist styling"
+      - "Single-metric variants should be deleted"
+
+    generation:
+      script: "src/viz/retained_metric.py"
+      function: "generate_multi_combo_retention()"  # NEEDS TO BE CREATED
+      entry_point: "python src/viz/retained_metric.py"
+
+    data_dependencies:
+      - type: "config"
+        source: "configs/VISUALIZATION/plot_hyperparam_combos.yaml"
+        key: "standard_combos"
+      - type: "database"
+        source: "foundation_plr_results.db"
+        tables: ["predictions", "uncertainty"]
+
+    combo_requirement: "standard_4"
+    max_curves: 4
+    required_combos:
+      - "ground_truth"
+      - "best_ensemble"
+      - "best_single_fm"
+      - "traditional"
+
+    styling:
+      width: "double"
+      aspect: 0.35
+      grid: "y"
+      show_ci: true
+      ci_combos: ["ground_truth", "best_ensemble"]
+
+    outputs:
+      pdf: "fig_retained_multi_metric.pdf"
+      png: "fig_retained_multi_metric.png"
+      json: "data/fig_retained_multi_metric.json"
+      json_privacy: "public"
+
+  fig_calibration_smoothed:
+    display_name: "Calibration Curves"
+    section: "results"
+    latex_label: "fig:calibration"
+    description: "Predicted vs observed probability with histogram for 4 combos"
+    priority: "P1"
+    status: "needs_fix"
+    issues:
+      - "May be missing multiple combos"
+      - "Needs Economist styling"
+
+    generation:
+      script: "src/viz/calibration_plot.py"
+      function: "generate_multi_combo_calibration()"  # NEEDS TO BE CREATED
+      entry_point: "python src/viz/calibration_plot.py"
+
+    data_dependencies:
+      - type: "config"
+        source: "configs/VISUALIZATION/plot_hyperparam_combos.yaml"
+        key: "standard_combos"
+      - type: "database"
+        source: "foundation_plr_results.db"
+        tables: ["predictions"]
+
+    combo_requirement: "standard_4"
+    max_curves: 4
+    required_combos:
+      - "ground_truth"
+      - "best_ensemble"
+      - "best_single_fm"
+      - "traditional"
+
+    styling:
+      width: "single"
+      aspect: 1.0
+      grid: "both"
+      reference_line: "diagonal"
+
+    outputs:
+      pdf: "fig_calibration_smoothed.pdf"
+      png: "fig_calibration_smoothed.png"
+      json: "data/fig_calibration_smoothed.json"
+      json_privacy: "public"
+
+  fig_dca_curves:
+    display_name: "Decision Curve Analysis"
+    section: "results"
+    latex_label: "fig:dca"
+    description: "Net benefit vs threshold probability for 4 combos"
+    priority: "P1"
+    status: "needs_fix"
+    issues:
+      - "May be missing multiple combos"
+      - "Needs Economist styling"
+
+    generation:
+      script: "src/viz/dca_plot.py"
+      function: "generate_multi_combo_dca()"  # NEEDS TO BE CREATED
+      entry_point: "python src/viz/dca_plot.py"
+
+    data_dependencies:
+      - type: "config"
+        source: "configs/VISUALIZATION/plot_hyperparam_combos.yaml"
+        key: "standard_combos"
+      - type: "database"
+        source: "foundation_plr_results.db"
+        tables: ["predictions"]
+
+    combo_requirement: "standard_4"
+    max_curves: 4
+    required_combos:
+      - "ground_truth"
+      - "best_ensemble"
+      - "best_single_fm"
+      - "traditional"
+
+    styling:
+      width: "single"
+      aspect: 0.8
+      grid: "y"
+      reference_lines:
+        - type: "treat_all"
+          label: "Treat All"
+        - type: "treat_none"
+          label: "Treat None"
+          value: 0
+
+    outputs:
+      pdf: "fig_dca_curves.pdf"
+      png: "fig_dca_curves.png"
+      json: "data/fig_dca_curves.json"
+      json_privacy: "public"
+
+  fig_uncertainty_vs_prob:
+    display_name: "Uncertainty vs Predicted Probability"
+    section: "results"
+    latex_label: "fig:uncertainty-scatter"
+    description: "Scatter showing uncertainty estimates for 4 combos"
+    priority: "P2"
+    status: "unknown"
+
+    generation:
+      script: "src/viz/uncertainty_scatter.py"
+      function: "generate_multi_combo_uncertainty()"  # NEEDS TO BE CREATED
+      entry_point: "python src/viz/uncertainty_scatter.py"
+
+    data_dependencies:
+      - type: "config"
+        source: "configs/VISUALIZATION/plot_hyperparam_combos.yaml"
+        key: "standard_combos"
+      - type: "database"
+        source: "foundation_plr_results.db"
+        tables: ["predictions", "uncertainty"]
+
+    combo_requirement: "standard_4"
+    max_curves: 4
+    required_combos:
+      - "ground_truth"
+      - "best_ensemble"
+      - "best_single_fm"
+      - "traditional"
+
+    styling:
+      width: "single"
+      aspect: 1.0
+      grid: "both"
+      point_style: "hollow"
+
+    outputs:
+      pdf: "fig_uncertainty_vs_prob.pdf"
+      png: "fig_uncertainty_vs_prob.png"
+      json: "data/fig_uncertainty_vs_prob.json"
+      json_privacy: "public"
+
+  fig_prob_dist_by_outcome:
+    display_name: "Probability Distribution by Outcome"
+    section: "results"
+    latex_label: "fig:prob-dist"
+    description: "Distribution of predicted probabilities for controls vs glaucoma"
+    priority: "P2"
+    status: "unknown"
+
+    generation:
+      script: "src/viz/prob_distribution.py"
+      function: "main()"
+      entry_point: "python src/viz/prob_distribution.py"
+
+    data_dependencies:
+      - type: "database"
+        source: "foundation_plr_results.db"
+        tables: ["predictions"]
+
+    combo_requirement: "standard_4"
+    max_curves: 4
+    required_combos:
+      - "ground_truth"
+      - "best_ensemble"
+      - "best_single_fm"
+      - "traditional"
+
+    styling:
+      width: "single"
+      aspect: 0.7
+      grid: "y"
+
+    outputs:
+      pdf: "fig_prob_dist_by_outcome.pdf"
+      png: "fig_prob_dist_by_outcome.png"
+      json: "data/fig_prob_dist_by_outcome.json"
+      json_privacy: "public"
+
+  fig_metric_change_vs_certain:
+    display_name: "Metric Change vs Certainty"
+    section: "results"
+    latex_label: "fig:metric-vs-certain"
+    description: "How metrics improve with rejection of uncertain predictions"
+    priority: "P2"
+    status: "unknown"
+
+    generation:
+      script: "src/viz/metric_vs_cohort.py"
+      function: "main()"
+      entry_point: "python src/viz/metric_vs_cohort.py"
+
+    data_dependencies:
+      - type: "database"
+        source: "foundation_plr_results.db"
+        tables: ["predictions", "uncertainty"]
+
+    combo_requirement: "standard_4"
+    max_curves: 4
+
+    styling:
+      width: "single"
+      aspect: 0.8
+      grid: "y"
+
+    outputs:
+      pdf: "fig_metric_change_vs_certain.pdf"
+      png: "fig_metric_change_vs_certain.png"
+      json: "data/fig_metric_change_vs_certain.json"
+      json_privacy: "public"
+
+  # ---------------------------------------------------------------------------
+  # CONCLUSION SECTION
+  # ---------------------------------------------------------------------------
+
+  fig_C3_utility_matrix:
+    display_name: "Foundation Model Utility Assessment"
+    section: "conclusion"
+    latex_label: "fig:utility-matrix"
+    description: "Checkmarks/X showing FM utility by task (outlier, imputation, featurization)"
+    priority: "P3"
+    status: "done"
+
+    generation:
+      script: "src/viz/utility_matrix.py"
+      function: "main()"
+      entry_point: "python src/viz/generate_all_figures.py --figure C3"
+
+    data_dependencies:
+      - type: "static"
+        source: "Manual assessment based on results"
+
+    combo_requirement: "none"
+    max_curves: 0
+    required_combos: []
+
+    styling:
+      width: "single"
+      aspect: 0.6
+      grid: "none"
+
+    outputs:
+      pdf: "fig_C3_utility_matrix.pdf"
+      png: "fig_C3_utility_matrix.png"
+      json: "data/fig_C3_utility_matrix.json"
+      json_privacy: "public"
+
+  cd_preprocessing_comparison:
+    display_name: "Critical Difference Diagram"
+    section: "results"
+    latex_label: "fig:cd-preprocessing"
+    description: "Friedman-Nemenyi test for top 12 preprocessing pipelines"
+    priority: "P2"
+    status: "done"
+
+    generation:
+      script: "src/viz/cd_diagram_preprocessing.py"
+      function: "main()"
+      entry_point: "python src/viz/generate_all_figures.py --figure CD"
+
+    data_dependencies:
+      - type: "database"
+        source: "cd_diagram_data.duckdb"
+        notes: "Pre-computed Friedman statistics"
+
+    combo_requirement: "top_12_pipelines"
+    max_curves: 12
+    required_combos: []  # Uses top 12 from data
+
+    styling:
+      width: "double"
+      aspect: 0.5
+
+    outputs:
+      pdf: "cd_preprocessing_comparison.pdf"
+      png: "cd_preprocessing_comparison.png"
+      json: "data/cd_preprocessing_comparison.json"
+      json_privacy: "public"
+
+# =============================================================================
+# SUPPLEMENTARY FIGURES
+# =============================================================================
+
+supplementary_figures:
+
+  fig_subject_traces:
+    display_name: "Individual Subject PLR Traces"
+    section: "supplementary"
+    latex_label: "fig:subject-traces"
+    description: "12 subjects × 6 preprocessing combos showing signal reconstruction"
+    priority: "P3"
+    status: "not_implemented"
+
+    generation:
+      script: "src/viz/individual_subject_traces.py"
+      function: "generate_all_subject_traces()"
+      entry_point: "python src/viz/individual_subject_traces.py"
+
+    data_dependencies:
+      - type: "config"
+        source: "configs/demo_subjects.yaml"
+        key: "demo_subjects"
+      - type: "config"
+        source: "configs/VISUALIZATION/plot_hyperparam_combos.yaml"
+        key: "extended_combos"
+      - type: "database"
+        source: "SERI_PLR_GLAUCOMA.db"
+        tables: ["train", "test"]
+
+    combo_requirement: "extended_6"
+    max_curves: 6
+    required_combos:
+      - "ground_truth"
+      - "best_ensemble"
+      - "best_single_fm"
+      - "traditional"
+      - "moment_full"
+      - "timesnet_full"
+
+    styling:
+      width: "double"
+      aspect: 0.5
+      grid: "y"
+
+    outputs:
+      pdf: "fig_subject_traces.pdf"
+      png: "fig_subject_traces.png"
+      json: "data/fig_subject_traces.json"
+      json_privacy: "PRIVATE"  # Contains subject IDs - DO NOT COMMIT
+
+  fig_specification_curve:
+    display_name: "Specification Curve Analysis"
+    section: "supplementary"
+    latex_label: "fig:specification-curve"
+    description: "All 407 configurations ranked by AUROC"
+    priority: "P3"
+    status: "not_implemented"
+
+    generation:
+      script: "src/viz/specification_curve.py"
+      function: "main()"
+      entry_point: "python src/viz/specification_curve.py"
+
+    data_dependencies:
+      - type: "database"
+        source: "foundation_plr_results.db"
+        table: "essential_metrics"
+
+    combo_requirement: "all_407"
+    max_curves: 407
+
+    styling:
+      width: "double"
+      aspect: 0.6
+
+    outputs:
+      pdf: "fig_specification_curve.pdf"
+      png: "fig_specification_curve.png"
+      json: "data/fig_specification_curve.json"
+      json_privacy: "public"
+
+  fig_forest_plot:
+    display_name: "Forest Plot of Preprocessing Effects"
+    section: "supplementary"
+    latex_label: "fig:forest-plot"
+    description: "Effect sizes with CI for 9 combos"
+    priority: "P3"
+    status: "not_implemented"
+
+    generation:
+      script: "src/viz/forest_plot.py"
+      function: "main()"
+      entry_point: "python src/viz/forest_plot.py"
+
+    data_dependencies:
+      - type: "config"
+        source: "configs/VISUALIZATION/plot_hyperparam_combos.yaml"
+        keys: ["standard_combos", "extended_combos"]
+      - type: "database"
+        source: "foundation_plr_results.db"
+
+    combo_requirement: "all_9"
+    max_curves: 9
+
+    styling:
+      width: "single"
+      aspect: 1.2
+
+    outputs:
+      pdf: "fig_forest_plot.pdf"
+      png: "fig_forest_plot.png"
+      json: "data/fig_forest_plot.json"
+      json_privacy: "public"
+
+  fig_decomposition_grid:
+    display_name: "PLR Waveform Decomposition by Preprocessing Method"
+    section: "supplementary"
+    latex_label: "fig:decomposition-grid"
+    description: "5×5 grid: 5 decomposition methods × 5 preprocessing categories"
+    priority: "P2"
+    status: "ready"  # Code ready, waiting for extraction to complete
+
+    generation:
+      script: "src/viz/fig_decomposition_grid.py"
+      function: "generate_decomposition_figure()"
+      entry_point: "scripts/generate_decomposition_figure.sh"
+
+    data_dependencies:
+      - type: "database"
+        source: "data/private/preprocessed_signals_per_subject.db"
+        tables: ["preprocessed_signals"]
+      - type: "config"
+        source: "configs/mlflow_registry/category_mapping.yaml"
+        key: "outlier_method_categories"
+
+    # 5×5 grid - no combo requirement (uses categories, not combos)
+    combo_requirement: null
+    max_curves: null  # N/A - this is a faceted grid
+
+    grid_spec:
+      rows:
+        - "template"
+        - "pca"
+        - "rotated_pca"
+        - "sparse_pca"
+        - "ged"
+      columns:
+        - "Ground Truth"
+        - "Foundation Model"
+        - "Deep Learning"
+        - "Traditional"
+        - "Ensemble"
+
+    styling:
+      width: 14
+      height: 10
+      aspect: 1.4
+
+    outputs:
+      pdf: "fig_decomposition_grid.pdf"
+      png: "fig_decomposition_grid.png"
+      json: "data/fig_decomposition_grid.json"
+      json_privacy: "public"  # Aggregated data only, no subject IDs
+
+  fig_dca_expert_mechanics:
+    display_name: "DCA Expert Mechanics: Net Benefit Explained"
+    section: "supplementary"
+    latex_label: "fig:dca-mechanics"
+    description: "3-panel expert-level figure explaining net benefit calculation, exchange rates, and clinical interpretation"
+    priority: "P2"
+    status: "planned"
+
+    generation:
+      script: "src/viz/fig_dca_expert_mechanics.py"
+      function: "generate_dca_mechanics_figure()"
+      entry_point: "python src/viz/fig_dca_expert_mechanics.py"
+
+    data_dependencies:
+      - type: "database"
+        source: "foundation_plr_results.db"
+        table: "essential_metrics"
+        columns: ["y_true", "y_prob", "outlier_method", "imputation_method"]
+
+    combo_requirement: "standard_4"
+    max_curves: 4
+    required_combos:
+      - "ground_truth"
+      - "best_ensemble"
+      - "best_single_fm"
+      - "traditional"
+
+    panels:
+      - name: "exchange_rate"
+        description: "Exchange rate curve t/(1-t) with clinical annotations"
+      - name: "decomposition"
+        description: "Net benefit decomposition (TP contribution - FP penalty)"
+      - name: "patient_flow"
+        description: "Sankey-style patient flow diagram showing decisions"
+
+    styling:
+      width: 14
+      height: 6
+      aspect: 2.33
+
+    outputs:
+      pdf: "fig_dca_expert_mechanics.pdf"
+      png: "fig_dca_expert_mechanics.png"
+      json: "data/fig_dca_expert_mechanics.json"
+      json_privacy: "public"
+
+    references:
+      - "Vickers 2019: Step-by-step guide to interpreting DCA"
+      - "Harrell: Extended Decision Curve Analysis"
+      - "Millard 2025: DCA, cost curves, and Brier curves"
+
+  fig_dca_threshold_sensitivity:
+    display_name: "DCA Threshold Sensitivity Analysis"
+    section: "supplementary"
+    latex_label: "fig:dca-sensitivity"
+    description: "4-panel figure showing how preprocessing affects clinical utility across threshold probabilities"
+    priority: "P2"
+    status: "planned"
+
+    generation:
+      script: "src/viz/fig_dca_threshold_sensitivity.py"
+      function: "generate_threshold_sensitivity_figure()"
+      entry_point: "python src/viz/fig_dca_threshold_sensitivity.py"
+
+    data_dependencies:
+      - type: "database"
+        source: "foundation_plr_results.db"
+        table: "essential_metrics"
+        columns: ["y_true", "y_prob", "net_benefit_5pct", "net_benefit_10pct", "net_benefit_15pct", "net_benefit_20pct"]
+
+    combo_requirement: "standard_4"
+    max_curves: 4
+    required_combos:
+      - "ground_truth"
+      - "best_ensemble"
+      - "best_single_fm"
+      - "traditional"
+
+    panels:
+      - name: "dca_with_ci"
+        description: "DCA curves with bootstrap 95% CI bands"
+      - name: "difference_plot"
+        description: "Net benefit difference vs ground truth with significance"
+      - name: "threshold_zones"
+        description: "Clinical threshold annotations (5%, 10%, 20%)"
+      - name: "interventions_avoided"
+        description: "Bar chart: interventions avoided per 1000 patients"
+
+    threshold_range:
+      min: 0.035  # Global glaucoma prevalence (Tham 2014)
+      max: 0.35   # Upper clinical threshold
+      step: 0.01
+
+    styling:
+      width: 14
+      height: 10
+      aspect: 1.4
+
+    outputs:
+      pdf: "fig_dca_threshold_sensitivity.pdf"
+      png: "fig_dca_threshold_sensitivity.png"
+      json: "data/fig_dca_threshold_sensitivity.json"
+      json_privacy: "public"
+
+    references:
+      - "Van Calster 2018: Reporting and Interpreting DCA"
+      - "Tham 2014: Global glaucoma prevalence (3.54%)"
+      - "Harrell: Seven common errors in DCA presentation"
+
+# =============================================================================
+# DEPRECATED FIGURES (TO BE DELETED)
+# =============================================================================
+
+deprecated_figures:
+  - name: "fig_retained_auroc"
+    reason: "Redundant - use fig_retained_multi_metric instead"
+    action: "DELETE from figures/generated/"
+
+  - name: "fig_retained_brier"
+    reason: "Redundant - use fig_retained_multi_metric instead"
+    action: "DELETE from figures/generated/"
+
+  - name: "fig_retained_netbenefit"
+    reason: "Redundant - use fig_retained_multi_metric instead"
+    action: "DELETE from figures/generated/"
+
+  - name: "fig_retained_scaledbrier"
+    reason: "Redundant - use fig_retained_multi_metric instead"
+    action: "DELETE from figures/generated/"
+
+  # Added 2026-01-31: Removed from supplementary (redundant)
+  - name: "fig_cd_preprocessing"
+    reason: "Redundant - info already shown in fig_cd_diagrams Panel A"
+    action: "NEVER regenerate - removed from supplementary.tex"
+
+  - name: "fig_prob_dist_faceted"
+    reason: "Redundant - replaced by fig_prob_dist_combined in main manuscript"
+    action: "NEVER regenerate - removed from supplementary.tex"
+
+  - name: "fig_raincloud_auroc"
+    reason: "Redundant - replaced by fig_multi_metric_raincloud (shows 4 metrics)"
+    action: "NEVER regenerate - removed from supplementary.tex"
+
+  # Added 2026-01-31: Removed from supplementary (redundant)
+  - name: "fig_cd_preprocessing"
+    reason: "Redundant - info already shown in fig_cd_diagrams Panel A"
+    action: "NEVER regenerate - removed from supplementary.tex"
+
+  - name: "fig_prob_dist_faceted"
+    reason: "Redundant - replaced by fig_prob_dist_combined in main manuscript"
+    action: "NEVER regenerate - removed from supplementary.tex"
+
+  - name: "fig_raincloud_auroc"
+    reason: "Redundant - replaced by fig_multi_metric_raincloud (shows 4 metrics)"
+    action: "NEVER regenerate - removed from supplementary.tex"
+
+# =============================================================================
+# METADATA
+# =============================================================================
+
+metadata:
+  created: "2026-01-22"
+  author: "Foundation PLR Team"
+  purpose: "Single source of truth for all manuscript figures"
+  output_directory: "manuscripts/foundationPLR/latent-methods-results/figures/generated/"
+  json_data_directory: "manuscripts/foundationPLR/latent-methods-results/figures/generated/data/"
+
+# =============================================================================
+# R-GENERATED FIGURES (ggplot2/patchwork)
+# =============================================================================
+# These figures are generated by R scripts in src/r/figures/
+# The save_publication_figure() function looks up dimensions from here.
+# NEVER hardcode width/height in R scripts - add entries here instead.
+
+r_figures:
+
+  fig_calibration_dca_combined:
+    styling:
+      width: 14
+      height: 7
+    generation:
+      script: "src/r/figures/fig_calibration_dca_combined.R"
+
+  fig_calibration_stratos:
+    styling:
+      width: 8
+      height: 9
+    generation:
+      script: "src/r/figures/fig_calibration_stratos.R"
+
+  fig_cd_preprocessing:
+    styling:
+      width: 10
+      height: 8
+    generation:
+      script: "src/r/figures/fig_cd_preprocessing.R"
+
+  fig_dca_stratos:
+    styling:
+      width: 9
+      height: 6
+    generation:
+      script: "src/r/figures/fig_dca_stratos.R"
+
+  fig_decomposition_grid:
+    styling:
+      width: 14
+      height: 10
+    generation:
+      script: "src/r/figures/fig_decomposition_grid.R"
+
+  fig_factorial_matrix:
+    styling:
+      width: 10
+      height: 9
+    generation:
+      script: "src/r/figures/fig_factorial_matrix.R"
+
+  fig_featurization_comparison:
+    styling:
+      width: 10
+      height: 5
+    generation:
+      script: "src/r/figures/fig_featurization_comparison.R"
+
+  fig_fm_dashboard:
+    styling:
+      width: 10
+      height: 6
+    generation:
+      script: "src/r/figures/fig_fm_dashboard.R"
+
+  fig_forest_combined:
+    styling:
+      width: 10
+      height: 12
+    generation:
+      script: "src/r/figures/fig_forest_combined.R"
+
+  fig_heatmap_preprocessing:
+    styling:
+      width: 12
+      height: 10
+    generation:
+      script: "src/r/figures/fig_heatmap_preprocessing.R"
+
+  fig_imputation_quality:
+    styling:
+      width: 10
+      height: 5
+    generation:
+      script: "src/r/figures/fig_preprocessing_quality.R"
+
+  fig_multi_metric_raincloud:
+    styling:
+      width: 12
+      height: 10
+    generation:
+      script: "src/r/figures/fig_multi_metric_raincloud.R"
+
+  fig_outlier_detection_quality:
+    styling:
+      width: 10
+      height: 6
+    generation:
+      script: "src/r/figures/fig_preprocessing_quality.R"
+
+  fig_preprocessing_summary:
+    styling:
+      width: 10
+      height: 5
+    generation:
+      script: "src/r/figures/fig_preprocessing_quality.R"
+
+  fig_prob_dist_by_outcome:
+    styling:
+      width: 8
+      height: 5
+    generation:
+      script: "src/r/figures/fig_prob_dist_by_outcome.R"
+
+  fig_prob_dist_combined:
+    styling:
+      width: 16
+      height: 6
+    generation:
+      script: "src/r/figures/fig_prob_dist_by_outcome.R"
+
+  fig_prob_dist_faceted:
+    styling:
+      width: 10
+      height: 8
+    generation:
+      script: "src/r/figures/fig_prob_dist_by_outcome.R"
+
+  fig_raincloud_auroc:
+    styling:
+      width: 10
+      height: 6
+    generation:
+      script: "src/r/figures/fig_raincloud_auroc.R"
+
+  fig_shap_beeswarm:
+    styling:
+      width: 10
+      height: 8
+    generation:
+      script: "src/r/figures/fig_shap_beeswarm.R"
+
+  fig_shap_gt_vs_ensemble:
+    styling:
+      width: 8
+      height: 8
+    generation:
+      script: "src/r/figures/fig_shap_importance.R"
+
+  fig_shap_gt_vs_ensemble_bars:
+    styling:
+      width: 9
+      height: 5
+    generation:
+      script: "src/r/figures/fig_shap_importance.R"
+
+  fig_shap_heatmap:
+    styling:
+      width: 12
+      height: 8
+    generation:
+      script: "src/r/figures/fig_shap_heatmap.R"
+
+  fig_shap_importance_combined:
+    styling:
+      width: 16
+      height: 5
+    generation:
+      script: "src/r/figures/fig_shap_importance.R"
+
+  fig_shap_importance_ensemble:
+    styling:
+      width: 8
+      height: 5
+    generation:
+      script: "src/r/figures/fig_shap_importance.R"
+
+  fig_shap_importance_gt:
+    styling:
+      width: 8
+      height: 5
+    generation:
+      script: "src/r/figures/fig_shap_importance.R"
+
+  fig_shap_importance_multi:
+    styling:
+      width: 10
+      height: 6
+    generation:
+      script: "src/r/figures/fig_shap_importance.R"
+
+  fig_specification_curve:
+    styling:
+      width: 12
+      height: 6
+    generation:
+      script: "src/r/figures/fig_specification_curve.R"
+
+  fig_stratos_core:
+    styling:
+      width: 12
+      height: 12
+    generation:
+      script: "src/r/figures/fig_stratos_core.R"
+
+  fig_variance_decomposition:
+    styling:
+      width: 12
+      height: 5
+    generation:
+      script: "src/r/figures/fig_variance_decomposition.R"
+
+  fig_vif_analysis:
+    styling:
+      width: 9
+      height: 5
+    generation:
+      script: "src/r/figures/fig_vif_analysis.R"
+
+  fig_vif_by_wavelength:
+    styling:
+      width: 8
+      height: 7
+    generation:
+      script: "src/r/figures/fig_vif_analysis.R"
+
+  fig_vif_combined:
+    styling:
+      width: 16
+      height: 6
+    generation:
+      script: "src/r/figures/fig_vif_analysis.R"
+
+  fig_instability_combined:
+    # PROMOTED TO MAIN MANUSCRIPT Figure 7 (2026-01-31)
+    # Central finding: 3× higher instability with traditional preprocessing
+    description: "3-panel pminternal instability plot (Ground Truth | Ensemble | Traditional)"
+    section: "main"  # Promoted from supplementary
+    latex_label: "fig:instability-combined"
+    styling:
+      width: 15   # 5 inches per panel × 3 panels
+      height: 5   # Slightly shorter for 3-panel layout
+    generation:
+      script: "src/r/figures/fig_instability_combined.R"
+    outputs:
+      png: "main/fig_instability_combined.png"  # Copy to main manuscript directory
+      pdf: "main/fig_instability_combined.pdf"
+
+  fig_roc_rc_combined:
+    styling:
+      width: 14
+      height: 6
+    generation:
+      script: "src/r/figures/fig_roc_rc_combined.R"
+
+  fig_selective_classification:
+    styling:
+      width: 14
+      height: 5
+    generation:
+      script: "src/r/figures/fig_selective_classification.R"
+
+# =============================================================================
+# VALIDATION RULES
+# =============================================================================
+
+validation_rules:
+  - rule: "All main figures must have JSON data"
+    enforcement: "scripts/validate_figures.py"
+
+  - rule: "Figures requiring combos must use configs/VISUALIZATION/plot_hyperparam_combos.yaml"
+    enforcement: "Code review"
+
+  - rule: "Private JSON files must be in .gitignore"
+    enforcement: ".gitignore patterns"
+
+  - rule: "All figures must apply plot_config.setup_style()"
+    enforcement: "Code review"

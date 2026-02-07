@@ -1,3 +1,4 @@
+_version: "1.0.0"
 FEATURES_METADATA:
   # These will affect the naming of the MLflow run, so if you create new .yaml files, remember to update these
   # to easily distinguish between the runs in the name then

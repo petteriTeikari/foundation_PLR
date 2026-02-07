@@ -1,0 +1,59 @@
+# Registry Canary File - INTEGRITY CHECKPOINT
+# ============================================
+# This file contains ONLY values that cannot be derived from the registry.
+# Full method lists live in classification.yaml (single source of truth).
+#
+# ANTI-CHEAT PURPOSE:
+# The verification script cross-checks this file against:
+#   1. configs/mlflow_registry/parameters/classification.yaml (source)
+#   2. src/data_io/registry.py (constants)
+#   3. tests/test_registry.py (test assertions)
+# All four files must agree for commits to pass.
+#
+# To expand the experimental design:
+#   1. Update configs/mlflow_registry/parameters/classification.yaml FIRST
+#   2. Regenerate this file's checksum: sha256sum <classification.yaml>
+#   3. Update expected_counts below
+#   4. Update src/data_io/registry.py constants
+#   5. Update tests/test_registry.py
+#   6. Commit ALL changes together (CI will verify consistency)
+
+version: "1.0.0"
+last_verified: "2026-01-26"
+frozen_for_publication: true
+
+# EXPECTED COUNTS - verified against classification.yaml
+# These are the CANONICAL values that tests check against
+expected_counts:
+  outlier_methods: 11
+  imputation_methods: 8
+  classifiers: 5
+
+# SHA256 checksum of the source file
+# Regenerate: sha256sum configs/mlflow_registry/parameters/classification.yaml
+source_checksums:
+  classification_yaml: "67a44d69200746bcfb1cf566aa292e8612c39e1c651193665026df1ad85c2201"
+
+# INVALID METHODS - NEGATIVE TEST DATA
+# These must NEVER appear in extracted data. If any script produces these,
+# the data is BROKEN. This list is UNIQUE to the canary (not in registry).
+invalid_methods:
+  outlier:
+    - anomaly       # Garbage placeholder from test runs
+    - exclude       # Garbage placeholder from test runs
+    - MOMENT-orig-finetune   # Not in registry (original variant)
+    - UniTS-orig-finetune    # Not in registry
+    - UniTS-orig-zeroshot    # Not in registry
+    - TimesNet-orig          # Not in registry
+  imputation:
+    - linear        # Not used in final experiments
+
+# GOLDEN REFERENCE VALUES - for data extraction validation
+# These are verified against MLflow and should NOT change
+expected_auroc:
+  ground_truth:  # pupil-gt + pupil-gt + CatBoost
+    value: 0.911
+    tolerance: 0.002
+  best_ensemble:  # ensemble + CSDI + CatBoost
+    value: 0.913
+    tolerance: 0.002

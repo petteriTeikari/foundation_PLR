@@ -1,0 +1,43 @@
+_version: "1.0.0"
+# Demo Subjects: 8 Hand-Picked Subjects
+#
+# These subjects are stratified by:
+# - Class label (4 control, 4 glaucoma)
+# - Outlier percentage (2 low, 2 high per class)
+#
+# Used for:
+# - Individual trace visualizations
+# - Subject-specific uncertainty plots
+# - Example figures in the paper
+
+subjects:
+  # Healthy controls
+  control:
+    low_outlier:
+      - H001  # Public code (maps to PLRxxxx in private lookup)
+      - H002
+    high_outlier:
+      - H003
+      - H004
+
+  # Glaucoma patients
+  glaucoma:
+    low_outlier:
+      - G001
+      - G002
+    high_outlier:
+      - G003
+      - G004
+
+# Metadata about selection criteria
+selection_criteria:
+  total_count: 8
+  stratification:
+    by_class: true
+    by_outlier_pct: true
+  outlier_percentile_threshold: 50  # Above = high, below = low
+
+# Privacy notes
+# - Public codes (Hxxx, Gxxx) are used in all shareable artifacts
+# - Private lookup (data/private/subject_lookup.yaml) maps to original PLRxxxx codes
+# - This mapping is gitignored for SERI data protection

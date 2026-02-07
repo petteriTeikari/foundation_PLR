@@ -1,0 +1,57 @@
+_version: "1.0.0"
+# Data Filters for Visualization Pipeline
+# =========================================
+# SINGLE SOURCE OF TRUTH for all data extraction
+#
+# This file defines the filters applied when extracting data from DuckDB
+# for visualization. ALL export scripts MUST read from this config.
+#
+# Created: 2026-01-28
+# Reason: CRITICAL-FAILURE-002 and FAILURE-005 - mixed featurization caused wrong AUROC
+
+# Default filters for classification figures
+# These are the handcrafted features used in the main paper
+defaults:
+  featurization: "simple1.0"  # Handcrafted amplitude bins + latency
+  classifier: "CATBOOST"       # Best classifier (uppercase as stored in DuckDB)
+
+# Expected values for validation (TDD assertions)
+expected_values:
+  ground_truth:
+    outlier_method: "pupil-gt"
+    imputation_method: "pupil-gt"
+    auroc: 0.911
+    auroc_tolerance: 0.002  # Allow 0.909 - 0.913
+    n_predictions: 208      # 152 control + 56 glaucoma
+
+  best_ensemble:
+    outlier_method: "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune"
+    imputation_method: "CSDI"
+    auroc: 0.913
+    auroc_tolerance: 0.002
+
+# Figures that need special featurization handling
+figure_overrides:
+  # Featurization comparison needs BOTH types
+  fig_featurization_comparison:
+    featurization:
+      - "simple1.0"           # Handcrafted
+      - "MOMENT-embedding"    # FM embeddings
+      - "MOMENT-embedding-PCA"
+
+# SQL query template (use in all export scripts)
+# Replace {featurization} with value from defaults.featurization
+query_templates:
+  predictions_filtered: |
+    SELECT y_true, y_prob, subject_id
+    FROM predictions
+    WHERE outlier_method = ?
+      AND imputation_method = ?
+      AND classifier = '{classifier}'
+      AND featurization = '{featurization}'
+
+  essential_metrics_filtered: |
+    SELECT *
+    FROM essential_metrics
+    WHERE classifier = '{classifier}'
+      AND featurization = '{featurization}'

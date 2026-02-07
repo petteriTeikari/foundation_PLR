@@ -1,0 +1,133 @@
+# Color Palette for Foundation PLR Visualizations
+# ===============================================
+#
+# All colors from Paul Tol's colorblind-safe palette
+# https://personal.sron.nl/~pault/
+#
+# AUTHORITATIVE SOURCES:
+# - Combo colors: plot_hyperparam_combos.yaml → color_definitions (resolved via color_ref)
+# - Python semantic colors: src/viz/plot_config.py → COLORS dict
+# - R colors: src/r/color_palettes.R
+#
+# This file provides supplementary color definitions for use by config_loader.
+# For combo-specific colors, always use get_combo_color() which resolves via combos YAML.
+#
+# Created: 2026-01-22
+
+version: "1.0.0"
+
+# =============================================================================
+# METHOD COLORS (by semantic category)
+# =============================================================================
+
+# Ground Truth - Gray (neutral reference)
+ground_truth: "#666666"
+
+# Foundation Models - Blues
+fm_primary: "#0072B2"       # Blue - primary FM color
+fm_secondary: "#56B4E9"     # Light blue - secondary FM color
+timesnet: "#332288"         # Indigo - TimesNet specific
+
+# Traditional Methods - Orange/Yellow
+traditional: "#E69F00"           # Orange
+traditional_secondary: "#CC79A7" # Pink-purple
+
+# Deep Learning - Teal/Green
+dl_primary: "#009E73"    # Teal
+dl_secondary: "#117733"  # Green
+
+# Ensembles - Purple
+ensemble: "#882255"  # Wine/burgundy
+
+# =============================================================================
+# COMBO-SPECIFIC COLORS (for plot styling)
+# =============================================================================
+# NOTE: The authoritative source for combo colors is plot_hyperparam_combos.yaml
+# (color_ref → color_definitions). These are kept in sync for config_loader access.
+
+combo_colors:
+  ground_truth: "#666666"      # Gray (--color-ground-truth)
+  best_ensemble: "#0072B2"     # Blue (--color-fm-primary)
+  best_single_fm: "#56B4E9"    # Light blue (--color-fm-secondary)
+  traditional: "#E69F00"       # Orange (--color-traditional)
+  deep_learning: "#006BA2"     # Blue (--color-category-deep-learning)
+  moment_full: "#005BBB"       # Dark blue (--color-moment-full)
+  lof_moment: "#882255"        # Purple (--color-lof-moment)
+  timesnet_full: "#D55E00"     # Red-orange (--color-timesnet-full)
+  units_pipeline: "#009E73"    # Teal (--color-units)
+  hybrid_ocsvm_moment: "#CC79A7"   # Pink (--color-baseline)
+
+# =============================================================================
+# CLASSIFIER COLORS (when comparing classifiers)
+# =============================================================================
+
+classifier_catboost: "#0072B2"
+classifier_tabm: "#56B4E9"
+classifier_tabpfn: "#009E73"
+classifier_xgboost: "#D55E00"
+classifier_logreg: "#CC79A7"
+
+# =============================================================================
+# CATEGORY FALLBACK COLORS (used when color_key not found)
+# =============================================================================
+
+category_ground_truth: "#666666"
+category_foundation_model: "#0072B2"
+category_traditional: "#E69F00"
+category_deep_learning: "#009E73"
+category_ensemble: "#882255"
+category_gradient_boosting: "#0072B2"
+category_transformer: "#56B4E9"
+category_linear: "#CC79A7"
+category_default: "#000000"
+
+# =============================================================================
+# SEMANTIC COLORS (for UI elements)
+# =============================================================================
+
+# Performance indicators
+positive: "#009E73"   # Green - good performance
+neutral: "#666666"    # Gray - reference
+negative: "#D55E00"   # Red-orange - poor performance
+
+# Confidence intervals
+ci_fill: "rgba(0, 114, 178, 0.2)"  # Blue with transparency
+ci_stroke: "#0072B2"
+
+# =============================================================================
+# PLR COMPONENT COLORS (for decomposition plots)
+# =============================================================================
+
+component_phasic: "#E69F00"     # Orange - phasic component
+component_sustained: "#56B4E9"  # Light blue - sustained component
+component_pipr: "#CC79A7"       # Pink - PIPR component
+component_pc1: "#D55E00"        # Red-orange - PC1
+component_pc2: "#009E73"        # Teal - PC2
+component_pc3: "#0072B2"        # Blue - PC3
+
+# Stimulus shading colors (for PLR time series plots)
+stimulus_blue: "#0072B2"        # Blue light stimulus
+stimulus_red: "#D55E00"         # Red light stimulus
+
+# ANOVA/variance decomposition colors
+main_effect: "#2E5B8C"          # Main effects in ANOVA plots
+interaction_effect: "#7D6B5D"   # Interaction effects in ANOVA plots
+
+# SHAP feature colors (wavelength-based)
+feature_blue: "#1f77b4"         # Blue wavelength features
+feature_red: "#d62728"          # Red wavelength features
+feature_default: "#7f7f7f"      # Default/mixed features
+
+# Background/UI colors
+background_light: "#FBF9F3"     # Off-white background
+text_dark: "#333333"            # Dark text
+
+# =============================================================================
+# METADATA
+# =============================================================================
+
+metadata:
+  created: "2026-01-22"
+  updated: "2026-02-01"
+  source: "Paul Tol colorblind-safe palette"
+  url: "https://personal.sron.nl/~pault/"

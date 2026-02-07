@@ -1,0 +1,108 @@
+# Figure Style Configuration - SINGLE SOURCE OF TRUTH
+# ==================================================
+# ALL figure scripts MUST load style from this file.
+# ZERO hardcoding of aesthetics in R scripts.
+#
+# Created: 2026-01-28
+# Version: 1.0.0
+
+version: "1.0.0"
+
+# =============================================================================
+# PANEL LABELS (patchwork tag style)
+# =============================================================================
+panel_labels:
+  style: "uppercase"  # A, B, C, D (NOT lowercase a, b, c, d)
+  tag_levels: "A"     # patchwork parameter
+  font_family: "Neue Haas Grotesk Display Pro"
+  font_weight: "bold"
+  font_size: 14
+  color: "#000000"
+
+# =============================================================================
+# PANEL SUBTITLES (descriptive text below panel label)
+# =============================================================================
+panel_subtitles:
+  font_family: "Neue Haas Grotesk Display Pro"
+  font_size: 11
+  font_style: "italic"
+  color: "#666666"
+
+# =============================================================================
+# LEGEND STYLING
+# =============================================================================
+legend:
+  position: "bottom"
+  font_family: "Neue Haas Grotesk Text Pro"
+  font_size: 10
+  key_size: 0.8
+
+# =============================================================================
+# PIPELINE DISPLAY NAMES - SINGLE SOURCE
+# Used in legends for multi-pipeline figures
+# =============================================================================
+pipeline_display_names:
+  ground_truth: "Ground Truth"
+  best_ensemble: "Ensemble"
+  best_single_fm: "MOMENT"
+  traditional: "Traditional (LOF)"
+
+# =============================================================================
+# METRIC DISPLAY NAMES - STRATOS-COMPLIANT
+# Reference: Van Calster et al. 2024
+# =============================================================================
+metric_display_names:
+  # Discrimination
+  auroc: "AUROC"
+  aurc: "AURC"
+
+  # Calibration
+  calibration_slope: "Calibration Slope"
+  calibration_intercept: "Calibration Intercept"
+  o_e_ratio: "O:E Ratio"
+
+  # Overall Performance
+  brier: "Brier Score"
+  scaled_brier: "Scaled Brier (IPA)"
+
+  # Clinical Utility
+  net_benefit: "Net Benefit"
+
+# =============================================================================
+# CATEGORY NAMES FOR RAINCLOUD/GROUPED FIGURES
+# =============================================================================
+category_display_names:
+  discrimination: "Discrimination"
+  overall_performance: "Overall Performance"  # STRATOS category name
+  clinical_utility: "Clinical Utility"
+  calibration: "Calibration"
+
+# =============================================================================
+# AXIS LABELS
+# =============================================================================
+axis_labels:
+  # ROC panel
+  roc_x: "False Positive Rate"
+  roc_y: "True Positive Rate"
+
+  # RC panel
+  rc_x: "Coverage"
+  rc_y: "Risk (Error Rate)"
+
+  # Raincloud
+  auroc_x: "AUROC"
+  scaled_brier_x: "Scaled Brier (IPA)"
+  net_benefit_x: "Net Benefit (pt=10%)"
+  o_e_ratio_x: "O:E Ratio"
+
+# =============================================================================
+# PANEL INTERPRETIVE TITLES
+# Used as subtitle hints (e.g., "Higher AUROC = Better")
+# =============================================================================
+panel_interpretation:
+  auroc: "Higher = Better"
+  aurc: "Lower = Better"
+  scaled_brier: "Higher = Better"
+  net_benefit: "Higher = Better"
+  o_e_ratio: "Target: 1.0"
+  calibration_slope: "Target: 1.0"

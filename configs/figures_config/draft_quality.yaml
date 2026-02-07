@@ -1,0 +1,45 @@
+_version: "1.0.0"
+# Figure Configuration: Draft Quality
+#
+# Lower quality settings for fast iteration during development.
+# Use publication_ready.yaml for final figures.
+
+figures:
+  quality: "draft"
+
+  # Output formats (reduced for speed)
+  formats:
+    png:
+      enabled: true
+      dpi: 100  # Lower for faster rendering
+    pdf:
+      enabled: false
+    svg:
+      enabled: false
+
+  # Dimensions (same as publication)
+  dimensions:
+    single_column:
+      width: 3.5
+    double_column:
+      width: 7.0
+
+  # Typography (same as publication)
+  typography:
+    font_family: "sans-serif"  # Faster rendering
+    font_size:
+      title: 12
+      axis_label: 10
+      tick_label: 8
+
+  # Colors (same palette)
+  colors:
+    primary: "#006BA2"
+    secondary: "#DB444B"
+    tertiary: "#3EBCD2"
+    quaternary: "#379A8B"
+
+  # Export settings
+  export:
+    json_sidecar: false  # Skip for speed
+    private_subdir: "private"

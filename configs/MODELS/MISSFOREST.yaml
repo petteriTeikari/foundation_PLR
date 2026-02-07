@@ -1,3 +1,4 @@
+_version: "1.0.0"
 MISSFOREST:
   # See e.g. El Badisy et al. (2024) https://doi.org/10.1186/s12874-024-02305-3
   # Albu et al. (2024) https://arxiv.org/abs/2407.03379 for "missForestPredict"

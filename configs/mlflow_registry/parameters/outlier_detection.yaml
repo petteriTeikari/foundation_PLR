@@ -1,0 +1,61 @@
+# Outlier Detection Parameters Registry
+# =======================================
+# AIDEV-NOTE: All parameters logged in PLR_OutlierDetection experiment.
+# Generated from MLflow on 2026-01-22. Modified by Petteri 2026-01-24
+
+version: "1.1.0"
+experiment_id: "996740926475477194"
+
+# Model selection
+model:
+  model:
+    display_name: "Outlier Detection Model"
+    description: "Method for detecting artifacts in PLR signals"
+    values:
+      # Foundation models (MOMENT variants)
+      - MOMENT-gt-finetune
+      - MOMENT-gt-zeroshot
+      # - MOMENT-orig-finetune
+      # Foundation models (UniTS variants)
+      - UniTS-gt-finetune
+      # - UniTS-orig-finetune
+      # - UniTS-orig-zeroshot
+      # Deep learning
+      - TimesNet-gt
+      - TimesNet-orig
+      # Traditional
+      - LOF
+      - OneClassSVM
+      - PROPHET
+      - SubPCA
+    count: 9
+    categories:
+      foundation_model:
+        - MOMENT-gt-finetune
+        - MOMENT-gt-zeroshot
+        # - MOMENT-orig-finetune
+        - UniTS-gt-finetune
+        # - UniTS-orig-finetune
+        # - UniTS-orig-zeroshot
+      deep_learning:
+        - TimesNet-gt
+        - TimesNet-orig
+      traditional:
+        - LOF
+        - OneClassSVM
+        - PROPHET
+        - SubPCA
+
+# Ensemble parameters
+ensemble:
+  ensemble_run_ids:
+    display_name: "Ensemble Component Run IDs"
+    description: "MLflow run IDs of models included in ensemble"
+    type: list
+
+# Summary
+summary:
+  total_runs: 31
+  models_tested: 9
+  ensembles_tested: 2
+  ground_truth_baseline: "pupil-gt (human annotations)"

@@ -1,0 +1,59 @@
+# Outlier Detection Metrics Registry
+# ====================================
+# AIDEV-NOTE: All metrics logged in PLR_OutlierDetection experiment.
+# Generated from MLflow on 2026-01-22.
+
+version: "1.0.0"
+experiment_id: "996740926475477194"
+
+# All unique base metrics (excluding CI bounds and difficulty suffixes)
+# Total: 4 metrics x 3 difficulty levels = 12 metric variants
+metrics:
+  detection:
+    accuracy:
+      display_name: "Accuracy"
+      description: "Binary classification accuracy for outlier detection"
+      higher_is_better: true
+      range: [0, 1]
+
+    f1:
+      display_name: "F1 Score"
+      description: "F1 score for outlier detection"
+      higher_is_better: true
+      range: [0, 1]
+
+    precision:
+      display_name: "Precision"
+      description: "Precision for outlier detection"
+      higher_is_better: true
+      range: [0, 1]
+
+    fp:
+      display_name: "False Positive Rate"
+      description: "Rate of incorrectly flagging clean samples as outliers"
+      higher_is_better: false
+      range: [0, 1]
+
+# Difficulty levels
+# Metrics are stratified by outlier detection difficulty
+difficulty_levels:
+  - suffix: ""
+    description: "All samples (overall performance)"
+  - suffix: "__easy"
+    description: "Easy cases (obvious blinks, large artifacts)"
+  - suffix: "__medium"
+    description: "Medium difficulty (ambiguous artifacts)"
+
+# Naming convention
+# Base: outlier_test/f1
+# With difficulty: outlier_test/f1__easy, outlier_test/f1__medium
+# With CI: outlier_test/f1_CI_hi, outlier_test/f1__easy_CI_hi
+
+# Splits available
+splits:
+  - outlier_test  # Note: different prefix than classification
+
+# All metrics have CI bounds
+ci_available: true
+ci_suffix_hi: "_CI_hi"
+ci_suffix_lo: "_CI_lo"

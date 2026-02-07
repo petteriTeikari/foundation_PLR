@@ -1,0 +1,44 @@
+_version: "1.0.0"
+# Synthetic Experiment Configuration
+#
+# Configuration for running pipeline with synthetic data.
+# Use this for CI/CD testing without access to real patient data.
+#
+# Usage:
+#   python src/pipeline_PLR.py +experiment=synthetic
+#   # Or via Make:
+#   make run-experiment EXPERIMENT=synthetic
+
+defaults:
+  - /data: synthetic_small
+  - /combos: debug_minimal
+  - /subjects: demo_8_subjects  # Reuse subject structure
+  - /figures_config: draft_quality
+  - /mlflow_config: local_testing
+  - _self_
+
+experiment:
+  name: "Synthetic Pipeline Test"
+  version: "1.0.0"
+  frozen: false  # Can be modified for testing
+  description: |
+    Synthetic data experiment for CI/CD testing.
+    Results are NOT comparable to real data.
+
+metadata:
+  purpose: "ci_testing"
+  data_source: "synthetic_generator"
+
+reproducibility:
+  random_seed: 42
+  python_version: "3.11.10"
+
+# Reduced settings for fast testing
+pipeline:
+  debug: true
+  debug_n_subjects: 4
+
+expected_results:
+  # Synthetic data should produce ~random AUROC (0.5)
+  expected_auroc_range: [0.4, 0.6]
+  note: "Results from synthetic data are for testing only"

@@ -1,0 +1,50 @@
+# Imputation Metrics Registry
+# ============================
+# AIDEV-NOTE: All metrics logged in PLR_Imputation experiment.
+# Generated from MLflow on 2026-01-22.
+
+version: "1.0.0"
+experiment_id: "940304421003085572"
+
+# All unique base metrics (excluding CI bounds)
+# Total: 4 metrics
+metrics:
+  reconstruction:
+    mae:
+      display_name: "MAE"
+      description: "Mean Absolute Error between imputed and ground truth"
+      higher_is_better: false
+      range: [0, null]
+      unit: "pupil diameter units"
+
+    mre:
+      display_name: "MRE"
+      description: "Mean Relative Error"
+      higher_is_better: false
+      range: [0, null]
+      unit: "percentage"
+
+    mse:
+      display_name: "MSE"
+      description: "Mean Squared Error"
+      higher_is_better: false
+      range: [0, null]
+      unit: "squared pupil diameter units"
+
+  data_quality:
+    missing_rate:
+      display_name: "Missing Rate"
+      description: "Percentage of values that were missing/imputed"
+      higher_is_better: null  # Descriptive, not performance
+      range: [0, 100]
+      unit: "percentage"
+
+# Splits available
+splits:
+  - train
+  - test
+
+# All metrics have CI bounds
+ci_available: true
+ci_suffix_hi: "_CI_hi"
+ci_suffix_lo: "_CI_lo"

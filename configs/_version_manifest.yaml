@@ -1,0 +1,345 @@
+manifest_version: 1.0.0
+generated_at: '2026-02-01T22:45:53.532131+00:00'
+git_head: e04e407
+total_configs: 68
+configs:
+  CLS_HYPERPARAMS/CATBOOST_hyperparam_space.yaml:
+    semantic: 1.0.0
+    content_hash: da370a93cc66
+    git_commit: ddeb430
+    full_version: 1.0.0-da370a9
+  CLS_HYPERPARAMS/LogisticRegression_hyperparam_space.yaml:
+    semantic: 1.0.0
+    content_hash: e0a85e88c57e
+    git_commit: ddeb430
+    full_version: 1.0.0-e0a85e8
+  CLS_HYPERPARAMS/TabM_hyperparam_space.yaml:
+    semantic: 1.0.0
+    content_hash: 82faf3224774
+    git_commit: ddeb430
+    full_version: 1.0.0-82faf32
+  CLS_HYPERPARAMS/TabPFN_hyperparam_space.yaml:
+    semantic: 1.0.0
+    content_hash: c3e3ff43c5e6
+    git_commit: ddeb430
+    full_version: 1.0.0-c3e3ff4
+  CLS_HYPERPARAMS/XGBOOST_hyperparam_space.yaml:
+    semantic: 1.0.0
+    content_hash: 7c9f273191de
+    git_commit: ddeb430
+    full_version: 1.0.0-7c9f273
+  CLS_MODELS/CATBOOST.yaml:
+    semantic: 1.0.0
+    content_hash: 3a05db809429
+    git_commit: ddeb430
+    full_version: 1.0.0-3a05db8
+  CLS_MODELS/LogisticRegression.yaml:
+    semantic: 1.0.0
+    content_hash: c0c5935a83bb
+    git_commit: ddeb430
+    full_version: 1.0.0-c0c5935
+  CLS_MODELS/TabM.yaml:
+    semantic: 1.0.0
+    content_hash: 9015d7240517
+    git_commit: ddeb430
+    full_version: 1.0.0-9015d72
+  CLS_MODELS/TabPFN.yaml:
+    semantic: 1.0.0
+    content_hash: 9e368580bc12
+    git_commit: ddeb430
+    full_version: 1.0.0-9e36858
+  CLS_MODELS/XGBOOST.yaml:
+    semantic: 1.0.0
+    content_hash: fe356e1e63fa
+    git_commit: ddeb430
+    full_version: 1.0.0-fe356e1
+  CLS_TS_MODELS/MOMENT.yaml:
+    semantic: 1.0.0
+    content_hash: 2ed58c9cbee2
+    git_commit: ddeb430
+    full_version: 1.0.0-2ed58c9
+  MODELS/CSDI.yaml:
+    semantic: 1.0.0
+    content_hash: a8ab58d68d05
+    git_commit: 7004c85
+    full_version: 1.0.0-a8ab58d
+  MODELS/MISSFOREST.yaml:
+    semantic: 1.0.0
+    content_hash: 20149fc15378
+    git_commit: 7004c85
+    full_version: 1.0.0-20149fc
+  MODELS/MOMENT.yaml:
+    semantic: 1.0.0
+    content_hash: b2bf6f8b2c4e
+    git_commit: 7004c85
+    full_version: 1.0.0-b2bf6f8
+  MODELS/NuwaTS.yaml:
+    semantic: 1.0.0
+    content_hash: 3f288adc8a9e
+    git_commit: 7004c85
+    full_version: 1.0.0-3f288ad
+  MODELS/SAITS.yaml:
+    semantic: 1.0.0
+    content_hash: ed37327ebe5c
+    git_commit: 7004c85
+    full_version: 1.0.0-ed37327
+  MODELS/TimesNet.yaml:
+    semantic: 1.0.0
+    content_hash: 3d444c8e832a
+    git_commit: 7004c85
+    full_version: 1.0.0-3d444c8
+  OUTLIER_MODELS/EIF.yaml:
+    semantic: 1.0.0
+    content_hash: 886d4c02a5c5
+    git_commit: 15431f8
+    full_version: 1.0.0-886d4c0
+  OUTLIER_MODELS/LOF.yaml:
+    semantic: 1.0.0
+    content_hash: d96f64550bf1
+    git_commit: 15431f8
+    full_version: 1.0.0-d96f645
+  OUTLIER_MODELS/LOF_only.yaml:
+    semantic: 1.0.0
+    content_hash: 6bb9ec5e35eb
+    git_commit: 3a7efb3
+    full_version: 1.0.0-6bb9ec5
+  OUTLIER_MODELS/MOMENT.yaml:
+    semantic: 1.0.0
+    content_hash: e9a06eca9107
+    git_commit: 15431f8
+    full_version: 1.0.0-e9a06ec
+  OUTLIER_MODELS/OneClassSVM.yaml:
+    semantic: 1.0.0
+    content_hash: c08e801d4d35
+    git_commit: 15431f8
+    full_version: 1.0.0-c08e801
+  OUTLIER_MODELS/PROPHET.yaml:
+    semantic: 1.0.0
+    content_hash: 6d59a5fdeac5
+    git_commit: 15431f8
+    full_version: 1.0.0-6d59a5f
+  OUTLIER_MODELS/SigLLM.yaml:
+    semantic: 1.0.0
+    content_hash: 215265ccda73
+    git_commit: 15431f8
+    full_version: 1.0.0-215265c
+  OUTLIER_MODELS/SubPCA.yaml:
+    semantic: 1.0.0
+    content_hash: 2ddd52b03eb4
+    git_commit: 15431f8
+    full_version: 1.0.0-2ddd52b
+  OUTLIER_MODELS/TimesNet.yaml:
+    semantic: 1.0.0
+    content_hash: c8f3bc56f53d
+    git_commit: 15431f8
+    full_version: 1.0.0-c8f3bc5
+  OUTLIER_MODELS/UniTS.yaml:
+    semantic: 1.0.0
+    content_hash: 402652b01d1b
+    git_commit: 15431f8
+    full_version: 1.0.0-402652b
+  PLR_EMBEDDING/MOMENT.yaml:
+    semantic: 1.0.0
+    content_hash: c6a5c3a3a154
+    git_commit: 77e4899
+    full_version: 1.0.0-c6a5c3a
+  PLR_FEATURIZATION/featuresBaseline.yaml:
+    semantic: 1.0.0
+    content_hash: 836ebd54f85b
+    git_commit: 77e4899
+    full_version: 1.0.0-836ebd5
+  PLR_FEATURIZATION/featuresSimple.yaml:
+    semantic: 1.0.0
+    content_hash: 8d6d00d2e910
+    git_commit: 77e4899
+    full_version: 1.0.0-8d6d00d
+  SERVICES/services.yaml:
+    semantic: 1.0.0
+    content_hash: 09ad13a1fa3e
+    git_commit: fe39384
+    full_version: 1.0.0-09ad13a
+  VISUALIZATION/colors.yaml:
+    semantic: 1.0.0
+    content_hash: eb465aa9bcaf
+    git_commit: '9231423'
+    full_version: 1.0.0-eb465aa
+  VISUALIZATION/data_filters.yaml:
+    semantic: 1.0.0
+    content_hash: 17d74bd8a926
+    git_commit: dd42324
+    full_version: 1.0.0-17d74bd
+  VISUALIZATION/demo_subjects.yaml:
+    semantic: 1.0.0
+    content_hash: 252868859be2
+    git_commit: 9912d0b
+    full_version: 1.0.0-2528688
+  VISUALIZATION/figure_layouts.yaml:
+    semantic: 1.0.0
+    content_hash: 065d06f2a12c
+    git_commit: f69cefc
+    full_version: 1.0.0-065d06f
+  VISUALIZATION/figure_registry.yaml:
+    semantic: 1.0.0
+    content_hash: 0763e0ce094d
+    git_commit: '9231423'
+    full_version: 1.0.0-0763e0c
+  VISUALIZATION/figure_style.yaml:
+    semantic: 1.0.0
+    content_hash: 07511abd6cd0
+    git_commit: 45979a0
+    full_version: 1.0.0-07511ab
+  VISUALIZATION/methods.yaml:
+    semantic: 1.0.0
+    content_hash: 2e3bd62ca0fb
+    git_commit: 9912d0b
+    full_version: 1.0.0-2e3bd62
+  VISUALIZATION/metrics.yaml:
+    semantic: 2.0.0
+    content_hash: fc836a36dc75
+    git_commit: 37d9006
+    full_version: 2.0.0-fc836a3
+  VISUALIZATION/plot_hyperparam_combos.yaml:
+    semantic: 2.0.0
+    content_hash: 32f4cc251ea5
+    git_commit: e04e407
+    full_version: 2.0.0-32f4cc2
+  combos/debug_minimal.yaml:
+    semantic: 1.0.0
+    content_hash: 353d6f5c977a
+    git_commit: 1fed98c
+    full_version: 1.0.0-353d6f5
+  combos/paper_2026.yaml:
+    semantic: 1.0.0
+    content_hash: 7910db17fa19
+    git_commit: 1fed98c
+    full_version: 1.0.0-7910db1
+  data/seri_plr_2026.yaml:
+    semantic: 1.0.0
+    content_hash: 829fecd8ebf9
+    git_commit: 1fed98c
+    full_version: 1.0.0-829fecd
+  data/synthetic_small.yaml:
+    semantic: 1.0.0
+    content_hash: 4e9acd881ac2
+    git_commit: 1fed98c
+    full_version: 1.0.0-4e9acd8
+  debug_run.yaml:
+    semantic: 1.0.0
+    content_hash: 7d2c00c899c9
+    git_commit: fe39384
+    full_version: 1.0.0-7d2c00c
+  defaults.yaml:
+    semantic: 1.0.0
+    content_hash: a86e3fda1de9
+    git_commit: 3a7efb3
+    full_version: 1.0.0-a86e3fd
+  demo_subjects.yaml:
+    semantic: 1.0.0
+    content_hash: d66866163802
+    git_commit: a75e394
+    full_version: 1.0.0-d668661
+  experiment/paper_2026.yaml:
+    semantic: 1.0.0
+    content_hash: fa887bdbef7e
+    git_commit: 1fed98c
+    full_version: 1.0.0-fa887bd
+  experiment/synthetic.yaml:
+    semantic: 1.0.0
+    content_hash: 6eef8f5c6d6a
+    git_commit: 1fed98c
+    full_version: 1.0.0-6eef8f5
+  figures_config/draft_quality.yaml:
+    semantic: 1.0.0
+    content_hash: e3c952659aba
+    git_commit: 1fed98c
+    full_version: 1.0.0-e3c9526
+  figures_config/publication_ready.yaml:
+    semantic: 1.0.0
+    content_hash: 5c21ccd2428e
+    git_commit: 1fed98c
+    full_version: 1.0.0-5c21ccd
+  hyperparam_sweep.yaml:
+    semantic: 1.0.0
+    content_hash: bb9b92acae97
+    git_commit: fe39384
+    full_version: 1.0.0-bb9b92a
+  mlflow_config/local_testing.yaml:
+    semantic: 1.0.0
+    content_hash: 29fe75be6ef9
+    git_commit: 1fed98c
+    full_version: 1.0.0-29fe75b
+  mlflow_config/production.yaml:
+    semantic: 1.0.0
+    content_hash: d86214223db2
+    git_commit: 1fed98c
+    full_version: 1.0.0-d862142
+  mlflow_registry/category_mapping.yaml:
+    semantic: 1.0.0
+    content_hash: bce1d12fa624
+    git_commit: 7a14571
+    full_version: 1.0.0-bce1d12
+  mlflow_registry/display_names.yaml:
+    semantic: 1.1.0
+    content_hash: 5f77f1c41239
+    git_commit: '9231423'
+    full_version: 1.1.0-5f77f1c
+  mlflow_registry/experiments.yaml:
+    semantic: 1.0.0
+    content_hash: f87b576491f5
+    git_commit: 9912d0b
+    full_version: 1.0.0-f87b576
+  mlflow_registry/method_abbreviations.yaml:
+    semantic: 1.0.0
+    content_hash: 1a114011a715
+    git_commit: 7a14571
+    full_version: 1.0.0-1a11401
+  mlflow_registry/metrics/classification.yaml:
+    semantic: 1.0.0
+    content_hash: 6042c3ce7c67
+    git_commit: 9912d0b
+    full_version: 1.0.0-6042c3c
+  mlflow_registry/metrics/imputation.yaml:
+    semantic: 1.0.0
+    content_hash: 5454ab0d5634
+    git_commit: 9912d0b
+    full_version: 1.0.0-5454ab0
+  mlflow_registry/metrics/outlier_detection.yaml:
+    semantic: 1.0.0
+    content_hash: 0a583e295839
+    git_commit: 9912d0b
+    full_version: 1.0.0-0a583e2
+  mlflow_registry/parameters/classification.yaml:
+    semantic: 1.0.0
+    content_hash: f85a77dbc3aa
+    git_commit: fbf3344
+    full_version: 1.0.0-f85a77d
+  mlflow_registry/parameters/imputation.yaml:
+    semantic: 1.0.0
+    content_hash: b8069b02afb2
+    git_commit: 9912d0b
+    full_version: 1.0.0-b8069b0
+  mlflow_registry/parameters/outlier_detection.yaml:
+    semantic: 1.1.0
+    content_hash: ad8f680fa8c6
+    git_commit: fbf3344
+    full_version: 1.1.0-ad8f680
+  registry_canary.yaml:
+    semantic: 1.0.0
+    content_hash: 24fee2050b89
+    git_commit: 4cedc2d
+    full_version: 1.0.0-24fee20
+  subjects/demo_8_subjects.yaml:
+    semantic: 1.0.0
+    content_hash: 956b3eb7cc30
+    git_commit: 1fed98c
+    full_version: 1.0.0-956b3eb
+  data_isolation.yaml:
+    semantic: 1.0.0
+    content_hash: 784fe9b754e0
+    git_commit: f494249
+    full_version: 1.0.0-784fe9b
+  synthetic_run.yaml:
+    semantic: 1.0.0
+    content_hash: ad394d422a92
+    git_commit: 3a7efb3
+    full_version: 1.0.0-ad394d4
