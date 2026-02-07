@@ -24,11 +24,21 @@ Usage:
     make reproduce-from-checkpoint
 """
 
-try:
-    from .analysis_flow import analysis_flow
-    from .extraction_flow import extraction_flow
+__all__ = ["extraction_flow", "analysis_flow"]
 
-    __all__ = ["extraction_flow", "analysis_flow"]
-except ImportError:
-    # Allow import even if dependencies are missing
-    __all__ = []
+
+def __getattr__(name: str):
+    """Lazy imports — flows are Prefect entry points, not library APIs.
+
+    This avoids eager imports of heavy dependencies (prefect, mlflow, catboost)
+    when the package is scanned by static analysis tools like griffe/mkdocstrings.
+    """
+    if name == "extraction_flow":
+        from .extraction_flow import extraction_flow
+
+        return extraction_flow
+    if name == "analysis_flow":
+        from .analysis_flow import analysis_flow
+
+        return analysis_flow
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

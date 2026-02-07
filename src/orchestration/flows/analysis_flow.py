@@ -23,28 +23,8 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-# Check if we should use Prefect (disabled in tests or when PREFECT_DISABLED env var is set)
-USE_PREFECT = os.environ.get("PREFECT_DISABLED", "").lower() not in ("1", "true", "yes")
-
-try:
-    if USE_PREFECT:
-        from prefect import flow, task
-
-        PREFECT_AVAILABLE = True
-    else:
-        raise ImportError("Prefect disabled by environment variable")
-except ImportError:
-    PREFECT_AVAILABLE = False
-
-    def task(fn=None, **kwargs):
-        if fn is None:
-            return lambda f: f
-        return fn
-
-    def flow(fn=None, **kwargs):
-        if fn is None:
-            return lambda f: f
-        return fn
+# Prefect compatibility layer (uses importlib for static-analysis safety)
+from src.orchestration._prefect_compat import flow, task
 
 
 # ============================================================================
