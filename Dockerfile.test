@@ -36,12 +36,17 @@ ENV PYTHONPATH=/project/src PREFECT_DISABLED=1 MPLBACKEND=Agg
 
 WORKDIR /project
 COPY pyproject.toml uv.lock Makefile renv.lock .Rprofile ./
+COPY .gitignore AGENTS.md ARCHITECTURE.md ./
+COPY .github/ .github/
 COPY src/ src/
 COPY tests/ tests/
 COPY configs/ configs/
 COPY scripts/ scripts/
+COPY docs/ docs/
+COPY data/r_data/ data/r_data/
+COPY data/public/ data/public/
 
-RUN mkdir -p data/r_data data/public figures/generated
+RUN mkdir -p figures/generated
 
 CMD ["python", "-m", "pytest", "tests/", "-m", "unit or guardrail", \
      "--ignore=tests/test_docker_r.py", "--ignore=tests/test_docker_full.py", \
