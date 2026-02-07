@@ -1,0 +1,98 @@
+# Critical Rules Checklist
+# These rules MUST exist somewhere in the always-loaded hierarchy.
+# After each optimization edit, grep for each keyword set.
+# If ANY rule has 0 matches across ALL always-loaded files → REVERT.
+
+critical_rules:
+  - id: R01
+    name: "Research question focus"
+    keywords:
+      - "preprocessing"
+      - "NOT comparing classifiers"
+      - "CatBoost"
+
+  - id: R02
+    name: "Registry single source of truth"
+    keywords:
+      - "configs/mlflow_registry"
+      - "EXACTLY 11"
+      - "outlier methods"
+
+  - id: R03
+    name: "STRATOS metrics required"
+    keywords:
+      - "STRATOS"
+      - "calibration"
+      - "Net Benefit"
+
+  - id: R04
+    name: "Zero tolerance figure QA"
+    keywords:
+      - "CRITICAL-FAILURE-001"
+      - "synthetic data"
+      - "test_figure_qa"
+
+  - id: R05
+    name: "Fix issues at source"
+    keywords:
+      - "CRITICAL-FAILURE-002"
+      - "extraction"
+
+  - id: R06
+    name: "Use uv, conda banned"
+    keywords:
+      - "uv"
+      - "conda"
+      - "BANNED"
+
+  - id: R07
+    name: "No reimplementation"
+    keywords:
+      - "reimplementation"
+      - "rpy2"
+
+  - id: R08
+    name: "No hardcoding"
+    keywords:
+      - "hardcod"
+      - "COLORS"
+      - "save_figure"
+
+  - id: R09
+    name: "Computation decoupling"
+    keywords:
+      - "CRITICAL-FAILURE-003"
+      - "extraction"
+      - "READ ONLY"
+
+  - id: R10
+    name: "No shortcuts"
+    keywords:
+      - "CRITICAL-FAILURE-006"
+      - "academic"
+
+  - id: R11
+    name: "Subject counts"
+    keywords:
+      - "507"
+      - "208"
+      - "152"
+
+  - id: R12
+    name: "Data provenance"
+    keywords:
+      - "Najjar"
+      - "0.913"
+
+  - id: R13
+    name: "Figure JSON reproducibility"
+    keywords:
+      - "save_figure"
+      - "JSON"
+      - "reproducibility"
+
+  - id: R14
+    name: "DevEx automation"
+    keywords:
+      - "DevEx"
+      - "one command"

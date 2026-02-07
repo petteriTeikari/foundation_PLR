@@ -1,0 +1,40 @@
+# CLAUDE.local.md - Machine-Specific Configuration
+#
+# Copy this file to CLAUDE.local.md and customize for your machine.
+# CLAUDE.local.md is NOT committed to git (add to .gitignore if needed).
+#
+# This file supplements the main CLAUDE.md with local paths and preferences.
+
+## Local Paths
+
+# Adjust these paths for your machine:
+
+### Data
+MLFLOW_PATH=/home/<username>/mlruns
+DATABASE_PATH=/home/<username>/Dropbox/github-personal/foundation-PLR/SERI_PLR_GLAUCOMA.db
+
+### Manuscript
+MANUSCRIPT_ROOT=/home/<username>/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR
+
+### Output
+FIGURES_OUTPUT=${MANUSCRIPT_ROOT}/latent-methods-results/figures/generated
+
+## Local Development Notes
+
+# Add any machine-specific notes here:
+# - Python version: 3.11+
+# - Virtual environment location: .venv/
+# - IDE: VS Code with Python extension
+
+## Known Issues on This Machine
+
+# Document any machine-specific quirks:
+# - Example: "Font rendering requires fonts-liberation package"
+# - Example: "DuckDB requires specific version for ARM64"
+
+## Session Notes
+
+# Use this section for temporary notes during work sessions:
+# - Current task:
+# - Blockers:
+# - Next steps:

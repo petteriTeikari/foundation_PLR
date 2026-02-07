@@ -1,0 +1,136 @@
+# Banned Patterns Reference
+# These patterns trigger CRITICAL severity when found in source code.
+
+python_banned:
+  # Computation in visualization (CRITICAL-FAILURE-003)
+  - pattern: "from sklearn.metrics import"
+    scope: "src/viz/"
+    severity: CRITICAL
+    rule: "Computation decoupling - viz reads DuckDB only"
+    fix: "Read pre-computed metric from DuckDB"
+
+  - pattern: "from src.stats."
+    scope: "src/viz/"
+    severity: CRITICAL
+    rule: "Computation decoupling"
+    fix: "Read from DuckDB, don't import stats modules"
+
+  # STRATOS computation outside extraction (reviewer gap #1)
+  - pattern: "from src.stats.calibration_extended"
+    scope: "src/{viz,orchestration,featurization}/"
+    severity: CRITICAL
+    rule: "STRATOS metrics computed in extraction only"
+    fix: "Read from DuckDB, not from stats modules"
+
+  - pattern: "from src.stats.clinical_utility"
+    scope: "src/{viz,orchestration,featurization}/"
+    severity: CRITICAL
+    rule: "STRATOS metrics computed in extraction only"
+    fix: "Read net_benefit from DuckDB"
+
+  - pattern: "from src.stats.scaled_brier"
+    scope: "src/{viz,orchestration,featurization}/"
+    severity: CRITICAL
+    rule: "STRATOS metrics computed in extraction only"
+    fix: "Read scaled_brier from DuckDB"
+
+  # grep/sed/awk for structured data (VIOLATION-001)
+  - pattern: "subprocess.*grep|subprocess.*sed|subprocess.*awk"
+    scope: "src/"
+    severity: CRITICAL
+    rule: "Use AST/YAML parsers, not shell tools"
+    fix: "Replace with ast.parse() or yaml.safe_load()"
+
+  # Hardcoded colors
+  - pattern: '"#[0-9a-fA-F]{6}"'
+    scope: "src/"
+    severity: CRITICAL
+    rule: "No hardcoded hex colors"
+    fix: "Use COLORS dict from plot_config"
+    exceptions:
+      - "configs/"
+      - "tests/"
+      - "# noqa: hardcode"
+
+  # plt.savefig instead of save_figure
+  - pattern: "plt.savefig("
+    scope: "src/viz/"
+    severity: HIGH
+    rule: "Use save_figure() for JSON reproducibility"
+    fix: "Replace with save_figure(fig, name, data=data_dict)"
+
+  # Missing setup_style
+  - pattern: "plt.figure(|plt.subplots("
+    scope: "src/viz/"
+    severity: MEDIUM
+    rule: "Call setup_style() before any matplotlib"
+    check: "Verify setup_style() is called earlier in the file"
+
+r_banned:
+  # ggsave instead of figure system
+  - pattern: "ggsave("
+    scope: "src/r/"
+    severity: CRITICAL
+    rule: "Use save_publication_figure()"
+    fix: "Replace with save_publication_figure(plot, name)"
+
+  # Hardcoded colors in ggplot
+  - pattern: 'color\\s*=\\s*"#'
+    scope: "src/r/"
+    severity: CRITICAL
+    rule: "Load colors from YAML"
+    fix: "Use load_color_definitions()"
+
+  # Custom themes
+  - pattern: "theme_economist|economist_theme"
+    scope: "src/r/"
+    severity: HIGH
+    rule: "Use theme_foundation_plr()"
+
+config_violations:
+  # Hardcoded method names
+  hardcoded_methods:
+    - "LOF"
+    - "OneClassSVM"
+    - "PROPHET"
+    - "SubPCA"
+    - "MOMENT-gt-finetune"
+    - "MOMENT-gt-zeroshot"
+    - "UniTS-gt-finetune"
+    - "TimesNet-gt"
+    - "SAITS"
+    - "CSDI"
+    - "CatBoost"
+    - "XGBoost"
+    - "TabPFN"
+    - "TabM"
+    - "LogisticRegression"
+    note: "Method names must come from registry or config YAML"
+    exceptions:
+      - "configs/"
+      - "tests/"
+      - "registry.py"
+      - "CLAUDE.md"
+
+  # Registry integrity (reviewer gap #2)
+  registry_integrity:
+    outlier_count: 11
+    imputation_count: 8
+    classifier_count: 5
+    check: "Any hardcoded list of methods must match these counts"
+    source: "configs/mlflow_registry/parameters/classification.yaml"
+
+  # Hardcoded numeric constants (should come from configs/defaults.yaml)
+  hardcoded_constants:
+    - value: 0.0354
+      config_path: "CLS_EVALUATION.glaucoma_params.prevalence"
+    - value: 1000
+      config_path: "CLS_EVALUATION.BOOTSTRAP.n_iterations"
+      context: "bootstrap"
+    - value: 0.95
+      config_path: "CLS_EVALUATION.BOOTSTRAP.alpha_CI"
+      context: "confidence"
+    - value: 0.862
+      config_path: "CLS_EVALUATION.glaucoma_params.tpAUC_sensitivity"
+    - value: 0.821
+      config_path: "CLS_EVALUATION.glaucoma_params.tpAUC_specificity"

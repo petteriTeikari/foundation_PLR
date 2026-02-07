@@ -1,0 +1,74 @@
+{
+  "initialized": true,
+  "iteration": 1,
+  "scope": "tier1+config",
+  "baseline": {
+    "python_files": 305,
+    "r_files": 56,
+    "yaml_files": 72,
+    "total_lines": 0
+  },
+  "history": [
+    {
+      "iteration": 1,
+      "timestamp": "2026-02-06T05:46:00Z",
+      "scope": "tier1 (src/viz, src/stats, src/data_io, src/r) + configs/",
+      "agents": [
+        "agent-1a: banned patterns + hardcoding scan",
+        "agent-1b: bidirectional config audit"
+      ],
+      "findings": {
+        "total": 56,
+        "by_severity": {
+          "CRITICAL": 49,
+          "HIGH": 7,
+          "MEDIUM": 3,
+          "LOW": 3
+        },
+        "by_category": {
+          "computation_decoupling": 12,
+          "hardcoded_method_names": 16,
+          "hardcoded_constants": 12,
+          "hardcoded_colors_python": 5,
+          "hardcoded_colors_r": 4,
+          "hardcoded_paths": 4,
+          "dead_config": 3,
+          "plt_savefig": 1,
+          "dual_source_colors": 2,
+          "stub_config": 3
+        }
+      },
+      "fixes_applied": {
+        "total": 48,
+        "commits": [
+          "3ea22e3 - R hex colors, Python DRY, deprecation markers (4 fixes)",
+          "366216f - Config constants, dead config, paths (23 fixes)",
+          "a9db4f9 - Method names, colors, dual source of truth (17 fixes)",
+          "PENDING - plt.savefig removal, stub config cleanup (4 fixes)"
+        ],
+        "by_category": {
+          "hardcoded_method_names": "FIXED - FIXED_CLASSIFIER constant, named constants in utility_matrix",
+          "hardcoded_constants": "FIXED - src/stats/_defaults.py centralized, 8 files updated",
+          "hardcoded_colors_python": "FIXED - redundant .get() removed, cycle colors named, fallback dict removed",
+          "hardcoded_colors_r": "FIXED - COLORS_STIMULUS, COLORS_PANEL_BG, ECONOMIST_CAPTION in R",
+          "hardcoded_paths": "FIXED - relative paths in demo_dataset.py, LEGACY notice for tools/",
+          "dead_config": "FIXED - IMPUTATION_EVAL, VISUALIZATION.BACKENDS/EXPORT removed",
+          "dual_source_colors": "FIXED - get_combo_color() resolves via combos YAML color_ref",
+          "computation_decoupling": "DEFERRED to GH#13 (large refactor, 12 violations in src/viz/)",
+          "plt_savefig": "FIXED - replaced with save_figure() in plot_config.py __main__ demo",
+          "stub_config": "FIXED - METADATA/preNone placeholders removed, TS_SETTINGS documented"
+        },
+        "remaining": {
+          "computation_decoupling": "12 violations deferred to GH#13"
+        }
+      },
+      "skill_learnings": [
+        "Need severity distinction: 'function default matching config' vs 'inline literal'",
+        "Need canonical definition exclusion (COLORS dict in plot_config.py is the source)",
+        "Need noqa/nolint comment detection to track acknowledged tech debt",
+        "Need legacy code treatment (src/tools/ vs active src/viz/)",
+        "Dual source of truth is a structural issue, not a simple hardcoding violation"
+      ]
+    }
+  ]
+}

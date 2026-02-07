@@ -1,0 +1,53 @@
+# Foundation PLR - Auto Context Injection
+# Patterns that trigger context injection based on file paths
+
+version: "1.0"
+
+global:
+  always_inject: |
+    FOUNDATION PLR: Combos from configs/VISUALIZATION/plot_hyperparam_combos.yaml. Ground truth required in comparisons.
+
+patterns:
+  - match: "**/viz/**/*.py"
+    inject: |
+      MANDATORY: Load combos from configs/VISUALIZATION/plot_hyperparam_combos.yaml. Max 4 curves. Ground truth required. Call setup_style() first.
+
+  - match: "**/*retention*.py"
+    inject: |
+      RETENTION CURVES: Load combos from YAML. Ground truth=solid gray. FM=solid colored. Baseline=dotted. Max 4 curves.
+
+  - match: "**/*calibration*.py"
+    inject: |
+      CALIBRATION: Include 45-degree line. Load combos from YAML. Ground truth required.
+
+  - match: "**/*dca*.py"
+    inject: |
+      DCA: Include "treat all" and "treat none" lines. Load combos from YAML. Ground truth required.
+
+  - match: "**/apps/visualization/**/*.tsx"
+    inject: |
+      D3 VIZ: Load data from figures/generated/data/*.json. Styles from src/styles/foundations.css only. No hardcoded colors.
+
+  - match: "**/*subject*trace*.py"
+    inject: |
+      SUBJECT TRACES: Use configs/demo_subjects.yaml. 8 subjects stratified by outlier percentage.
+
+  - match: "**/generate*figure*.py"
+    inject: |
+      FIGURE GEN: Load combos from YAML. Output JSON to figures/generated/data/. Ground truth in all comparisons.
+
+  - match: "**/plot_hyperparam_combos.yaml"
+    inject: |
+      CRITICAL: Changes here affect ALL visualizations. ground_truth must be first.
+
+  - match: "**/demo_subjects.yaml"
+    inject: |
+      CRITICAL: Changes affect manuscript figure reproducibility. 4 control + 4 glaucoma.
+
+  - match: "**/mlflow*.py"
+    inject: |
+      MLFLOW: Tracking at /home/petteri/Dropbox/mlruns. 542 pickles, 1000 bootstrap each.
+
+  - match: "**/*.py"
+    inject: |
+      PYTHON: encoding='utf-8', datetime.now(timezone.utc), Path() for paths, run with uv.
