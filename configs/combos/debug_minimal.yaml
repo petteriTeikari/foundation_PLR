@@ -1,0 +1,31 @@
+_version: "1.0.0"
+# Hyperparam Combinations: Debug Minimal
+#
+# Minimal combinations for debugging and testing.
+# Uses fast methods that don't require GPU.
+
+combos:
+  standard:
+    # Just ground truth for quick testing
+    ground_truth:
+      id: "ground_truth"
+      outlier_method: "pupil-gt"
+      imputation_method: "pupil-gt"
+      classifier: "CatBoost"
+      description: "Ground truth baseline"
+
+    # LOF is fast and CPU-only
+    lof_linear:
+      id: "lof_linear"
+      outlier_method: "LOF"
+      imputation_method: "linear"
+      classifier: "CatBoost"
+      description: "Fast CPU-only pipeline"
+
+  # No extended combos for debug
+  extended: {}
+
+visualization:
+  max_main_curves: 2
+  max_supplementary_curves: 4
+  require_ground_truth: false

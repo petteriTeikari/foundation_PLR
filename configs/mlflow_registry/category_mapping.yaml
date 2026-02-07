@@ -1,0 +1,142 @@
+# Category Mapping for Methods
+# ============================
+# SINGLE SOURCE OF TRUTH - replaces ALL case_when() categorization in R!
+#
+# DO NOT add category assignments anywhere else in the codebase.
+# Use get_outlier_category() / get_imputation_category() from category_loader.R
+#
+# Created: 2026-01-28
+# Version: 1.0.0
+
+version: "1.0.0"
+
+# =============================================================================
+# OUTLIER METHOD CATEGORIES
+# =============================================================================
+# Maps outlier detection methods to human-readable categories for visualizations.
+# Order of patterns matters - first match wins.
+
+outlier_method_categories:
+  # Exact matches (checked first)
+  exact:
+    "pupil-gt": "Ground Truth"
+
+  # Pattern matches (processed in order, first match wins)
+  patterns:
+    - pattern: "^ensemble"
+      category: "Ensemble"
+      description: "Ensemble methods combining multiple detectors"
+
+    - pattern: "MOMENT|UniTS"
+      category: "Foundation Model"
+      description: "Foundation models for time series (MOMENT, UniTS)"
+
+    - pattern: "TimesNet"
+      category: "Deep Learning"
+      description: "Deep learning models (not foundation models)"
+
+    - pattern: "LOF|OneClassSVM|PROPHET|SubPCA"
+      category: "Traditional"
+      description: "Traditional statistical/ML outlier detection"
+
+    # Fallback - MUST be last
+    - pattern: ".*"
+      category: "Unknown"
+      description: "Unrecognized method"
+
+# Category display properties (for consistent styling)
+outlier_category_display:
+  "Ground Truth":
+    short_name: "GT"
+    description: "Human-annotated reference standard"
+    color_ref: "--color-category-ground-truth"
+
+  "Foundation Model":
+    short_name: "FM"
+    description: "Pre-trained foundation models"
+    color_ref: "--color-category-foundation-model"
+
+  "Deep Learning":
+    short_name: "DL"
+    description: "Deep learning models"
+    color_ref: "--color-category-deep-learning"
+
+  "Traditional":
+    short_name: "Trad"
+    description: "Classical statistical methods"
+    color_ref: "--color-category-traditional"
+
+  "Ensemble":
+    short_name: "Ens"
+    description: "Ensemble of multiple methods"
+    color_ref: "--color-category-ensemble"
+
+# =============================================================================
+# IMPUTATION METHOD CATEGORIES
+# =============================================================================
+
+imputation_method_categories:
+  exact:
+    "pupil-gt": "Ground Truth"
+    "linear": "Traditional"
+
+  patterns:
+    - pattern: "^ensemble"
+      category: "Ensemble"
+
+    - pattern: "MOMENT"
+      category: "Foundation Model"
+
+    - pattern: "SAITS|CSDI|TimesNet"
+      category: "Deep Learning"
+
+    - pattern: ".*"
+      category: "Unknown"
+
+imputation_category_display:
+  "Ground Truth":
+    short_name: "GT"
+    description: "Human-annotated reconstruction"
+    color_ref: "--color-category-ground-truth"
+
+  "Foundation Model":
+    short_name: "FM"
+    description: "Foundation model imputation"
+    color_ref: "--color-category-foundation-model"
+
+  "Deep Learning":
+    short_name: "DL"
+    description: "Deep learning imputation"
+    color_ref: "--color-category-deep-learning"
+
+  "Traditional":
+    short_name: "Trad"
+    description: "Traditional interpolation"
+    color_ref: "--color-category-traditional"
+
+  "Ensemble":
+    short_name: "Ens"
+    description: "Ensemble imputation"
+    color_ref: "--color-category-ensemble"
+
+# =============================================================================
+# CATEGORY COLORS (Paul Tol colorblind-safe palette)
+# =============================================================================
+
+category_colors:
+  "--color-category-ground-truth": "#FFD700"  # Gold - reference standard
+  "--color-category-foundation-model": "#3EBCD2"  # Cyan - foundation models
+  "--color-category-deep-learning": "#006BA2"  # Blue - deep learning
+  "--color-category-traditional": "#999999"  # Gray - traditional methods
+  "--color-category-ensemble": "#379A8B"  # Teal - ensemble methods
+  "--color-category-unknown": "#CC79A7"  # Pink - unknown (should not appear)
+
+# =============================================================================
+# METADATA
+# =============================================================================
+
+metadata:
+  created: "2026-01-28"
+  purpose: "Single source of truth for method categorization"
+  replaces: "All case_when() blocks in R figure scripts"
+  usage: "load via category_loader.R::load_category_mapping()"

@@ -1,0 +1,176 @@
+# Display Names for Publication Figures
+# =====================================
+# SINGLE SOURCE OF TRUTH for human-readable method names.
+#
+# Maps raw MLflow method names to publication-friendly display names.
+# Used by both Python (src/data_io/display_names.py) and R (src/r/utils/load_display_names.R).
+#
+# RULES:
+# 1. Every method in classification.yaml MUST have a display name here
+# 2. Display names should be:
+#    - Capitalized appropriately (MOMENT, LOF, not moment, lof)
+#    - Free of internal abbreviations (-gt, -orig)
+#    - Hyphenated for compound terms (Zero-shot, Fine-tuned)
+#    - Suitable for publication figures
+#
+# DO NOT hardcode display names anywhere else in the codebase.
+#
+# VALIDATION: Run `pytest tests/unit/test_display_names.py -v`
+#
+# Created: 2026-01-27
+# Updated: 2026-01-28
+# Version: 1.1.0
+
+version: "1.1.0"
+
+# =============================================================================
+# OUTLIER DETECTION METHODS (11 total)
+# =============================================================================
+outlier_methods:
+  # Ground Truth
+  pupil-gt:
+    display_name: "Ground Truth"
+    short_name: "GT"
+
+  # Foundation Models - MOMENT
+  MOMENT-gt-finetune:
+    display_name: "MOMENT Fine-tuned"
+    short_name: "MOM-ft"
+
+  MOMENT-gt-zeroshot:
+    display_name: "MOMENT Zero-shot"
+    short_name: "MOM-zs"
+
+  # Foundation Models - UniTS (only fine-tuned variant exists)
+  UniTS-gt-finetune:
+    display_name: "UniTS"
+    short_name: "UniTS"
+
+  # Deep Learning - TimesNet
+  TimesNet-gt:
+    display_name: "TimesNet"
+    short_name: "TN"
+
+  # Traditional Methods
+  LOF:
+    display_name: "LOF"
+    short_name: "LOF"
+
+  OneClassSVM:
+    display_name: "One-Class SVM"
+    short_name: "OCSVM"
+
+  PROPHET:
+    display_name: "Prophet"
+    short_name: "Prophet"
+
+  SubPCA:
+    display_name: "Subspace PCA"
+    short_name: "SubPCA"
+
+  # Ensembles
+  ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune:
+    display_name: "Ensemble (Full)"
+    short_name: "Ens-Full"
+
+  ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune:
+    display_name: "Ensemble (Thresholded)"
+    short_name: "Ens-Thresh"
+
+# =============================================================================
+# IMPUTATION METHODS (8 total)
+# =============================================================================
+imputation_methods:
+  # Ground Truth
+  pupil-gt:
+    display_name: "Ground Truth"
+    short_name: "GT"
+
+  # Foundation Models
+  MOMENT-finetune:
+    display_name: "MOMENT Fine-tuned"
+    short_name: "MOM-ft"
+
+  MOMENT-zeroshot:
+    display_name: "MOMENT Zero-shot"
+    short_name: "MOM-zs"
+
+  # Deep Learning
+  CSDI:
+    display_name: "CSDI"
+    short_name: "CSDI"
+
+  SAITS:
+    display_name: "SAITS"
+    short_name: "SAITS"
+
+  TimesNet:
+    display_name: "TimesNet"
+    short_name: "TN"
+
+  # Ensembles
+  ensemble-CSDI-MOMENT-SAITS:
+    display_name: "Ensemble (CSDI+MOMENT+SAITS)"
+    short_name: "Ens-3"
+
+  ensemble-CSDI-MOMENT-SAITS-TimesNet:
+    display_name: "Ensemble (Deep Learning)"
+    short_name: "Ens-4"
+
+# =============================================================================
+# CLASSIFIERS (5 total)
+# =============================================================================
+classifiers:
+  CatBoost:
+    display_name: "CatBoost"
+    short_name: "CB"
+
+  XGBoost:
+    display_name: "XGBoost"
+    short_name: "XGB"
+
+  TabPFN:
+    display_name: "TabPFN"
+    short_name: "TabPFN"
+
+  TabM:
+    display_name: "TabM"
+    short_name: "TabM"
+
+  LogisticRegression:
+    display_name: "Logistic Regression"
+    short_name: "LR"
+
+# =============================================================================
+# CATEGORY DISPLAY NAMES (for legends and grouping)
+# =============================================================================
+categories:
+  ground_truth:
+    display_name: "Ground Truth"
+    short_name: "GT"
+
+  foundation_model:
+    display_name: "Foundation Model"
+    short_name: "FM"
+
+  deep_learning:
+    display_name: "Deep Learning"
+    short_name: "DL"
+
+  traditional:
+    display_name: "Traditional"
+    short_name: "Trad"
+
+  ensemble:
+    display_name: "Ensemble"
+    short_name: "Ens"
+
+# =============================================================================
+# METADATA
+# =============================================================================
+
+metadata:
+  created: "2026-01-27"
+  updated: "2026-01-28"
+  purpose: "Single source of truth for method display names"
+  replaces: "All hardcoded display name strings in R and Python"

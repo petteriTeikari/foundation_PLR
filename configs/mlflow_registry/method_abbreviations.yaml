@@ -1,0 +1,117 @@
+# Method Abbreviations for CD Diagrams
+# =====================================
+# SINGLE SOURCE OF TRUTH - no hardcoding in R!
+#
+# These abbreviations are used in Critical Difference (CD) diagrams
+# where space is limited. Keep abbreviations short but recognizable.
+#
+# Created: 2026-01-28
+# Version: 1.0.0
+
+version: "1.0.0"
+
+# =============================================================================
+# OUTLIER METHOD ABBREVIATIONS
+# =============================================================================
+
+outlier_method_abbreviations:
+  # Ground truth
+  "pupil-gt": "GT"
+
+  # MOMENT variants
+  "MOMENT-gt-finetune": "MOM-ft"
+  "MOMENT-gt-zeroshot": "MOM-zs"
+  "MOMENT-orig-finetune": "MOM-o-ft"
+  "MOMENT-orig-zeroshot": "MOM-o-zs"
+
+  # UniTS variants
+  "UniTS-gt-finetune": "UniTS-ft"
+  "UniTS-orig-finetune": "UniTS-o-ft"
+  "UniTS-orig-zeroshot": "UniTS-o-zs"
+
+  # TimesNet variants
+  "TimesNet-gt": "TN-gt"
+  "TimesNet-orig": "TN-orig"
+
+  # Traditional methods
+  "LOF": "LOF"
+  "OneClassSVM": "OCSVM"
+  "SubPCA": "SubPCA"
+  "PROPHET": "PROPHET"
+
+  # Ensembles (long names need short abbreviations)
+  "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune": "Ens-Full"
+  "ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune": "Ens-Thresh"
+
+# =============================================================================
+# IMPUTATION METHOD ABBREVIATIONS
+# =============================================================================
+
+imputation_method_abbreviations:
+  # Ground truth
+  "pupil-gt": "GT"
+
+  # MOMENT variants
+  "MOMENT-finetune": "MOM-ft"
+  "MOMENT-zeroshot": "MOM-zs"
+
+  # Deep learning
+  "SAITS": "SAITS"
+  "CSDI": "CSDI"
+  "TimesNet": "TN"
+
+  # Traditional
+  "linear": "Linear"
+
+  # Ensembles
+  "ensemble-CSDI-MOMENT-SAITS": "Ens-3"
+  "ensemble-CSDI-MOMENT-SAITS-TimesNet": "Ens-4"
+
+# =============================================================================
+# CLASSIFIER ABBREVIATIONS
+# =============================================================================
+
+classifier_abbreviations:
+  "CatBoost": "CB"
+  "XGBoost": "XGB"
+  "TabPFN": "TabPFN"
+  "TabM": "TabM"
+  "LogisticRegression": "LR"
+
+# =============================================================================
+# COMBINED PIPELINE ABBREVIATIONS
+# =============================================================================
+# Format: "outlier + imputation" for CD diagrams showing full pipelines
+
+pipeline_abbreviations:
+  # Standard 4 combos
+  "pupil-gt + pupil-gt": "GT+GT"
+  "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune + CSDI": "Ens+CSDI"
+  "MOMENT-gt-finetune + SAITS": "MOM+SAITS"
+  "LOF + SAITS": "LOF+SAITS"
+
+  # Extended combos
+  "MOMENT-gt-finetune + MOMENT-finetune": "MOM+MOM"
+  "LOF + MOMENT-zeroshot": "LOF+MOM"
+  "TimesNet-orig + TimesNet": "TN+TN"
+  "UniTS-orig-finetune + SAITS": "UniTS+SAITS"
+  "OneClassSVM + MOMENT-zeroshot": "OCSVM+MOM"
+
+# =============================================================================
+# ABBREVIATION RULES
+# =============================================================================
+
+abbreviation_rules:
+  max_length: 12  # Maximum abbreviation length for CD diagrams
+  separator: "+"  # Separator for pipeline abbreviations
+  fallback_truncate: 10  # If no abbreviation defined, truncate to this length
+
+# =============================================================================
+# METADATA
+# =============================================================================
+
+metadata:
+  created: "2026-01-28"
+  purpose: "Single source of truth for method abbreviations in CD diagrams"
+  replaces: "73+ hardcoded abbreviations in cd_diagram.R"
+  usage: "load via R: load_method_abbreviations()"

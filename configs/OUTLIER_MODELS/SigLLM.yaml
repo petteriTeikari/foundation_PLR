@@ -1,3 +1,4 @@
+_version: "1.0.0"
 SigLLM:
   # https://github.com/sintel-dev/sigllm
   # Sarah Alnegheimish et al. (2024): https://arxiv.org/pdf/2405.14755

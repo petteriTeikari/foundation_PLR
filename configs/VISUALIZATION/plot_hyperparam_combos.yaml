@@ -1,0 +1,340 @@
+# Fixed Hyperparameter Combinations for Reproducible Plotting
+# ============================================================
+#
+# SINGLE SOURCE OF TRUTH - This is the ONLY place combos are defined.
+# Changes here affect reproducibility. Update lock file after changes.
+#
+# VERIFIED FROM ACTUAL MLFLOW DATA: /home/petteri/mlruns/253031330985650090
+# See: .claude/domains/mlflow-experiments.md for full MLflow documentation
+#
+# Created: 2026-01-21
+# Last Updated: 2026-01-28
+# Version: 2.0.0
+
+version: "2.0.0"
+schema_version: "2.0"
+
+# =============================================================================
+# STANDARD COMBOS (4 curves for main figures)
+# =============================================================================
+# These MUST be used for all multi-method comparison figures.
+# Ground truth MUST always be included.
+
+standard_combos:
+  # GROUND TRUTH - Human annotation baseline (REQUIRED in every figure)
+  - id: "ground_truth"
+    name: "Ground Truth"
+    short_name: "GT"
+    category_name: "Ground Truth"
+    category_color_ref: "--color-category-ground-truth"
+    description: "Human-annotated ground truth (upper bound reference)"
+    outlier_method: "pupil-gt"
+    imputation_method: "pupil-gt"
+    classifier: "CatBoost"
+    color_ref: "--color-ground-truth"
+    auroc: 0.9110
+
+  # BEST ENSEMBLE - Highest overall AUROC
+  - id: "best_ensemble"
+    name: "Ensemble + CSDI"
+    short_name: "Ens"
+    category_name: "Ensemble FM"
+    category_color_ref: "--color-category-ensemble"
+    description: "Best overall performance (ensemble outlier detection)"
+    outlier_method: "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune"
+    imputation_method: "CSDI"
+    classifier: "CatBoost"
+    color_ref: "--color-fm-primary"
+    auroc: 0.9130
+
+  # BEST SINGLE FM - Best non-ensemble FM pipeline
+  - id: "best_single_fm"
+    name: "MOMENT + SAITS"
+    short_name: "FM"
+    category_name: "Single-model FM"
+    category_color_ref: "--color-category-foundation-model"
+    description: "Best single foundation model pipeline"
+    outlier_method: "MOMENT-gt-finetune"
+    imputation_method: "SAITS"
+    classifier: "CatBoost"
+    color_ref: "--color-fm-secondary"
+    auroc: 0.9099
+
+  # TRADITIONAL - Traditional methods only
+  - id: "traditional"
+    name: "LOF + SAITS"
+    short_name: "Trad"
+    category_name: "Traditional"
+    category_color_ref: "--color-category-traditional"
+    description: "Traditional outlier detection with deep learning imputation"
+    outlier_method: "LOF"
+    imputation_method: "SAITS"
+    classifier: "CatBoost"
+    color_ref: "--color-traditional"
+    auroc: 0.8599
+
+  # DEEP LEARNING - TimesNet for both stages
+  - id: "deep_learning"
+    name: "TimesNet + TimesNet"
+    short_name: "DL"
+    category_name: "Deep Learning"
+    category_color_ref: "--color-category-deep-learning"
+    description: "Deep learning for both outlier detection and imputation"
+    outlier_method: "TimesNet-orig"
+    imputation_method: "TimesNet"
+    classifier: "CatBoost"
+    color_ref: "--color-category-deep-learning"
+    auroc: 0.8970
+
+# =============================================================================
+# EXTENDED COMBOS (5 additional for supplementary figures)
+# =============================================================================
+# Use only when explicitly showing additional methods.
+# Total: 9 combos (4 standard + 5 extended)
+
+extended_combos:
+  # MOMENT+MOMENT - Single FM for both tasks
+  - id: "moment_full"
+    name: "MOMENT + MOMENT"
+    short_name: "MOM"
+    description: "Single foundation model for both outlier detection and imputation"
+    outlier_method: "MOMENT-gt-finetune"
+    imputation_method: "MOMENT-finetune"
+    classifier: "CatBoost"
+    color_ref: "--color-moment-full"
+    auroc: 0.8986
+
+  # LOF + MOMENT - Shows FM imputation salvages poor outlier detection
+  - id: "lof_moment"
+    name: "LOF + MOMENT"
+    short_name: "LOF-M"
+    description: "Traditional outlier detection with FM imputation"
+    outlier_method: "LOF"
+    imputation_method: "MOMENT-zeroshot"
+    classifier: "CatBoost"
+    color_ref: "--color-lof-moment"
+    auroc: 0.8830
+
+  # TIMESNET FULL - Alternative single-FM pipeline
+  - id: "timesnet_full"
+    name: "TimesNet + TimesNet"
+    short_name: "TN"
+    description: "TimesNet for both tasks (alternative single-FM)"
+    outlier_method: "TimesNet-orig"
+    imputation_method: "TimesNet"
+    classifier: "CatBoost"
+    color_ref: "--color-timesnet-full"
+    auroc: 0.8970
+
+  # UNITS PIPELINE - Alternative FM for robustness check
+  - id: "units_pipeline"
+    name: "UniTS + SAITS"
+    short_name: "UniTS"
+    description: "UniTS outlier detection with SAITS imputation"
+    outlier_method: "UniTS-orig-finetune"
+    imputation_method: "SAITS"
+    classifier: "CatBoost"
+    color_ref: "--color-units"
+    auroc: 0.9068
+
+  # HYBRID OC-SVM + MOMENT - Traditional outlier detection with FM imputation
+  - id: "hybrid_ocsvm_moment"
+    name: "OC-SVM + MOMENT"
+    short_name: "Hybrid"
+    description: "Traditional outlier detection with FM zero-shot imputation"
+    outlier_method: "OneClassSVM"
+    imputation_method: "MOMENT-zeroshot"
+    classifier: "CatBoost"
+    color_ref: "--color-baseline"
+    auroc: 0.8824
+
+# =============================================================================
+# COLOR DEFINITIONS (Paul Tol Colorblind-Safe Palette)
+# =============================================================================
+# All color references in combos MUST use these CSS-style variable names.
+# This enables consistent theming across Python, R, and web visualizations.
+
+color_definitions:
+  # ===================
+  # PRIMARY PALETTE (Paul Tol)
+  # ===================
+  "--color-primary": "#006BA2"         # Main blue
+  "--color-secondary": "#3EBCD2"       # Cyan
+  "--color-accent": "#EBB434"          # Gold/amber
+  "--color-positive": "#379A8B"        # Teal (positive values)
+  "--color-negative": "#E3120B"        # Red (negative values, errors)
+
+  # ===================
+  # COMBO COLORS
+  # ===================
+  "--color-ground-truth": "#666666"    # Gray - reference standard
+  "--color-fm-primary": "#0072B2"      # Blue - best ensemble
+  "--color-fm-secondary": "#56B4E9"    # Light blue - best single FM
+  "--color-traditional": "#E69F00"     # Orange - traditional methods
+
+  # Extended combo colors
+  "--color-moment-full": "#005BBB"     # Dark blue - MOMENT+MOMENT
+  "--color-lof-moment": "#882255"      # Purple - LOF+MOMENT
+  "--color-timesnet-full": "#D55E00"   # Red-orange - TimesNet full
+  "--color-units": "#009E73"           # Teal - UniTS
+  "--color-baseline": "#CC79A7"        # Pink - simple baseline
+
+  # Aggregate/mean colors
+  "--color-aggregate": "#999999"       # Gray - for Top-10 Mean
+  "--color-ensemble-thresholded": "#56B4E9"  # Light blue
+
+  # ===================
+  # CATEGORY COLORS (for raincloud/heatmap)
+  # ===================
+  "--color-category-ground-truth": "#FFD700"  # Gold
+  "--color-category-ground-truth-light": "#EBB434"  # Light gold
+  "--color-category-foundation-model": "#3EBCD2"  # Cyan
+  "--color-category-deep-learning": "#006BA2"  # Blue
+  "--color-category-traditional": "#999999"  # Gray
+  "--color-category-ensemble": "#379A8B"  # Teal
+
+  # ===================
+  # DECOMPOSITION COLORS (for PLR waveform components)
+  # ===================
+  "--color-decomp-component-1": "#E69F00"    # Orange - Component 1 (phasic/PC1)
+  "--color-decomp-component-2": "#56B4E9"    # Sky blue - Component 2 (sustained/PC2)
+  "--color-decomp-component-3": "#009E73"    # Bluish green - Component 3 (pipr/PC3)
+  "--color-decomp-mean-waveform": "#999999"  # Gray - Mean waveform
+  "--color-stimulus-blue": "#0072B240"       # Blue (40% alpha) - Blue light stimulus
+  "--color-stimulus-red": "#D55E0040"        # Red (40% alpha) - Red light stimulus
+
+  # ===================
+  # TEXT COLORS
+  # ===================
+  "--color-text-primary": "#333333"
+  "--color-text-secondary": "#666666"
+  "--color-text-muted": "#888888"
+  "--color-annotation": "#999999"
+
+  # ===================
+  # BACKGROUND & GRID
+  # ===================
+  "--color-background": "#FBF9F3"
+  "--color-white": "#FFFFFF"
+  "--color-grid": "#E5E5E5"
+  "--color-grid-light": "#EEEEEE"
+  "--color-border": "#CCCCCC"
+
+# =============================================================================
+# PRESET GROUPS (for interactive visualization toggles)
+# =============================================================================
+
+preset_groups:
+  main_4:
+    name: "Main (4)"
+    description: "Standard combos for main figures"
+    combos: ["ground_truth", "best_ensemble", "best_single_fm", "traditional"]
+
+  all_9:
+    name: "All (9)"
+    description: "All available combos"
+    combos:
+      - "ground_truth"
+      - "best_ensemble"
+      - "best_single_fm"
+      - "traditional"
+      - "moment_full"
+      - "lof_moment"
+      - "timesnet_full"
+      - "units_pipeline"
+      - "hybrid_ocsvm_moment"
+
+  fm_comparison:
+    name: "FM Compare"
+    description: "Compare foundation models"
+    combos:
+      - "ground_truth"
+      - "best_single_fm"
+      - "moment_full"
+      - "timesnet_full"
+      - "units_pipeline"
+
+  single_model:
+    name: "Single-Model"
+    description: "One model for both tasks"
+    combos:
+      - "ground_truth"
+      - "moment_full"
+      - "timesnet_full"
+
+  ablation:
+    name: "Ablation"
+    description: "Component ablation study"
+    combos:
+      - "ground_truth"
+      - "best_single_fm"
+      - "moment_full"
+      - "lof_moment"
+
+# =============================================================================
+# SHAP FIGURE COMBOS
+# =============================================================================
+
+shap_figure_combos:
+  description: "Configs for SHAP feature importance comparison figure"
+  max_configs: 6
+
+  configs:
+    - id: "ground_truth"
+      name: "Ground Truth"
+      short_name: "GT"
+      config_pattern: "pupil-gt + pupil-gt"
+      color_ref: "--color-ground-truth"
+
+    - id: "best_ensemble"
+      name: "Ensemble + CSDI"
+      short_name: "Ens+CSDI"
+      config_pattern: "ensemble-LOF-MOMENT- + CSDI"
+      color_ref: "--color-fm-primary"
+
+    - id: "ensemble_thresholded"
+      name: "Ensemble (Thresh) + CSDI"
+      short_name: "EnsT+CSDI"
+      config_pattern: "ensembleThresholded- + CSDI"
+      color_ref: "--color-ensemble-thresholded"
+
+    - id: "moment_saits"
+      name: "MOMENT + SAITS"
+      short_name: "MOM+SAITS"
+      config_pattern: "MOMENT-gt-finetune + SAITS"
+      color_ref: "--color-units"
+
+    - id: "top10_mean"
+      name: "Top-10 Mean"
+      short_name: "Mean"
+      config_pattern: "__AGGREGATE_TOP10__"
+      color_ref: "--color-aggregate"
+      is_aggregate: true
+
+# =============================================================================
+# USAGE RULES (Enforced by validators)
+# =============================================================================
+
+usage_rules:
+  main_figures:
+    max_curves: 4
+    required_combos: ["ground_truth"]
+    use: "standard_combos"
+
+  supplementary_figures:
+    max_curves: 9
+    required_combos: ["ground_truth"]
+    use: "standard_combos + extended_combos"
+
+# =============================================================================
+# METADATA
+# =============================================================================
+
+metadata:
+  created: "2026-01-21"
+  updated: "2026-01-28"
+  author: "Foundation PLR Team"
+  purpose: "Single source of truth for hyperparameter combos"
+  mlflow_source: "/home/petteri/mlruns/253031330985650090"
+  total_mlflow_runs: 410
+  note: "Consolidated from combos.yaml and plot_hyperparam_combos.yaml"

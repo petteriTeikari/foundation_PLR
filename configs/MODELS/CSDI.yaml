@@ -1,3 +1,4 @@
+_version: "1.0.0"
 CSDI:
   # See Table 1 of https://arxiv.org/pdf/2406.12747
   # Tashiro et al. (2021) CSDI: Conditional score-based diffusion imputation for probabilistic time series imputation

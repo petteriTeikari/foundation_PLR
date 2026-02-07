@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/foundation-PLR/config/visualization.schema.json",
+  "title": "Foundation PLR Visualization Config Schema",
+  "description": "Schema for validating visualization configuration files",
+  "definitions": {
+    "combo": {
+      "type": "object",
+      "required": ["id", "name", "outlier_method", "imputation_method", "classifier", "auroc"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z_]+$",
+          "description": "Unique identifier for the combo (lowercase, underscores only)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable display name"
+        },
+        "short_name": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Short name for legends and compact displays"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the combo"
+        },
+        "outlier_method": {
+          "type": "string",
+          "description": "Outlier detection method name (must exist in MLflow)"
+        },
+        "imputation_method": {
+          "type": "string",
+          "description": "Imputation method name (must exist in MLflow)"
+        },
+        "classifier": {
+          "type": "string",
+          "enum": ["CatBoost", "XGBoost", "TabPFN", "TabM", "LogisticRegression"],
+          "description": "Classifier name"
+        },
+        "auroc": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 1.0,
+          "description": "AUROC performance metric from MLflow"
+        }
+      },
+      "additionalProperties": true
+    },
+    "preset_group": {
+      "type": "object",
+      "required": ["name", "combos"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name for the preset"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what this preset is for"
+        },
+        "combos": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "List of combo IDs to include"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "required": ["version", "standard_combos"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Schema version (semantic versioning)"
+    },
+    "standard_combos": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/definitions/combo"
+      },
+      "description": "4 standard combos for main manuscript figures"
+    },
+    "extended_combos": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/combo"
+      },
+      "description": "Additional combos for supplementary figures"
+    },
+    "preset_groups": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/preset_group"
+      },
+      "description": "Named groups of combos for quick selection"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "created": {
+          "type": "string",
+          "description": "Creation date"
+        },
+        "updated": {
+          "type": "string",
+          "description": "Last update date"
+        },
+        "author": {
+          "type": "string",
+          "description": "Author or team"
+        },
+        "mlflow_source": {
+          "type": "string",
+          "description": "Path to MLflow data source"
+        },
+        "total_mlflow_runs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total number of MLflow runs available"
+        }
+      }
+    }
+  }
+}

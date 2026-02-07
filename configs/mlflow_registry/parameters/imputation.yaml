@@ -1,0 +1,101 @@
+# Imputation Parameters Registry
+# ================================
+# AIDEV-NOTE: All parameters logged in PLR_Imputation experiment.
+# Generated from MLflow on 2026-01-22.
+
+version: "1.0.0"
+experiment_id: "940304421003085572"
+
+# Model selection
+model:
+  model:
+    display_name: "Imputation Model"
+    description: "Deep learning model for signal imputation"
+    values:
+      # Models tested (from experiment)
+      - CSDI
+      - SAITS
+      - TimesNet
+      - MOMENT-finetune
+      - MOMENT-zeroshot
+    count: 5
+
+# Architecture parameters
+architecture:
+  n_layers:
+    display_name: "Number of Layers"
+    description: "Number of transformer/network layers"
+    type: int
+
+  n_heads:
+    display_name: "Number of Attention Heads"
+    description: "Number of attention heads in transformer"
+    type: int
+
+  n_channels:
+    display_name: "Number of Channels"
+    description: "Number of hidden channels"
+    type: int
+
+  d_diffusion_embedding:
+    display_name: "Diffusion Embedding Dim"
+    description: "Dimension of diffusion time embedding (CSDI)"
+    type: int
+
+  d_feature_embedding:
+    display_name: "Feature Embedding Dim"
+    description: "Dimension of feature embedding"
+    type: int
+
+  d_time_embedding:
+    display_name: "Time Embedding Dim"
+    description: "Dimension of temporal embedding"
+    type: int
+
+  num_params:
+    display_name: "Total Parameters"
+    description: "Total number of trainable parameters"
+    type: int
+
+# Training parameters
+training:
+  batch_size:
+    display_name: "Batch Size"
+    description: "Training batch size"
+    type: int
+
+  epochs:
+    display_name: "Epochs"
+    description: "Number of training epochs"
+    type: int
+
+  is_unconditional:
+    display_name: "Unconditional Mode"
+    description: "Whether to use unconditional diffusion (CSDI)"
+    type: bool
+
+  target_strategy:
+    display_name: "Target Strategy"
+    description: "Masking strategy for training"
+    type: str
+
+# Linking parameters
+links:
+  Outlier_run_id:
+    description: "Run ID of outlier detection used"
+
+  OutlierBest_f1:
+    description: "F1 score of the best outlier detection method"
+
+# System parameters
+system:
+  sys:
+    display_name: "System"
+    description: "Computing system identifier"
+    type: str
+
+# Summary
+summary:
+  total_runs: 138
+  models_tested: 5
+  primary_factors: [model, batch_size, epochs, n_layers]

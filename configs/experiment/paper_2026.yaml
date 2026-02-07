@@ -1,0 +1,53 @@
+_version: "1.0.0"
+# Paper 2026 Experiment Configuration
+#
+# This file defines the complete experiment setup for the Foundation PLR paper (2026).
+# It serves as the "frozen" configuration that can be reproduced at any time.
+#
+# Usage:
+#   python src/pipeline_PLR.py +experiment=paper_2026
+#   # Or via Make:
+#   make run-experiment EXPERIMENT=paper_2026
+
+defaults:
+  - /data: seri_plr_2026
+  - /combos: paper_2026
+  - /subjects: demo_8_subjects
+  - /figures_config: publication_ready
+  - /mlflow_config: production
+  - _self_
+
+experiment:
+  name: "Foundation PLR Paper 2026"
+  version: "1.0.0"
+  frozen: true  # Prevent accidental modifications
+  description: |
+    Main experiment for the Foundation PLR paper evaluating
+    TSFM models for PLR preprocessing in glaucoma screening.
+
+metadata:
+  # DOI will be assigned upon publication
+  publication_status: "in_preparation"
+  manuscript_repo: "/home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR"
+
+reproducibility:
+  random_seed: 42
+  python_version: "3.11.10"
+  # uv_lock_sha256 will be computed from uv.lock file
+  data_checksums:
+    seri_plr_glaucoma_db: "to_be_computed"
+    mlruns_pickle_count: 542
+
+factorial_design:
+  outlier_methods: 11  # From mlflow_registry - DO NOT CHANGE
+  imputation_methods: 8
+  classifiers: 5
+  featurization_methods: 2  # handcrafted, embeddings
+
+expected_results:
+  # Ground truth baseline (pupil-gt + pupil-gt + CatBoost)
+  ground_truth_auroc: 0.911
+  # Best ensemble configuration
+  best_ensemble_auroc: 0.913
+  # Bootstrap iterations for CIs
+  n_bootstrap_iterations: 1000

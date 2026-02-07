@@ -1,0 +1,53 @@
+# MLflow Experiments Registry
+# ============================
+# AIDEV-NOTE: This is a STATIC registry of MLflow experiments.
+# Generated from /home/petteri/mlruns on 2026-01-22.
+# If new experiments are run, regenerate with: scripts/update_mlflow_registry.py
+#
+# Purpose: Provide human-readable documentation of available experiments
+# without requiring MLflow directory scanning.
+
+version: "1.0.0"
+generated: "2026-01-22"
+mlflow_tracking_uri: "/home/petteri/mlruns"
+
+experiments:
+  PLR_OutlierDetection:
+    id: "996740926475477194"
+    runs: 31
+    description: "Evaluate outlier detection methods for PLR signal preprocessing"
+    purpose: "Compare foundation models vs traditional methods for artifact detection"
+    metrics_file: "metrics/outlier_detection.yaml"
+    parameters_file: "parameters/outlier_detection.yaml"
+
+  PLR_Imputation:
+    id: "940304421003085572"
+    runs: 138
+    description: "Evaluate imputation methods for missing PLR signal reconstruction"
+    purpose: "Compare foundation models vs deep learning for signal imputation"
+    metrics_file: "metrics/imputation.yaml"
+    parameters_file: "parameters/imputation.yaml"
+
+  PLR_Featurization:
+    id: "143964216992376241"
+    runs: 162
+    description: "Compare featurization approaches for PLR classification"
+    purpose: "Handcrafted amplitude bins vs foundation model embeddings"
+    metrics_file: "metrics/classification.yaml"
+    parameters_file: "parameters/classification.yaml"
+
+  PLR_Classification:
+    id: "253031330985650090"
+    runs: 410
+    description: "End-to-end pipeline evaluation for glaucoma screening"
+    purpose: "Evaluate how preprocessing choices affect downstream classification"
+    metrics_file: "metrics/classification.yaml"
+    parameters_file: "parameters/classification.yaml"
+
+# Summary statistics
+summary:
+  total_runs: 741
+  total_experiments: 4
+  research_question: |
+    How do preprocessing choices (outlier detection → imputation) affect
+    downstream classification performance when using handcrafted features?

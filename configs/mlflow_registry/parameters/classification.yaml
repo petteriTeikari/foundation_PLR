@@ -1,0 +1,190 @@
+# Classification Parameters Registry
+# ====================================
+# AIDEV-NOTE: All parameters logged in PLR_Classification experiment.
+# Generated from MLflow on 2026-01-22.
+#
+# These document the experiment space - what combinations were tested.
+
+version: "1.0.0"
+experiment_id: "253031330985650090"
+
+# Pipeline parameters (the main factors we varied)
+pipeline:
+  model_name:
+    display_name: "Classifier"
+    description: "Machine learning classifier for glaucoma prediction"
+    values:
+      - CatBoost
+      - XGBoost
+      - TabPFN
+      - TabM
+      - LogisticRegression
+    count: 5
+
+  featurization_method:
+    display_name: "Featurization"
+    description: "How PLR signals are converted to features"
+    values:
+      - handcrafted_features  # Amplitude bins + latency features
+      - embeddings            # Foundation model embeddings
+    count: 2
+
+  anomaly_source:
+    display_name: "Outlier Detection Method"
+    description: "Method used for detecting artifacts in PLR signals"
+    values:
+      # Ground truth
+      - pupil-gt
+      # Foundation models (MOMENT variants)
+      - MOMENT-gt-finetune
+      - MOMENT-gt-zeroshot
+      #- MOMENT-orig-finetune
+      # Foundation models (UniTS variants)
+      - UniTS-gt-finetune
+      #- UniTS-orig-finetune
+      #- UniTS-orig-zeroshot
+      # Deep learning (TimesNet)
+      - TimesNet-gt
+      #- TimesNet-orig
+      # Traditional methods
+      - LOF
+      - OneClassSVM
+      - PROPHET
+      - SubPCA
+      # Ensembles
+      - ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune
+      - ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune
+      # Ablation
+      #- anomaly
+      #- exclude
+    count: 11
+    categories:
+      ground_truth: [pupil-gt]
+      foundation_model: [MOMENT-gt-finetune, MOMENT-gt-zeroshot, UniTS-gt-finetune]
+      deep_learning: [TimesNet-gt]
+      traditional: [LOF, OneClassSVM, PROPHET, SubPCA]
+      ensemble: [ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune, ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune]
+
+  imputation_source:
+    display_name: "Imputation Method"
+    description: "Method used for reconstructing missing/rejected signal segments"
+    values:
+      # Ground truth
+      - pupil-gt
+      # Foundation models
+      - MOMENT-finetune
+      - MOMENT-zeroshot
+      # Deep learning
+      - CSDI
+      - SAITS
+      - TimesNet
+      # Ensembles
+      - ensemble-CSDI-MOMENT-SAITS
+      - ensemble-CSDI-MOMENT-SAITS-TimesNet
+    count: 8
+    categories:
+      ground_truth: [pupil-gt]
+      foundation_model: [MOMENT-finetune, MOMENT-zeroshot]
+      deep_learning: [CSDI, SAITS, TimesNet]
+      ensemble: [ensemble-CSDI-MOMENT-SAITS, ensemble-CSDI-MOMENT-SAITS-TimesNet]
+
+# Classifier hyperparameters (XGBoost/CatBoost style)
+hyperparameters:
+  eta:
+    display_name: "Learning Rate"
+    description: "Boosting learning rate"
+    type: float
+    aliases: [hparam_eta]
+
+  max_depth:
+    display_name: "Max Depth"
+    description: "Maximum tree depth"
+    type: int
+    aliases: [hparam_max_depth]
+
+  n_estimators:
+    display_name: "Number of Estimators"
+    description: "Number of boosting rounds"
+    type: int
+    aliases: [hparam_n_estimators]
+
+  min_child_weight:
+    display_name: "Min Child Weight"
+    description: "Minimum sum of instance weight in child"
+    type: float
+    aliases: [hparam_min_child_weight]
+
+  reg_lambda:
+    display_name: "L2 Regularization"
+    description: "L2 regularization term"
+    type: float
+    aliases: [hparam_reg_lambda]
+
+  gamma:
+    display_name: "Gamma"
+    description: "Minimum loss reduction for split"
+    type: float
+    aliases: [hparam_gamma]
+
+  subsample:
+    display_name: "Subsample"
+    description: "Subsample ratio of training instances"
+    type: float
+    aliases: [hparam_subsample]
+
+  colsample_bytree:
+    display_name: "Column Sample by Tree"
+    description: "Subsample ratio of columns per tree"
+    type: float
+    aliases: [hparam_colsample_bytree]
+
+# Metadata parameters
+metadata:
+  seed:
+    display_name: "Random Seed"
+    description: "Random seed for reproducibility"
+    type: int
+    aliases: [hparam_seed, random_state, transform_seed]
+
+  training_time:
+    display_name: "Training Time"
+    description: "Time to train the classifier"
+    type: float
+    unit: seconds
+
+  bootstrap_time:
+    display_name: "Bootstrap Time"
+    description: "Time for bootstrap confidence intervals"
+    type: float
+    unit: seconds
+
+# Linking parameters (reference to upstream runs)
+links:
+  mlflow_run_outlier_detection:
+    description: "Run ID of outlier detection experiment"
+  mlflow_run_imputation:
+    description: "Run ID of imputation experiment"
+  mlflow_run_featurization:
+    description: "Run ID of featurization experiment"
+
+# Glaucoma-specific parameters
+clinical:
+  glaucomaParam_prevalence:
+    display_name: "Sample Composition"
+    description: "Proportion of glaucoma cases in dataset (NOT disease prevalence)"
+    value: 0.27  # 56 glaucoma / 208 subjects = sample enriched for glaucoma
+    note: "Disease prevalence in general population (40-80 years): ~3.54% (Tham et al. 2014)"
+
+  glaucomaParam_tpAUC_sensitivity:
+    display_name: "tpAUC Sensitivity Threshold"
+    description: "Sensitivity threshold for partial AUC"
+
+  glaucomaParam_tpAUC_specificity:
+    display_name: "tpAUC Specificity Threshold"
+    description: "Specificity threshold for partial AUC"
+
+# Summary
+summary:
+  total_pipeline_combinations: 880  # 5 classifiers × 2 feat × 11 anomaly × 8 imputation (theoretical max)
+  actual_runs: 410  # Not all combinations were run
+  primary_factors: [model_name, anomaly_source, imputation_source, featurization_method]

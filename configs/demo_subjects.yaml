@@ -1,0 +1,64 @@
+_version: "1.0.0"
+# Demo Subjects Configuration
+# ============================
+# 8 subjects selected for individual PLR trace visualization
+# Stratified by: diagnosis (healthy/glaucoma) x outlier percentage (low/high)
+#
+# NOTE: Subject codes are re-anonymized (Hxxx for healthy, Gxxx for glaucoma)
+# The private lookup table (data/private/subject_lookup.yaml) maps to original codes
+
+demo_subjects:
+  # Healthy controls (4 subjects)
+  healthy:
+    low_outlier:
+      - code: H001
+        description: "Low outlier percentage (~0.2%)"
+        outlier_category: low
+      - code: H002
+        description: "Low outlier percentage (~0.4%)"
+        outlier_category: low
+    high_outlier:
+      - code: H003
+        description: "High outlier percentage (~37.7%)"
+        outlier_category: high
+      - code: H004
+        description: "High outlier percentage (~28.4%)"
+        outlier_category: high
+
+  # Glaucoma patients (4 subjects)
+  glaucoma:
+    low_outlier:
+      - code: G001
+        description: "Low outlier percentage (~2.7%)"
+        outlier_category: low
+      - code: G002
+        description: "Low outlier percentage (~3.2%)"
+        outlier_category: low
+    high_outlier:
+      - code: G003
+        description: "High outlier percentage (~27.7%)"
+        outlier_category: high
+      - code: G004
+        description: "High outlier percentage (~24.6%)"
+        outlier_category: high
+
+# Flat list for iteration
+all_demo_subjects:
+  - H001
+  - H002
+  - H003
+  - H004
+  - G001
+  - G002
+  - G003
+  - G004
+
+# Metadata
+metadata:
+  n_healthy: 4
+  n_glaucoma: 4
+  n_total: 8
+  stratification: "diagnosis x outlier_percentage"
+  selection_criteria: "2 low + 2 high outlier percentage per diagnosis"
+  created: "2026-01-25"
+  note: "Raw traces are PRIVATE - stored in data/private/demo_subjects_traces.pkl"

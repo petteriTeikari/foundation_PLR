@@ -1,3 +1,4 @@
+_version: "1.0.0"
 defaults:
   - defaults
   - override OUTLIER_MODELS: [MOMENT, TimesNet, LOF, OneClassSVM, PROPHET, SubPCA]

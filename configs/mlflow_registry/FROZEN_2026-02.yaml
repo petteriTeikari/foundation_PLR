@@ -1,0 +1,104 @@
+# FROZEN REGISTRY MARKER
+# ======================
+# This file documents the frozen state of the MLflow registry for publication.
+# ANY modification to registry files after this freeze date requires:
+# 1. Version bump in the registry files
+# 2. New frozen marker with updated checksums
+# 3. Re-extraction of all downstream artifacts
+#
+# This serves as a cryptographic integrity check for reproducibility.
+
+_version: "1.0.0"
+_format: "frozen-registry-marker-v1"
+
+# Freeze metadata
+freeze:
+  date: "2026-02-02"
+  frozen_by: "publication-polish-pipeline"
+  git_sha: "7c63e4d767ff35570f7c76c395dcb8702d59e8f5"
+  branch: "chore/publication-polish"
+  reason: "Registry frozen for paper submission - Foundation PLR manuscript"
+
+# Frozen counts (THESE ARE THE GROUND TRUTH)
+# If counts differ from these values, something is WRONG
+frozen_counts:
+  outlier_methods: 11
+  imputation_methods: 8
+  classifiers: 5
+  featurization_methods: 2
+  total_theoretical_combinations: 880
+  actual_mlflow_runs: 410
+
+# SHA256 checksums of all registry files at freeze time
+# To verify: sha256sum configs/mlflow_registry/parameters/*.yaml configs/mlflow_registry/metrics/*.yaml
+checksums:
+  parameters:
+    classification.yaml: "67a44d69200746bcfb1cf566aa292e8612c39e1c651193665026df1ad85c2201"
+    imputation.yaml: "0252d575d76611e09b29be1cb3da44637a36c6fa650b264a9630fb0184db2043"
+    outlier_detection.yaml: "9c6159a35e9628863c21aaf83e76cace3685de039c14c2c1f8173e023e77b6e3"
+  metrics:
+    classification.yaml: "d5e3f1fbb0b2c80ce3c8640db67e2f52335c250d7caca14459d1caa09fefb13c"
+    imputation.yaml: "482f7bc398a312f52bb592a021247c74ac739ca31602493de496a07e3b6cc7cf"
+    outlier_detection.yaml: "079bc338c2cac6a6d4759494b55b985d1fe4f562bf538f1b58c418c6b7a3055d"
+  experiments.yaml: "f5d35bcd6f46c9b71fd2f85c7292968581331aeae9e6a5558572ea428861f970"
+
+# Registry version at freeze
+registry_versions:
+  classification: "1.0.0"
+  imputation: "1.0.0"
+  outlier_detection: "1.0.0"
+
+# Valid method lists (canonical at freeze time)
+# These are the ONLY valid values for the paper
+valid_methods:
+  outlier_detection:
+    - pupil-gt  # Ground truth
+    - MOMENT-gt-finetune
+    - MOMENT-gt-zeroshot
+    - UniTS-gt-finetune
+    - TimesNet-gt
+    - LOF
+    - OneClassSVM
+    - PROPHET
+    - SubPCA
+    - ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune
+    - ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune
+
+  imputation:
+    - pupil-gt  # Ground truth
+    - MOMENT-finetune
+    - MOMENT-zeroshot
+    - CSDI
+    - SAITS
+    - TimesNet
+    - ensemble-CSDI-MOMENT-SAITS
+    - ensemble-CSDI-MOMENT-SAITS-TimesNet
+
+  classifiers:
+    - CatBoost
+    - XGBoost
+    - TabPFN
+    - TabM
+    - LogisticRegression
+
+# Verification command
+verification:
+  command: |
+    sha256sum configs/mlflow_registry/parameters/*.yaml \
+              configs/mlflow_registry/metrics/*.yaml \
+              configs/mlflow_registry/experiments.yaml
+  expected_output: |
+    67a44d69200746bcfb1cf566aa292e8612c39e1c651193665026df1ad85c2201  configs/mlflow_registry/parameters/classification.yaml
+    0252d575d76611e09b29be1cb3da44637a36c6fa650b264a9630fb0184db2043  configs/mlflow_registry/parameters/imputation.yaml
+    9c6159a35e9628863c21aaf83e76cace3685de039c14c2c1f8173e023e77b6e3  configs/mlflow_registry/parameters/outlier_detection.yaml
+    d5e3f1fbb0b2c80ce3c8640db67e2f52335c250d7caca14459d1caa09fefb13c  configs/mlflow_registry/metrics/classification.yaml
+    482f7bc398a312f52bb592a021247c74ac739ca31602493de496a07e3b6cc7cf  configs/mlflow_registry/metrics/imputation.yaml
+    079bc338c2cac6a6d4759494b55b985d1fe4f562bf538f1b58c418c6b7a3055d  configs/mlflow_registry/metrics/outlier_detection.yaml
+    f5d35bcd6f46c9b71fd2f85c7292968581331aeae9e6a5558572ea428861f970  configs/mlflow_registry/experiments.yaml
+
+# Notes
+notes:
+  - "This frozen marker ensures reproducibility for paper reviewers"
+  - "Any registry modification requires updating this marker"
+  - "The pre-commit hook checks registry integrity against this file"
+  - "Breaking changes require version bump and new frozen marker"

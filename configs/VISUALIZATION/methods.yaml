@@ -1,0 +1,234 @@
+# Method Registry for Foundation PLR
+# ===================================
+#
+# All method names VERIFIED from MLflow at /home/petteri/mlruns/253031330985650090
+# NEVER add methods without first verifying they exist in MLflow.
+#
+# Created: 2026-01-22
+
+version: "1.0.0"
+
+# =============================================================================
+# OUTLIER DETECTION METHODS (17 verified)
+# =============================================================================
+
+outlier_detection:
+  # Ground Truth
+  pupil-gt:
+    category: "ground_truth"
+    display_name: "Ground Truth"
+    short_name: "GT"
+    color_key: "ground_truth"
+    description: "Human expert annotation"
+
+  # Foundation Models - MOMENT
+  MOMENT-gt-finetune:
+    category: "foundation_model"
+    display_name: "MOMENT (GT Fine-tuned)"
+    short_name: "MOMENT-ft"
+    color_key: "fm_primary"
+    description: "MOMENT trained on ground truth, fine-tuned"
+
+  MOMENT-gt-zeroshot:
+    category: "foundation_model"
+    display_name: "MOMENT (GT Zero-shot)"
+    short_name: "MOMENT-zs"
+    color_key: "fm_primary"
+    description: "MOMENT trained on ground truth, zero-shot"
+
+  MOMENT-orig-finetune:
+    category: "foundation_model"
+    display_name: "MOMENT (Original Fine-tuned)"
+    short_name: "MOMENT-orig"
+    color_key: "fm_primary"
+    description: "MOMENT with original weights, fine-tuned"
+
+  # Foundation Models - UniTS
+  UniTS-gt-finetune:
+    category: "foundation_model"
+    display_name: "UniTS (GT Fine-tuned)"
+    short_name: "UniTS-ft"
+    color_key: "fm_secondary"
+    description: "UniTS trained on ground truth, fine-tuned"
+
+  UniTS-orig-finetune:
+    category: "foundation_model"
+    display_name: "UniTS (Original Fine-tuned)"
+    short_name: "UniTS-orig-ft"
+    color_key: "fm_secondary"
+    description: "UniTS with original weights, fine-tuned"
+
+  UniTS-orig-zeroshot:
+    category: "foundation_model"
+    display_name: "UniTS (Original Zero-shot)"
+    short_name: "UniTS-orig-zs"
+    color_key: "fm_secondary"
+    description: "UniTS with original weights, zero-shot"
+
+  # Foundation Models - TimesNet
+  TimesNet-gt:
+    category: "foundation_model"
+    display_name: "TimesNet (GT)"
+    short_name: "TN-gt"
+    color_key: "timesnet"
+    description: "TimesNet trained on ground truth"
+
+  TimesNet-orig:
+    category: "foundation_model"
+    display_name: "TimesNet (Original)"
+    short_name: "TN-orig"
+    color_key: "timesnet"
+    description: "TimesNet with original weights"
+
+  # Traditional Methods
+  LOF:
+    category: "traditional"
+    display_name: "Local Outlier Factor"
+    short_name: "LOF"
+    color_key: "traditional"
+    description: "Local Outlier Factor algorithm"
+
+  OneClassSVM:
+    category: "traditional"
+    display_name: "One-Class SVM"
+    short_name: "OCSVM"
+    color_key: "traditional_secondary"
+    description: "One-class support vector machine"
+
+  SubPCA:
+    category: "traditional"
+    display_name: "Subspace PCA"
+    short_name: "SubPCA"
+    color_key: "traditional_secondary"
+    description: "Subspace PCA outlier detection"
+
+  PROPHET:
+    category: "traditional"
+    display_name: "Prophet"
+    short_name: "Prophet"
+    color_key: "traditional_secondary"
+    description: "Facebook Prophet-based detection"
+
+  # Ensembles
+  ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune:
+    category: "ensemble"
+    display_name: "Full Ensemble"
+    short_name: "Ensemble"
+    color_key: "ensemble"
+    description: "Ensemble of all outlier detection methods"
+
+  ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune:
+    category: "ensemble"
+    display_name: "FM Ensemble (Thresholded)"
+    short_name: "FM-Ens"
+    color_key: "ensemble"
+    description: "Thresholded ensemble of foundation models"
+
+# =============================================================================
+# IMPUTATION METHODS (8 verified)
+# =============================================================================
+
+imputation:
+  # Ground Truth
+  pupil-gt:
+    category: "ground_truth"
+    display_name: "Ground Truth"
+    short_name: "GT"
+    color_key: "ground_truth"
+    description: "Human expert denoised signal"
+
+  # Deep Learning
+  SAITS:
+    category: "deep_learning"
+    display_name: "SAITS"
+    short_name: "SAITS"
+    color_key: "dl_primary"
+    description: "Self-Attention based Imputation for Time Series"
+
+  CSDI:
+    category: "deep_learning"
+    display_name: "CSDI"
+    short_name: "CSDI"
+    color_key: "dl_secondary"
+    description: "Conditional Score-based Diffusion Imputation"
+
+  TimesNet:
+    category: "deep_learning"
+    display_name: "TimesNet"
+    short_name: "TimesNet"
+    color_key: "timesnet"
+    description: "TimesNet imputation"
+
+  # Foundation Models
+  MOMENT-finetune:
+    category: "foundation_model"
+    display_name: "MOMENT (Fine-tuned)"
+    short_name: "MOMENT-ft"
+    color_key: "fm_primary"
+    description: "MOMENT fine-tuned for imputation"
+
+  MOMENT-zeroshot:
+    category: "foundation_model"
+    display_name: "MOMENT (Zero-shot)"
+    short_name: "MOMENT-zs"
+    color_key: "fm_primary"
+    description: "MOMENT zero-shot imputation"
+
+  # Ensemble
+  ensemble-CSDI-MOMENT-SAITS-TimesNet:
+    category: "ensemble"
+    display_name: "Imputation Ensemble"
+    short_name: "Imp-Ens"
+    color_key: "ensemble"
+    description: "Ensemble of imputation methods"
+
+# =============================================================================
+# CLASSIFIERS (5 verified)
+# =============================================================================
+
+classifiers:
+  CatBoost:
+    category: "gradient_boosting"
+    display_name: "CatBoost"
+    short_name: "CB"
+    color_key: "classifier_catboost"
+    description: "CatBoost gradient boosting (recommended)"
+
+  XGBoost:
+    category: "gradient_boosting"
+    display_name: "XGBoost"
+    short_name: "XGB"
+    color_key: "classifier_xgboost"
+    description: "XGBoost gradient boosting"
+
+  TabPFN:
+    category: "transformer"
+    display_name: "TabPFN"
+    short_name: "TPFN"
+    color_key: "classifier_tabpfn"
+    description: "Tabular Prior-Data Fitted Network"
+
+  TabM:
+    category: "transformer"
+    display_name: "TabM"
+    short_name: "TabM"
+    color_key: "classifier_tabm"
+    description: "Tab Manifold classifier"
+
+  LogisticRegression:
+    category: "linear"
+    display_name: "Logistic Regression"
+    short_name: "LR"
+    color_key: "classifier_logreg"
+    description: "Logistic Regression baseline"
+
+# =============================================================================
+# METADATA
+# =============================================================================
+
+metadata:
+  created: "2026-01-22"
+  mlflow_source: "/home/petteri/mlruns/253031330985650090"
+  total_outlier_methods: 15
+  total_imputation_methods: 7
+  total_classifiers: 5

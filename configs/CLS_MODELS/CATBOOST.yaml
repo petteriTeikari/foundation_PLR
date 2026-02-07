@@ -1,3 +1,4 @@
+_version: "1.0.0"
 CATBOOST:
   # The False option is not implemented yet, easier to use the SKLearn API, but there are some DMatrix seeds
   # if it turns out that you would like to rather use that option

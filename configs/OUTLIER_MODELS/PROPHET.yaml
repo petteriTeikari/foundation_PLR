@@ -1,3 +1,4 @@
+_version: "1.0.0"
 PROPHET:
   # https://facebook.github.io/prophet/docs/installation.html#python
   # https://anomify.ai/blogs/a-comparison-of-unsupervised-anomaly-detection-algorithms-for-time-series

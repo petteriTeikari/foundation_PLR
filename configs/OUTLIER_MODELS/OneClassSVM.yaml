@@ -1,3 +1,4 @@
+_version: "1.0.0"
 OneClassSVM:
   # https://scikit-learn.org/dev/modules/generated/sklearn.svm.OneClassSVM.html
   MODEL:

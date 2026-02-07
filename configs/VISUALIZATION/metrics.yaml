@@ -1,0 +1,485 @@
+# Metrics Configuration - ALL Metrics from MLflow Experiments
+# ============================================================
+# AIDEV-NOTE: This file documents ALL available metrics from MLflow.
+# Each metric appears in EXACTLY ONE combo (no repetition).
+# Total: 28 metrics in 7 combos of 4 metrics each.
+#
+# Metric sources:
+# - 26 base metrics from MLflow classification experiments
+# - 2 computed metrics (scaled_brier, net_benefit)
+#
+# See also: config/mlflow_registry/metrics/classification.yaml for full documentation
+
+version: "2.0.0"  # Updated from 1.0.0 - now includes ALL metrics
+
+# =============================================================================
+# METRIC DEFINITIONS (ALL 28)
+# =============================================================================
+# Each metric must have a corresponding function in src/viz/retained_metric.py
+# or be loaded directly from MLflow
+
+metrics:
+  # --- DISCRIMINATION (from MLflow) ---
+  AUROC:
+    display_name: "AUROC"
+    description: "Area Under ROC Curve"
+    higher_is_better: true
+    mlflow_name: "test/AUROC"
+    requires_binary: true
+
+  AUPR:
+    display_name: "AUPR"
+    description: "Area Under Precision-Recall Curve"
+    higher_is_better: true
+    mlflow_name: "test/AUPR"
+    requires_binary: true
+
+  tpAUC:
+    display_name: "Partial AUC"
+    description: "Two-point AUC (sensitivity/specificity constrained)"
+    higher_is_better: true
+    mlflow_name: "test/tpAUC"
+    requires_binary: true
+
+  # --- CALIBRATION (from MLflow + computed) ---
+  Brier:
+    display_name: "Brier Score"
+    description: "Mean squared error of probabilistic predictions"
+    higher_is_better: false
+    mlflow_name: "test/Brier"
+    requires_binary: true
+
+  scaled_brier:
+    display_name: "Scaled Brier (IPA)"
+    description: "Index of Prediction Accuracy (1 - Brier/Brier_null)"
+    higher_is_better: true
+    computed: true
+    formula: "1 - Brier / (prevalence * (1 - prevalence))"
+    requires_binary: true
+
+  ECE:
+    display_name: "ECE"
+    description: "Expected Calibration Error"
+    higher_is_better: false
+    mlflow_name: "test/ECE"
+    requires_binary: true
+
+  confidence:
+    display_name: "Confidence"
+    description: "Mean predicted confidence"
+    higher_is_better: null  # Context-dependent
+    mlflow_name: "test/confidence"
+
+  # --- UNCERTAINTY (from MLflow) ---
+  AURC:
+    display_name: "AURC"
+    description: "Area Under Risk-Coverage Curve"
+    higher_is_better: false
+    mlflow_name: "test/AURC"
+    requires_binary: true
+
+  AURC_E:
+    display_name: "Excess AURC"
+    description: "Excess AURC above optimal selective classifier"
+    higher_is_better: false
+    mlflow_name: "test/AURC_E"
+    requires_binary: true
+
+  entropy:
+    display_name: "Entropy"
+    description: "Predictive entropy (total uncertainty)"
+    higher_is_better: null  # Higher = more uncertain
+    mlflow_name: "test/entropy"
+
+  entropy_of_expected:
+    display_name: "Entropy of Expected"
+    description: "Entropy of expected prediction (aleatoric component)"
+    higher_is_better: null
+    mlflow_name: "test/entropy_of_expected"
+
+  expected_entropy:
+    display_name: "Expected Entropy"
+    description: "Expected entropy under posterior"
+    higher_is_better: null
+    mlflow_name: "test/expected_entropy"
+
+  MI:
+    display_name: "Mutual Information"
+    description: "Epistemic uncertainty (model uncertainty)"
+    higher_is_better: null
+    mlflow_name: "test/MI"
+    alias: "mutual_information"
+
+  mutual_information:
+    display_name: "Mutual Information"
+    description: "Alias for MI - epistemic uncertainty"
+    higher_is_better: null
+    mlflow_name: "test/mutual_information"
+    alias_of: "MI"
+
+  # --- CLASSIFICATION PERFORMANCE (from MLflow + computed) ---
+  accuracy:
+    display_name: "Accuracy"
+    description: "Classification accuracy"
+    higher_is_better: true
+    mlflow_name: "test/accuracy"
+    requires_binary: true
+
+  accuracy_balanced:
+    display_name: "Balanced Accuracy"
+    description: "Average of sensitivity and specificity"
+    higher_is_better: true
+    mlflow_name: "test/accuracy_balanced"
+    requires_binary: true
+
+  F1:
+    display_name: "F1 Score"
+    description: "Harmonic mean of precision and recall"
+    higher_is_better: true
+    mlflow_name: "test/F1"
+    requires_binary: true
+
+  sensitivity:
+    display_name: "Sensitivity"
+    description: "True Positive Rate / Recall"
+    higher_is_better: true
+    mlflow_name: "test/sensitivity"
+    requires_binary: true
+
+  specificity:
+    display_name: "Specificity"
+    description: "True Negative Rate"
+    higher_is_better: true
+    mlflow_name: "test/specificity"
+    requires_binary: true
+
+  net_benefit:
+    display_name: "Net Benefit"
+    description: "Decision curve analysis net benefit"
+    higher_is_better: true
+    computed: true
+    formula: "TP/n - FP/n * (threshold / (1-threshold))"
+    params:
+      threshold: 0.15  # Default for glaucoma screening
+    requires_binary: true
+
+  # --- STRATOS/TRIPOD-AI METRICS (Van Calster 2024, Collins 2024) ---
+  smooth_ece:
+    display_name: "Smooth ECE"
+    description: "Smooth Expected Calibration Error (Apple relplot)"
+    higher_is_better: false
+    computed: true
+    formula: "relplot.smECE(y_true, y_pred_proba)"
+    requires_binary: true
+
+  calibration_slope:
+    display_name: "Calibration Slope"
+    description: "Slope from logistic calibration regression (ideal=1.0)"
+    higher_is_better: null  # Ideal is 1.0, not higher/lower
+    computed: true
+    formula: "logistic_regression(logit(y_pred_proba), y_true).coef_"
+    requires_binary: true
+
+  calibration_intercept:
+    display_name: "Calibration Intercept"
+    description: "Intercept from logistic calibration regression (ideal=0.0)"
+    higher_is_better: null  # Ideal is 0.0
+    computed: true
+    formula: "logistic_regression(logit(y_pred_proba), y_true).intercept_"
+    requires_binary: true
+
+  o_e_ratio:
+    display_name: "O:E Ratio"
+    description: "Observed/Expected ratio (ideal=1.0)"
+    higher_is_better: null  # Ideal is 1.0
+    computed: true
+    formula: "sum(y_true) / sum(y_pred_proba)"
+    requires_binary: true
+
+  net_benefit_5pct:
+    display_name: "Net Benefit (5%)"
+    description: "Net benefit at 5% decision threshold"
+    higher_is_better: true
+    computed: true
+    formula: "TP/n - FP/n * (0.05 / 0.95)"
+    params:
+      threshold: 0.05
+    requires_binary: true
+
+  net_benefit_10pct:
+    display_name: "Net Benefit (10%)"
+    description: "Net benefit at 10% decision threshold"
+    higher_is_better: true
+    computed: true
+    formula: "TP/n - FP/n * (0.10 / 0.90)"
+    params:
+      threshold: 0.10
+    requires_binary: true
+
+  net_benefit_20pct:
+    display_name: "Net Benefit (20%)"
+    description: "Net benefit at 20% decision threshold"
+    higher_is_better: true
+    computed: true
+    formula: "TP/n - FP/n * (0.20 / 0.80)"
+    params:
+      threshold: 0.20
+    requires_binary: true
+
+  # --- PREDICTIVE VALUES (from MLflow) ---
+  NPV:
+    display_name: "NPV"
+    description: "Negative Predictive Value"
+    higher_is_better: true
+    mlflow_name: "test/NPV"
+    requires_binary: true
+
+  NPV_prev:
+    display_name: "NPV (prev-adjusted)"
+    description: "NPV adjusted for disease prevalence"
+    higher_is_better: true
+    mlflow_name: "test/NPV_prev"
+    requires_binary: true
+
+  PPV:
+    display_name: "PPV"
+    description: "Positive Predictive Value (Precision)"
+    higher_is_better: true
+    mlflow_name: "test/PPV"
+    requires_binary: true
+
+  PPV_prev:
+    display_name: "PPV (prev-adjusted)"
+    description: "PPV adjusted for disease prevalence"
+    higher_is_better: true
+    mlflow_name: "test/PPV_prev"
+    requires_binary: true
+
+  # --- CLASS PROBABILITY STATISTICS (from MLflow) ---
+  probs_Control_mean_:
+    display_name: "Control Prob Mean"
+    description: "Mean predicted probability for control subjects"
+    higher_is_better: false  # Lower = model confident they're controls
+    mlflow_name: "test/probs_Control_mean_"
+
+  probs_Control_std_:
+    display_name: "Control Prob Std"
+    description: "Std of predicted probability for control subjects"
+    higher_is_better: null
+    mlflow_name: "test/probs_Control_std_"
+
+  probs_Glaucoma_mean_:
+    display_name: "Glaucoma Prob Mean"
+    description: "Mean predicted probability for glaucoma subjects"
+    higher_is_better: true
+    mlflow_name: "test/probs_Glaucoma_mean_"
+
+  probs_Glaucoma_std_:
+    display_name: "Glaucoma Prob Std"
+    description: "Std of predicted probability for glaucoma subjects"
+    higher_is_better: null
+    mlflow_name: "test/probs_Glaucoma_std_"
+
+# =============================================================================
+# METRIC COMBOS - 4 metrics per combo, NO REPETITION
+# =============================================================================
+# Total: 28 metrics in 7 combos of 4 each
+# Each metric appears in EXACTLY ONE combo
+#
+# Usage:
+#   main()                           # Uses 'default' combo
+#   main(metric_combo='calibration') # Uses calibration combo
+#
+# Default figure layout: 4 columns x 1 row
+
+metric_combos:
+  # DEFAULT COMBO - Used in main manuscript figures
+  # Theme: Primary clinical metrics for glaucoma screening
+  # NOTE: Using only metrics that are implemented in METRIC_REGISTRY (lowercase)
+  default:
+    name: "Default Clinical"
+    description: "Primary metrics for manuscript main figures (3x1 layout)"
+    metrics:
+      - auroc          # Discrimination (implemented)
+      - scaled_brier   # Calibration (implemented)
+      - net_benefit    # Clinical utility (implemented)
+    recommended: true
+    figure_type: "main"
+
+  # DISCRIMINATION COMBO
+  # Theme: Alternative discrimination and performance metrics
+  discrimination:
+    name: "Discrimination & Performance"
+    description: "PR curve, partial AUC, and balanced metrics"
+    metrics:
+      - AUPR              # Precision-Recall AUC
+      - tpAUC             # Partial AUC
+      - F1                # Balanced performance
+      - accuracy_balanced # Sensitivity/specificity balance
+    figure_type: "supplementary"
+
+  # CALIBRATION COMBO
+  # Theme: Probability calibration assessment
+  calibration:
+    name: "Calibration Analysis"
+    description: "Metrics for assessing probability calibration"
+    metrics:
+      - Brier       # Raw calibration score
+      - ECE         # Calibration error
+      - confidence  # Prediction confidence
+      - entropy     # Total predictive entropy
+    figure_type: "supplementary"
+
+  # UNCERTAINTY COMBO
+  # Theme: Deep uncertainty quantification
+  uncertainty:
+    name: "Uncertainty Deep-Dive"
+    description: "Detailed uncertainty decomposition"
+    metrics:
+      - AURC_E             # Excess AURC
+      - entropy_of_expected # Aleatoric uncertainty
+      - expected_entropy    # Expected entropy
+      - MI                  # Epistemic uncertainty
+    figure_type: "supplementary"
+
+  # CLINICAL DECISION COMBO
+  # Theme: Metrics for clinical decision support
+  clinical_decision:
+    name: "Clinical Decision Metrics"
+    description: "Metrics used in clinical screening decisions"
+    metrics:
+      - sensitivity  # True positive rate
+      - specificity  # True negative rate
+      - accuracy     # Overall accuracy
+      - NPV          # Negative predictive value
+    figure_type: "supplementary"
+
+  # PREDICTIVE VALUES COMBO
+  # Theme: Prevalence-adjusted predictive values
+  predictive:
+    name: "Predictive Values"
+    description: "PPV/NPV with prevalence adjustment"
+    metrics:
+      - PPV               # Positive predictive value
+      - NPV_prev          # NPV adjusted for prevalence
+      - PPV_prev          # PPV adjusted for prevalence
+      - mutual_information # Alias for MI (fills slot)
+    figure_type: "supplementary"
+
+  # CLASS PROBABILITY COMBO
+  # Theme: Per-class prediction statistics
+  class_probs:
+    name: "Class Probability Statistics"
+    description: "Mean and std of predictions per class"
+    metrics:
+      - probs_Control_mean_
+      - probs_Control_std_
+      - probs_Glaucoma_mean_
+      - probs_Glaucoma_std_
+    figure_type: "supplementary"
+
+  # STRATOS COMBO (Van Calster 2024, Collins 2024)
+  # Theme: STRATOS/TRIPOD-AI compliance metrics
+  stratos:
+    name: "STRATOS Calibration"
+    description: "STRATOS-mandated calibration and decision curve metrics"
+    metrics:
+      - smooth_ece           # Smooth ECE (relplot)
+      - calibration_slope    # Ideal = 1.0
+      - calibration_intercept # Ideal = 0.0
+      - o_e_ratio            # Observed/Expected ratio
+    figure_type: "main"
+
+  # DECISION CURVE ANALYSIS COMBO
+  # Theme: Net benefit at multiple thresholds for DCA
+  dca:
+    name: "Decision Curve Analysis"
+    description: "Net benefit at clinical decision thresholds"
+    metrics:
+      - net_benefit_5pct     # Aggressive screening
+      - net_benefit_10pct    # Moderate threshold
+      - net_benefit          # Default 15% threshold
+      - net_benefit_20pct    # Conservative threshold
+    figure_type: "main"
+
+# =============================================================================
+# ALL METRICS REFERENCE (for programmatic access)
+# =============================================================================
+# Use this for generating all possible metric combinations
+
+all_metrics:
+  from_mlflow:
+    - AUROC
+    - AUPR
+    - tpAUC
+    - Brier
+    - ECE
+    - confidence
+    - AURC
+    - AURC_E
+    - entropy
+    - entropy_of_expected
+    - expected_entropy
+    - MI
+    - mutual_information
+    - accuracy
+    - accuracy_balanced
+    - F1
+    - sensitivity
+    - specificity
+    - NPV
+    - NPV_prev
+    - PPV
+    - PPV_prev
+    - probs_Control_mean_
+    - probs_Control_std_
+    - probs_Glaucoma_mean_
+    - probs_Glaucoma_std_
+  computed:
+    - scaled_brier
+    - net_benefit
+    - smooth_ece
+    - calibration_slope
+    - calibration_intercept
+    - o_e_ratio
+    - net_benefit_5pct
+    - net_benefit_10pct
+    - net_benefit_20pct
+  total_count: 35  # 28 original + 7 STRATOS metrics
+
+# =============================================================================
+# DEFAULT SETTINGS
+# =============================================================================
+
+defaults:
+  # Which metric combo to use if none specified
+  metric_combo: "default"
+
+  # Retention curve settings
+  retention:
+    min_rate: 0.1
+    max_rate: 1.0
+    n_points: 50
+    min_samples: 10
+
+  # Net benefit threshold for glaucoma screening
+  # NOTE: This is the decision threshold, NOT disease prevalence.
+  # Disease prevalence in general population (40-80 years): ~3.54% (Tham et al. 2014)
+  # Sample composition in our dataset: 56/208 = 27% (enriched for glaucoma cases)
+  net_benefit_threshold: 0.15
+
+  # Figure layout
+  figure_layout:
+    n_cols: 4
+    n_rows: 1
+    figsize: [20, 5]
+
+# =============================================================================
+# SPLITS AVAILABLE
+# =============================================================================
+# All metrics are available for these data splits
+
+splits:
+  - test   # Primary - used for reporting
+  - train  # For overfitting detection
+  - val    # Validation set

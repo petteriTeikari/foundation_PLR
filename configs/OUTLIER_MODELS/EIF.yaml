@@ -1,3 +1,4 @@
+_version: "1.0.0"
 EIF:
   # TSB-AD: Towards A Reliable Time-Series Anomaly Detection Benchmark
   # https://github.com/TheDatumOrg/TSB-AD
