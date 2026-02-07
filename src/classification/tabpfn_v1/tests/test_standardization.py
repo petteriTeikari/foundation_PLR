@@ -1,9 +1,10 @@
-from src.classification.tabpfn_v1.utils import remove_outliers
-from src.classification.tabpfn_v1.datasets import load_openml_list, open_cc_dids
-
-import torch
 import unittest
+
 import numpy as np
+import torch
+
+from src.classification.tabpfn_v1.datasets import load_openml_list, open_cc_dids
+from src.classification.tabpfn_v1.utils import remove_outliers
 
 
 def old_torch_nanmean(x, axis=0, return_nanshare=False):

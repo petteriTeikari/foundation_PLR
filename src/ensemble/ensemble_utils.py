@@ -1,10 +1,11 @@
 import copy
+from typing import Optional, Union
 
+import mlflow
 import numpy as np
 import pandas as pd
-from omegaconf import DictConfig, open_dict
-import mlflow
 from loguru import logger
+from omegaconf import DictConfig, open_dict
 
 from src.log_helpers.mlflow_artifacts import (
     get_best_run_of_pd_dataframe,
@@ -14,9 +15,19 @@ from src.log_helpers.mlflow_artifacts import (
 from src.log_helpers.retrain_or_not import if_recreate_ensemble
 
 
-def get_unique_models_from_best_runs(best_runs: pd.DataFrame) -> list:
+def get_unique_models_from_best_runs(best_runs: pd.DataFrame) -> list[str]:
     """
-    Get the unique models from the best runs
+    Extract unique model architectures from MLflow run names.
+
+    Parameters
+    ----------
+    best_runs : pd.DataFrame
+        DataFrame containing MLflow runs with 'tags.mlflow.runName' column.
+
+    Returns
+    -------
+    list
+        List of unique model architecture names extracted from run names.
     """
     models = []
     model_cfg_names = best_runs["tags.mlflow.runName"].unique()
@@ -35,8 +46,34 @@ def get_best_run_of_the_model(
     best_metric_cfg: DictConfig,
     task: str,
     include_all_variants: bool = False,
-) -> pd.Series:
-    def parse_run_namme_for_model_name(run_col: pd.Series) -> pd.Series:
+) -> tuple[Optional[pd.Series], Optional[float]]:
+    """
+    Get the best performing run for a specific model architecture.
+
+    Parameters
+    ----------
+    best_runs : pd.DataFrame
+        DataFrame containing all MLflow runs to search.
+    model : str
+        Model architecture name to filter for.
+    cfg : DictConfig
+        Hydra configuration object.
+    best_metric_cfg : DictConfig
+        Configuration specifying which metric to use for ranking.
+    task : str
+        Task type ('anomaly_detection', 'imputation', or 'classification').
+    include_all_variants : bool, default False
+        If True, return all variants of the model instead of just the best.
+
+    Returns
+    -------
+    pd.Series
+        Best run for the specified model.
+    float
+        Best metric value for that run.
+    """
+
+    def parse_run_namme_for_model_name(run_col: pd.Series) -> list[str]:
         model_names = []
         for run_name in run_col:
             model_name = run_name.split("_")[0]
@@ -77,7 +114,25 @@ def get_best_run_of_the_model(
     return model_best_run, best_metric
 
 
-def exclude_ensembles_from_mlflow_runs(best_runs: pd.DataFrame):
+def exclude_ensembles_from_mlflow_runs(
+    best_runs: pd.DataFrame,
+) -> Optional[pd.DataFrame]:
+    """
+    Filter out ensemble runs from MLflow runs DataFrame.
+
+    Removes runs that have 'ensemble' in their run name, keeping only
+    individual submodel runs for ensemble creation.
+
+    Parameters
+    ----------
+    best_runs : pd.DataFrame
+        DataFrame containing MLflow runs.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Filtered DataFrame without ensemble runs, or None if empty.
+    """
     # you do not want to get already existing ensembled models, but only the submodels
     logger.info('Excluding runs with "ensemble" in the name')
     if best_runs.shape[0] > 0:
@@ -89,7 +144,25 @@ def exclude_ensembles_from_mlflow_runs(best_runs: pd.DataFrame):
     return best_runs
 
 
-def exclude_imputation_ensembles_from_mlflow_runs(best_runs: pd.DataFrame):
+def exclude_imputation_ensembles_from_mlflow_runs(
+    best_runs: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Filter out imputation ensemble runs from MLflow runs.
+
+    Parses run names to identify and exclude imputation ensembles,
+    keeping only single-model imputation runs.
+
+    Parameters
+    ----------
+    best_runs : pd.DataFrame
+        DataFrame containing MLflow imputation runs.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame without imputation ensemble runs.
+    """
     runs_out = pd.DataFrame()
     for idx, row in best_runs.iterrows():
         run_name = row["tags.mlflow.runName"]
@@ -102,7 +175,22 @@ def exclude_imputation_ensembles_from_mlflow_runs(best_runs: pd.DataFrame):
     return runs_out
 
 
-def keep_only_imputations_from_anomaly_ensembles(best_runs):
+def keep_only_imputations_from_anomaly_ensembles(
+    best_runs: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Filter to keep only imputation runs that use anomaly ensemble outputs.
+
+    Parameters
+    ----------
+    best_runs : pd.DataFrame
+        DataFrame containing MLflow imputation runs.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame with only runs using anomaly ensemble as input.
+    """
     runs_out = pd.DataFrame()
     for idx, row in best_runs.iterrows():
         run_name = row["tags.mlflow.runName"]
@@ -113,7 +201,30 @@ def keep_only_imputations_from_anomaly_ensembles(best_runs):
     return runs_out
 
 
-def remove_worst_model(best_unique_models, best_metrics, best_metric_cfg: DictConfig):
+def remove_worst_model(
+    best_unique_models: dict[str, pd.Series],
+    best_metrics: list[float],
+    best_metric_cfg: DictConfig,
+) -> dict[str, pd.Series]:
+    """
+    Remove the worst performing model from the ensemble candidates.
+
+    Used to ensure odd number of models for majority voting in anomaly detection.
+
+    Parameters
+    ----------
+    best_unique_models : dict
+        Dictionary mapping model names to their MLflow run data.
+    best_metrics : list
+        List of metric values corresponding to each model.
+    best_metric_cfg : DictConfig
+        Configuration specifying metric direction ('DESC' or 'ASC').
+
+    Returns
+    -------
+    dict
+        Updated dictionary with worst model removed.
+    """
     if best_metric_cfg["direction"] == "DESC":
         # remove the lowest value when largest value is the best
         idx = np.nanargmin(best_metrics)
@@ -134,7 +245,29 @@ def remove_worst_model(best_unique_models, best_metrics, best_metric_cfg: DictCo
     return best_unique_models
 
 
-def exclude_pupil_orig_imputed(best_unique_models: dict, best_metrics: list):
+def exclude_pupil_orig_imputed(
+    best_unique_models: dict[str, pd.Series],
+    best_metrics: list[float],
+) -> tuple[dict[str, pd.Series], list[float]]:
+    """
+    Exclude models trained on original (non-ground-truth) pupil data.
+
+    Removes models with 'orig' in their name to keep only ground-truth trained models.
+
+    Parameters
+    ----------
+    best_unique_models : dict
+        Dictionary mapping model names to their MLflow run data.
+    best_metrics : list
+        List of metric values corresponding to each model.
+
+    Returns
+    -------
+    dict
+        Filtered dictionary without 'orig' models.
+    list
+        Corresponding filtered metrics list.
+    """
     # Don't include the models trained on "pupil_orig_imputed" data, use just the 'gt' ones
     model_names = list(best_unique_models.keys())
     metrics_out = []
@@ -152,14 +285,39 @@ def exclude_pupil_orig_imputed(best_unique_models: dict, best_metrics: list):
 
 
 def get_anomaly_runs(
-    best_runs: pd.Series,
+    best_runs: pd.DataFrame,
     best_metric_cfg: DictConfig,
     cfg: DictConfig,
     task: str,
     return_odd_number_of_models: bool = False,
     exclude_orig_data: bool = True,
     include_all_variants: bool = False,
-):
+) -> dict[str, pd.Series]:
+    """
+    Get best anomaly detection runs for ensemble creation.
+
+    Parameters
+    ----------
+    best_runs : pd.DataFrame
+        DataFrame containing MLflow anomaly detection runs.
+    best_metric_cfg : DictConfig
+        Configuration for metric selection and thresholding.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type (should be 'anomaly_detection').
+    return_odd_number_of_models : bool, default False
+        If True, ensures odd number of models for majority voting.
+    exclude_orig_data : bool, default True
+        If True, excludes models trained on original (non-GT) data.
+    include_all_variants : bool, default False
+        If True, includes all model variants instead of just best.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping model names to their best MLflow run data.
+    """
     unique_models: list = get_unique_models_from_best_runs(best_runs)
     best_unique_models = {}
     best_metrics = []
@@ -178,9 +336,11 @@ def get_anomaly_runs(
             best_metrics.append(best_metric)
 
     if len(best_metrics) == 0:
-        logger.error('No best runs were added? glitch somewhere? Ensemble thresholding too high?')
+        logger.error(
+            "No best runs were added? glitch somewhere? Ensemble thresholding too high?"
+        )
         # e.g. cfg['OUTLIER_DETECTION']['best_metric']['ensemble_quality_threshold']
-        raise RuntimeError('No best runs were added? glitch somewhere?')
+        raise RuntimeError("No best runs were added? glitch somewhere?")
 
     if not include_all_variants:
         if exclude_orig_data:
@@ -203,7 +363,25 @@ def get_anomaly_runs(
     return best_unique_models
 
 
-def create_new_keys_for_all_variants(best_unique_models):
+def create_new_keys_for_all_variants(
+    best_unique_models: dict[str, pd.DataFrame],
+) -> dict[str, pd.DataFrame]:
+    """
+    Expand model dictionary to have separate keys for each model variant.
+
+    When include_all_variants is True, DataFrames may contain multiple rows.
+    This function creates a new key for each row to support downstream processing.
+
+    Parameters
+    ----------
+    best_unique_models : dict
+        Dictionary where values may be multi-row DataFrames.
+
+    Returns
+    -------
+    dict
+        Dictionary with separate keys for each model variant.
+    """
     logger.info("Creating new keys for all models (all variants)")
     best_unique_models_out = {}
     for submodel, model_df in best_unique_models.items():
@@ -221,12 +399,43 @@ def create_new_keys_for_all_variants(best_unique_models):
 
 
 def get_best_imputation_col_name(best_metric_cfg: DictConfig) -> str:
+    """
+    Construct MLflow column name for imputation metric.
+
+    Parameters
+    ----------
+    best_metric_cfg : DictConfig
+        Configuration containing 'split' and 'string' keys.
+
+    Returns
+    -------
+    str
+        MLflow column name in format 'metrics.{split}/{metric_name}'.
+    """
     split = best_metric_cfg["split"]
     metric_name = best_metric_cfg["string"]
     return f"metrics.{split}/{metric_name}"
 
 
-def get_best_imputation_model_per_run_name(runs, best_metric_cfg):
+def get_best_imputation_model_per_run_name(
+    runs: pd.DataFrame,
+    best_metric_cfg: DictConfig,
+) -> pd.DataFrame:
+    """
+    Select the best run when multiple runs share the same run name.
+
+    Parameters
+    ----------
+    runs : pd.DataFrame
+        DataFrame of runs with the same run name.
+    best_metric_cfg : DictConfig
+        Configuration specifying which metric and direction to use.
+
+    Returns
+    -------
+    pd.DataFrame
+        Single-row DataFrame with the best run.
+    """
     if runs.shape[0] > 1:
         # e.g. 'metrics.test/mae'
         col_name = get_best_imputation_col_name(best_metric_cfg)
@@ -245,8 +454,30 @@ def get_best_imputation_model_per_run_name(runs, best_metric_cfg):
 
 
 def get_best_unique_imputation_models(
-    best_runs: pd.Series, best_metric_cfg: DictConfig, cfg: DictConfig, task: str
-):
+    best_runs: pd.DataFrame,
+    best_metric_cfg: DictConfig,
+    cfg: DictConfig,
+    task: str,
+) -> pd.DataFrame:
+    """
+    Get unique best imputation models, one per run name.
+
+    Parameters
+    ----------
+    best_runs : pd.DataFrame
+        DataFrame containing all MLflow imputation runs.
+    best_metric_cfg : DictConfig
+        Configuration for metric selection and thresholding.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type (should be 'imputation').
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with one row per unique model configuration.
+    """
     best_unique_runs = pd.DataFrame()
     unique_run_names = best_runs["tags.mlflow.runName"].unique()
     for run_name in unique_run_names:
@@ -261,7 +492,29 @@ def get_best_unique_imputation_models(
     return best_unique_runs
 
 
-def parse_imputation_run_name_for_ensemble(run_name: str) -> str:
+def parse_imputation_run_name_for_ensemble(run_name: str) -> tuple[str, str]:
+    """
+    Parse imputation run name to extract model and anomaly source.
+
+    Run names follow format: '{model_name}__{anomaly_source}'
+
+    Parameters
+    ----------
+    run_name : str
+        MLflow run name for imputation model.
+
+    Returns
+    -------
+    str
+        Model name (e.g., 'SAITS', 'MOMENT-finetune').
+    str
+        Anomaly source (e.g., 'pupil_gt_', 'LOF').
+
+    Raises
+    ------
+    ValueError
+        If run name cannot be parsed.
+    """
     fields = run_name.replace("___", "__").split("__")
     if len(fields) == 2:
         model_name, anomaly_source = run_name.split("__")
@@ -276,13 +529,40 @@ def parse_imputation_run_name_for_ensemble(run_name: str) -> str:
 
 
 def filter_runs_for_gt(
-    best_runs,
-    best_metric_cfg,
-    cfg,
-    task,
+    best_runs: pd.DataFrame,
+    best_metric_cfg: DictConfig,
+    cfg: DictConfig,
+    task: str,
     return_best_gt: bool = False,
-    gt_on: str = "anomaly",
-):
+    gt_on: Optional[str] = "anomaly",
+) -> pd.DataFrame:
+    """
+    Filter runs based on ground truth usage.
+
+    Parameters
+    ----------
+    best_runs : pd.DataFrame
+        DataFrame containing MLflow runs.
+    best_metric_cfg : DictConfig
+        Configuration for metric selection.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type ('imputation' or 'classification').
+    return_best_gt : bool, default False
+        If True, return only runs using ground truth.
+        If False, return only runs NOT using ground truth.
+    gt_on : str, default 'anomaly'
+        For classification, which component should have GT:
+        - 'anomaly': only anomaly detection uses GT
+        - 'imputation': only imputation uses GT
+        - None: both must use GT
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered runs based on GT criteria.
+    """
     if task == "classification":
         if return_best_gt and gt_on is None:
             logger.debug("When you want gt anomaly AND gt imputation")
@@ -318,8 +598,12 @@ def filter_runs_for_gt(
                     # ensembling broke the naming convention
                     model_name, imputation_source = run_name.split("__")
                     anomaly_source = imputation_source
-                    feature_name = 'simple1.0'
-                    logger.warning('Hard-coded feature name "{}" for multi-classifier ensemble'.format(feature_name))
+                    feature_name = "simple1.0"
+                    logger.warning(
+                        'Hard-coded feature name "{}" for multi-classifier ensemble'.format(
+                            feature_name
+                        )
+                    )
                 elif len(fields) == 4:
                     model_name, feature_name, imputation_source, anomaly_source = (
                         run_name.split("__")
@@ -373,7 +657,24 @@ def filter_runs_for_gt(
     return best_runs_filtered
 
 
-def filter_for_detection(detection_filter_reject, best_runs_out):
+def filter_for_detection(
+    detection_filter_reject: str, best_runs_out: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Filter out runs containing specified string (e.g., 'zeroshot').
+
+    Parameters
+    ----------
+    detection_filter_reject : str
+        String to filter out from run names (e.g., 'zeroshot').
+    best_runs_out : pd.DataFrame
+        DataFrame containing MLflow runs.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered runs without rejected string in name.
+    """
     logger.info("Rejecting runs with zeroshot in the name (and use the finetuned)")
     runs_out = pd.DataFrame()
     for index, row in best_runs_out.iterrows():
@@ -386,7 +687,20 @@ def filter_for_detection(detection_filter_reject, best_runs_out):
     return runs_out
 
 
-def get_non_moment_models(best_runs_out):
+def get_non_moment_models(best_runs_out: pd.DataFrame) -> pd.DataFrame:
+    """
+    Filter to get only non-MOMENT model runs.
+
+    Parameters
+    ----------
+    best_runs_out : pd.DataFrame
+        DataFrame containing MLflow runs.
+
+    Returns
+    -------
+    pd.DataFrame
+        Runs without 'MOMENT' in the model name.
+    """
     runs_out = pd.DataFrame()
     for index, row in best_runs_out.iterrows():
         run_name = row["tags.mlflow.runName"]
@@ -396,7 +710,28 @@ def get_non_moment_models(best_runs_out):
     return runs_out
 
 
-def get_best_moment(best_metric_cfg, runs_moment):
+def get_best_moment(
+    best_metric_cfg: DictConfig, runs_moment: pd.DataFrame
+) -> Optional[pd.DataFrame]:
+    """
+    Get the best performing MOMENT variant.
+
+    Parameters
+    ----------
+    best_metric_cfg : DictConfig
+        Configuration specifying metric and sort direction.
+    runs_moment : pd.DataFrame
+        DataFrame containing only MOMENT model runs.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Single-row DataFrame with best MOMENT run, or None if no MOMENT models exist.
+    """
+    if runs_moment is None or runs_moment.empty:
+        logger.debug("No MOMENT models found, returning None")
+        return None
+
     col_name = get_best_imputation_col_name(best_metric_cfg)
     if best_metric_cfg["direction"] == "DESC":
         runs_moment = runs_moment.sort_values(by=col_name, ascending=False)
@@ -411,7 +746,20 @@ def get_best_moment(best_metric_cfg, runs_moment):
     return runs_moment
 
 
-def get_unique_sources(best_runs_out):
+def get_unique_sources(best_runs_out: pd.DataFrame) -> list[str]:
+    """
+    Extract unique anomaly sources from imputation run names.
+
+    Parameters
+    ----------
+    best_runs_out : pd.DataFrame
+        DataFrame containing MLflow imputation runs.
+
+    Returns
+    -------
+    list
+        List of unique anomaly source names.
+    """
     unique_sources, model_names = [], []
     for index, row in best_runs_out.iterrows():
         run_name = row["tags.mlflow.runName"]
@@ -422,7 +770,20 @@ def get_unique_sources(best_runs_out):
     return list(set(unique_sources))
 
 
-def keep_moment_models(runs_source):
+def keep_moment_models(runs_source: pd.DataFrame) -> pd.DataFrame:
+    """
+    Filter to keep only MOMENT model runs.
+
+    Parameters
+    ----------
+    runs_source : pd.DataFrame
+        DataFrame containing MLflow runs.
+
+    Returns
+    -------
+    pd.DataFrame
+        Runs with 'MOMENT' in the model name.
+    """
     df_runs = pd.DataFrame()
     for idx, row in runs_source.iterrows():
         run_name = row["tags.mlflow.runName"]
@@ -433,7 +794,24 @@ def keep_moment_models(runs_source):
     return df_runs
 
 
-def get_best_moments_per_source(best_runs_out, best_metric_cfg):
+def get_best_moments_per_source(
+    best_runs_out: pd.DataFrame, best_metric_cfg: DictConfig
+) -> Optional[pd.DataFrame]:
+    """
+    Get best MOMENT model for each unique anomaly source.
+
+    Parameters
+    ----------
+    best_runs_out : pd.DataFrame
+        DataFrame containing MLflow imputation runs.
+    best_metric_cfg : DictConfig
+        Configuration for metric selection.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Best MOMENT run per source, or None if no MOMENT models found.
+    """
     runs_moment = pd.DataFrame()
     unique_sources = get_unique_sources(best_runs_out)
     for unique_source in unique_sources:
@@ -445,14 +823,48 @@ def get_best_moments_per_source(best_runs_out, best_metric_cfg):
             runs_moment_per_source = get_best_moment(
                 best_metric_cfg, runs_moment_as_model
             )
-            runs_moment = pd.concat([runs_moment, runs_moment_per_source])
-        else:
-            runs_moment = None
+            if runs_moment_per_source is not None:
+                runs_moment = pd.concat([runs_moment, runs_moment_per_source])
+        # Note: If no MOMENT models for this source, just skip (don't set to None)
+
+    # Return None if no MOMENT models were found across any source
+    if runs_moment.empty:
+        return None
     return runs_moment
 
 
-def get_best_moment_variant(best_runs_out, best_metric_cfg, return_best_gt):
+def get_best_moment_variant(
+    best_runs_out: pd.DataFrame, best_metric_cfg: DictConfig, return_best_gt: bool
+) -> pd.DataFrame:
+    """
+    Get best MOMENT variant while preserving non-MOMENT models.
+
+    Handles MOMENT variants (finetune, zeroshot) by selecting best one
+    per anomaly source, then combines with non-MOMENT models.
+
+    Parameters
+    ----------
+    best_runs_out : pd.DataFrame
+        DataFrame containing all imputation runs.
+    best_metric_cfg : DictConfig
+        Configuration for metric selection.
+    return_best_gt : bool
+        Whether filtering for ground truth runs.
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined DataFrame with best MOMENT variants and all non-MOMENT models.
+    """
     logger.info("Getting best MOMENT variant")
+
+    # Early return for empty DataFrame to avoid KeyError on column access
+    if best_runs_out is None or best_runs_out.empty:
+        logger.warning(
+            "Empty DataFrame passed to get_best_moment_variant, returning empty"
+        )
+        return pd.DataFrame()
+
     non_moment_runs = get_non_moment_models(best_runs_out)
     if return_best_gt:
         # easier task as just filter MOMENT as they all have the same source
@@ -463,24 +875,59 @@ def get_best_moment_variant(best_runs_out, best_metric_cfg, return_best_gt):
     else:
         runs_moment = get_best_moments_per_source(best_runs_out, best_metric_cfg)
 
-    if runs_moment is None:
-        runs_out = non_moment_runs
-    elif non_moment_runs is None:
-        runs_out = runs_moment
-    else:
+    # Handle cases where MOMENT and/or non-MOMENT models may not exist
+    has_moment = runs_moment is not None and not runs_moment.empty
+    has_non_moment = non_moment_runs is not None and not non_moment_runs.empty
+
+    if has_moment and has_non_moment:
         runs_out = pd.concat([non_moment_runs, runs_moment])
+    elif has_moment:
+        runs_out = runs_moment
+    elif has_non_moment:
+        runs_out = non_moment_runs
+    else:
+        logger.warning(
+            "No MOMENT or non-MOMENT models found, returning empty DataFrame"
+        )
+        runs_out = pd.DataFrame()
 
     return runs_out
 
 
 def get_imputation_runs(
-    best_runs,
-    best_metric_cfg,
-    cfg,
-    task,
-    return_best_gt,
+    best_runs: pd.DataFrame,
+    best_metric_cfg: DictConfig,
+    cfg: DictConfig,
+    task: str,
+    return_best_gt: bool,
     detection_filter_reject: str = "zeroshot",
-):
+) -> Optional[pd.DataFrame]:
+    """
+    Get best imputation runs for ensemble creation.
+
+    Applies multiple filters: unique models, GT filtering, variant filtering,
+    and MOMENT variant selection.
+
+    Parameters
+    ----------
+    best_runs : pd.DataFrame
+        DataFrame containing all MLflow imputation runs.
+    best_metric_cfg : DictConfig
+        Configuration for metric selection and thresholding.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type (should be 'imputation').
+    return_best_gt : bool
+        If True, return only runs using ground truth anomaly detection.
+    detection_filter_reject : str, default 'zeroshot'
+        String to filter out from run names.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Filtered runs for ensemble, or None if no runs pass filters.
+    """
     # Keep unique run_names
     best_unique_runs = get_best_unique_imputation_models(
         best_runs, best_metric_cfg, cfg, task
@@ -507,8 +954,27 @@ def get_imputation_runs(
 
 
 def get_best_unique_classification_models(
-    best_runs: pd.Series, best_metric_cfg: DictConfig, cfg: DictConfig, task: str
-):
+    best_runs: pd.DataFrame, best_metric_cfg: DictConfig, cfg: DictConfig, task: str
+) -> pd.DataFrame:
+    """
+    Get unique best classification models, one per run name.
+
+    Parameters
+    ----------
+    best_runs : pd.Series
+        Series containing all MLflow classification runs.
+    best_metric_cfg : DictConfig
+        Configuration for metric selection.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type (should be 'classification').
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with one row per unique model configuration.
+    """
     best_unique_runs = pd.DataFrame()
     unique_run_names = best_runs["tags.mlflow.runName"].unique()
     for run_name in unique_run_names:
@@ -522,21 +988,55 @@ def get_best_unique_classification_models(
     return best_unique_runs
 
 
-def drop_embedding_cls_runs(best_runs_out):
+def drop_embedding_cls_runs(best_runs_out: pd.DataFrame) -> pd.DataFrame:
+    """
+    Filter out classification runs using embedding features.
 
+    Parameters
+    ----------
+    best_runs_out : pd.DataFrame
+        DataFrame containing classification runs.
+
+    Returns
+    -------
+    pd.DataFrame
+        Runs without 'embedding' in the run name.
+    """
     runs_out = pd.DataFrame()
     for idx, row in best_runs_out.iterrows():
         run_name = row["tags.mlflow.runName"]
-        if 'embedding' not in run_name:
+        if "embedding" not in run_name:
             runs_out = pd.concat([runs_out, pd.DataFrame(row).T])
 
     return runs_out
 
-def get_list_of_good_models():
-    return ['TabPFN', 'TabM', 'XGBOOST', 'CATBOOST']
+
+def get_list_of_good_models() -> list[str]:
+    """
+    Get list of classifier models to include in ensembles.
+
+    Returns
+    -------
+    list
+        List of classifier names considered 'good' for ensembling.
+    """
+    return ["TabPFN", "TabM", "XGBOOST", "CATBOOST"]
 
 
-def keep_the_good_models(best_runs_out):
+def keep_the_good_models(best_runs_out: pd.DataFrame) -> pd.DataFrame:
+    """
+    Filter to keep only runs from approved classifier list.
+
+    Parameters
+    ----------
+    best_runs_out : pd.DataFrame
+        DataFrame containing classification runs.
+
+    Returns
+    -------
+    pd.DataFrame
+        Runs using classifiers from the approved list.
+    """
     good_models = get_list_of_good_models()
     runs_out = pd.DataFrame()
     for idx, row in best_runs_out.iterrows():
@@ -547,37 +1047,86 @@ def keep_the_good_models(best_runs_out):
     return runs_out
 
 
-def keep_cls_runs_when_both_imputation_and_outlier_are_ensemble(best_runs_out):
+def keep_cls_runs_when_both_imputation_and_outlier_are_ensemble(
+    best_runs_out: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Filter to keep classification runs where both preprocessing steps are ensembles.
 
+    Used for full-chain ensemble evaluation where both anomaly detection
+    and imputation were done with ensembled models.
+
+    Parameters
+    ----------
+    best_runs_out : pd.DataFrame
+        DataFrame containing classification runs.
+
+    Returns
+    -------
+    pd.DataFrame
+        Runs where both imputation and outlier detection used ensembles.
+    """
     runs_out = pd.DataFrame()
     for idx, row in best_runs_out.iterrows():
         run_name = row["tags.mlflow.runName"]
-        fields = run_name.split('__')
+        fields = run_name.split("__")
         if len(fields) == 2:
-            cls, imput = run_name.split('__')
-            outlier = 'anomaly'
+            cls, imput = run_name.split("__")
+            outlier = "anomaly"
         elif len(fields) == 4:
-            cls, feat, imput, outlier = run_name.split('__')
+            cls, feat, imput, outlier = run_name.split("__")
         else:
-            logger.error('Unknown number of fields in run_name, n = {}'.format(len(fields)))
-            raise ValueError('Unknown number of fields in run_name, n = {}'.format(len(fields)))
+            logger.error(
+                "Unknown number of fields in run_name, n = {}".format(len(fields))
+            )
+            raise ValueError(
+                "Unknown number of fields in run_name, n = {}".format(len(fields))
+            )
 
-        if 'ensemble' in imput:
-            if outlier == 'anomaly': # "anomaly_ensemble"
+        if "ensemble" in imput:
+            if outlier == "anomaly":  # "anomaly_ensemble"
                 runs_out = pd.concat([runs_out, pd.DataFrame(row).T])
 
     return runs_out
 
 
 def get_classification_runs(
-    best_runs,
-    best_metric_cfg,
-    cfg,
-    task,
+    best_runs: pd.DataFrame,
+    best_metric_cfg: DictConfig,
+    cfg: DictConfig,
+    task: str,
     return_best_gt: bool = True,
-    gt_on: str = "anomaly",
-    return_only_ensembled_inputs: bool = False
-):
+    gt_on: Optional[str] = "anomaly",
+    return_only_ensembled_inputs: bool = False,
+) -> pd.DataFrame:
+    """
+    Get best classification runs for ensemble creation.
+
+    Applies filters for unique models, GT usage, embedding exclusion,
+    and approved classifiers.
+
+    Parameters
+    ----------
+    best_runs : pd.DataFrame
+        DataFrame containing all classification runs.
+    best_metric_cfg : DictConfig
+        Configuration for metric selection.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type (should be 'classification').
+    return_best_gt : bool, default True
+        If True, return only runs using ground truth preprocessing.
+    gt_on : str, default 'anomaly'
+        Which component should use GT ('anomaly', 'imputation', or None for both).
+    return_only_ensembled_inputs : bool, default False
+        If True, only return runs where both preprocessing steps were ensembles.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered classification runs for ensemble.
+    """
     # Keep unique run_names
     best_unique_runs = get_best_unique_classification_models(
         best_runs, best_metric_cfg, cfg, task
@@ -595,8 +1144,9 @@ def get_classification_runs(
     best_runs_out = keep_the_good_models(best_runs_out)
 
     if return_only_ensembled_inputs:
-        best_runs_out = keep_cls_runs_when_both_imputation_and_outlier_are_ensemble(best_runs_out)
-
+        best_runs_out = keep_cls_runs_when_both_imputation_and_outlier_are_ensemble(
+            best_runs_out
+        )
 
     return best_runs_out
 
@@ -613,7 +1163,43 @@ def get_used_models_from_mlflow(
     include_all_variants: bool = False,
     return_all_runs: bool = False,
     return_only_ensembled_inputs: bool = False,
-) -> dict:
+) -> Union[dict[str, pd.Series], pd.DataFrame]:
+    """
+    Retrieve best models from MLflow for ensemble creation.
+
+    Main entry point for getting submodels to ensemble. Queries MLflow
+    and applies task-specific filtering and selection logic.
+
+    Parameters
+    ----------
+    experiment_name : str
+        MLflow experiment name to query.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str, default 'anomaly_detection'
+        Task type: 'anomaly_detection', 'imputation', or 'classification'.
+    exclude_ensemble : bool, default True
+        If True, exclude existing ensemble runs from results.
+    return_odd_number_of_models : bool, default False
+        If True, ensure odd number of models (for majority voting).
+    return_best_gt : bool, default False
+        If True, return only runs using ground truth.
+    return_anomaly_ensembles : bool, default False
+        If True, return imputation runs that used anomaly ensembles.
+    gt_on : str, optional
+        For classification, which component uses GT.
+    include_all_variants : bool, default False
+        If True, include all model variants.
+    return_all_runs : bool, default False
+        If True, return all runs without filtering.
+    return_only_ensembled_inputs : bool, default False
+        If True, only return runs with ensembled preprocessing.
+
+    Returns
+    -------
+    dict or pd.DataFrame
+        Dictionary mapping model names to run data, or DataFrame if return_all_runs.
+    """
     if task == "anomaly_detection":
         best_metric_cfg = cfg["OUTLIER_DETECTION"]["best_metric"]
     elif task == "imputation":
@@ -665,8 +1251,13 @@ def get_used_models_from_mlflow(
                 )
             elif task == "classification":
                 best_unique_models = get_classification_runs(
-                    best_runs, best_metric_cfg, cfg, task, return_best_gt, gt_on=gt_on,
-                    return_only_ensembled_inputs=return_only_ensembled_inputs
+                    best_runs,
+                    best_metric_cfg,
+                    cfg,
+                    task,
+                    return_best_gt,
+                    gt_on=gt_on,
+                    return_only_ensembled_inputs=return_only_ensembled_inputs,
                 )
             else:
                 logger.error(f"Task {task} not implemented yet")
@@ -691,6 +1282,28 @@ def get_used_models_from_mlflow(
 def ensemble_the_imputation_output_dicts(
     results_per_model: dict, ensembled_outputs: dict, i: int, submodel: str
 ) -> dict:
+    """
+    Aggregate imputation outputs from multiple submodels.
+
+    Stacks imputation arrays from each submodel into a 4D array
+    (subjects x timepoints x features x submodels) for later ensemble statistics.
+
+    Parameters
+    ----------
+    results_per_model : dict
+        Imputation results from a single submodel.
+    ensembled_outputs : dict
+        Accumulated ensemble outputs (modified in place).
+    i : int
+        Index of current submodel.
+    submodel : str
+        Name of current submodel.
+
+    Returns
+    -------
+    dict
+        Updated ensembled_outputs with new submodel added.
+    """
     if len(ensembled_outputs) == 0:
         ensembled_outputs = results_per_model
 
@@ -741,7 +1354,27 @@ def ensemble_the_imputation_output_dicts(
 
 def compute_ensemble_stats(
     ensembled_outputs: dict, ensemble_name: str, n: int, cfg: DictConfig
-):
+) -> dict:
+    """
+    Compute ensemble statistics (mean, std, CI) from stacked submodel outputs.
+
+    Parameters
+    ----------
+    ensembled_outputs : dict
+        Dictionary with 4D arrays from stacked submodel predictions.
+    ensemble_name : str
+        Name of the ensemble.
+    n : int
+        Number of submodels.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    dict
+        Ensemble outputs with computed statistics (mean, std, CI).
+    """
+
     def compute_numpy_array_stats(input_array: np.ndarray):
         assert len(input_array.shape) == 4, "Input array is not 4d"
         dict_out = {}
@@ -775,14 +1408,34 @@ def compute_ensemble_stats(
 
 
 def ensemble_the_imputation_results(
-    ensemble_name: str, mlflow_ensemble: dict, cfg: DictConfig
-):
+    ensemble_name: str, mlflow_ensemble: dict[str, pd.Series], cfg: DictConfig
+) -> dict:
+    """
+    Create ensemble from multiple imputation model outputs.
+
+    Loads imputation results from each submodel, stacks predictions,
+    and computes ensemble statistics.
+
+    Parameters
+    ----------
+    ensemble_name : str
+        Name for the ensemble.
+    mlflow_ensemble : dict
+        Dictionary mapping submodel names to their MLflow run data.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    dict
+        Ensembled imputation output with statistics and metadata.
+    """
     ensembled_outputs = {}
     submodel_run_names = []
 
     for i, submodel in enumerate(mlflow_ensemble.keys()):
         logger.info(
-            f"Getting the results of the model: {submodel} (#{i+1}/{len(mlflow_ensemble.keys())})"
+            f"Getting the results of the model: {submodel} (#{i + 1}/{len(mlflow_ensemble.keys())})"
         )
         results_per_model = get_imputation_results_from_mlflow(
             mlflow_run=mlflow_ensemble[submodel], model_name=submodel, cfg=cfg
@@ -826,8 +1479,29 @@ def ensemble_the_imputation_results(
 
 
 def get_ensemble_permutations(
-    best_unique_models: dict, ensemble_cfg: DictConfig, cfg: DictConfig
-):
+    best_unique_models: dict[str, pd.Series], _ensemble_cfg: DictConfig, cfg: DictConfig
+) -> dict[str, dict[str, pd.Series]]:
+    """
+    Generate ensemble configurations from available submodels.
+
+    Currently creates a single ensemble using all available models.
+    Placeholder for future permutation logic.
+
+    Parameters
+    ----------
+    best_unique_models : dict
+        Dictionary of available submodels.
+    ensemble_cfg : DictConfig
+        Ensemble-specific configuration.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping ensemble names to their submodel dictionaries.
+    """
+
     def get_ensemble_name(submodel_names, delimiter="-"):
         name_out = f"ensemble{delimiter}"
         for i, name in enumerate(submodel_names):
@@ -850,7 +1524,28 @@ def get_ensemble_permutations(
     return ensembles
 
 
-def get_imputation_results_from_for_ensembling(experiment_name: str, cfg: DictConfig):
+def get_imputation_results_from_for_ensembling(
+    experiment_name: str, cfg: DictConfig
+) -> dict[str, dict]:
+    """
+    Get imputation results and create ensembles from MLflow experiment.
+
+    High-level function that retrieves best submodels and creates
+    imputation ensemble(s).
+
+    Parameters
+    ----------
+    experiment_name : str
+        MLflow experiment name.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping ensemble names to their ensembled outputs.
+        Empty dict if insufficient models for ensembling.
+    """
     # Get the best hyperparameter combination of each model architecture
     best_unique_models = get_used_models_from_mlflow(experiment_name, cfg)
 
@@ -880,13 +1575,26 @@ def get_imputation_results_from_for_ensembling(experiment_name: str, cfg: DictCo
                 )
             else:
                 logger.info(
-                    f"Ensemble {ensemble_name} already exists, skipping the ensemble creation"
+                    f"Ens model {ensemble_name} already exists, skipping creation"
                 )
 
     return ensembled_output
 
 
-def get_gt_imputation_labels(sources):
+def get_gt_imputation_labels(sources: dict) -> dict[str, np.ndarray]:
+    """
+    Extract ground truth imputation masks from source data.
+
+    Parameters
+    ----------
+    sources : dict
+        Dictionary containing 'pupil_gt' with ground truth data.
+
+    Returns
+    -------
+    dict
+        Dictionary with train/test split imputation masks as int arrays.
+    """
     labels = {}
     df = sources["pupil_gt"]["df"]
     for split in df.keys():
@@ -894,7 +1602,20 @@ def get_gt_imputation_labels(sources):
     return labels
 
 
-def get_metadata_dict_from_sources(sources: dict):
+def get_metadata_dict_from_sources(sources: dict) -> dict:
+    """
+    Extract metadata dictionary from source data.
+
+    Parameters
+    ----------
+    sources : dict
+        Dictionary containing data sources.
+
+    Returns
+    -------
+    dict
+        Dictionary with train/test split metadata.
+    """
     first_source_key = list(sources.keys())[0]
     df = sources[first_source_key]["df"]
     metadata_dict = {}
@@ -903,7 +1624,20 @@ def get_metadata_dict_from_sources(sources: dict):
     return metadata_dict
 
 
-def combine_ensembles_into_one_df(best_unique_models: dict):
+def combine_ensembles_into_one_df(best_unique_models: dict) -> Optional[pd.DataFrame]:
+    """
+    Combine multiple ensemble DataFrames into a single DataFrame.
+
+    Parameters
+    ----------
+    best_unique_models : dict
+        Dictionary where values may be DataFrames of model runs.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Combined DataFrame of all models, or None if empty.
+    """
     df_out = pd.DataFrame()
     for ensemble_name in best_unique_models.keys():
         if isinstance(best_unique_models[ensemble_name], pd.DataFrame):
@@ -914,7 +1648,23 @@ def combine_ensembles_into_one_df(best_unique_models: dict):
         return df_out
 
 
-def aggregate_codes(df):
+def aggregate_codes(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """
+    Aggregate subject codes from multiple MLflow runs.
+
+    Extracts train/test subject codes from each run to verify
+    all models used same data splits.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame of MLflow runs with 'params.codes_train' and 'params.codes_test'.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'train' and 'test' DataFrames of subject codes.
+    """
     codes = {"train": None, "test": None}
     cols = []
 
@@ -944,7 +1694,22 @@ def aggregate_codes(df):
     return codes
 
 
-def are_codes_the_same(df: pd.DataFrame):
+def are_codes_the_same(df: pd.DataFrame) -> bool:
+    """
+    Check if all columns in DataFrame have identical values.
+
+    Used to verify all submodels were trained on same subjects.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame where each column represents codes from a model.
+
+    Returns
+    -------
+    bool
+        True if all columns have identical values, False otherwise.
+    """
     same_codes = df.eq(df.iloc[:, 0], axis=0)
     run_names = list(same_codes.columns)
     nonmatching_codes = same_codes.sum(axis=0) != same_codes.shape[0]
@@ -958,9 +1723,19 @@ def are_codes_the_same(df: pd.DataFrame):
     return all_submodels_have_same_codes
 
 
-def check_codes_used(best_unique_models: dict):
+def check_codes_used(best_unique_models: dict) -> Optional[dict]:
     """
-    Are all the models trained with same subjects
+    Verify all ensemble submodels were trained on the same subjects.
+
+    Parameters
+    ----------
+    best_unique_models : dict
+        Dictionary of submodels to check.
+
+    Returns
+    -------
+    dict or None
+        Input dictionary if checks pass, None if no valid data.
     """
     df_mlflow = combine_ensembles_into_one_df(best_unique_models)
     if df_mlflow is not None:
@@ -973,8 +1748,32 @@ def check_codes_used(best_unique_models: dict):
 
 
 def get_grouped_classification_runs(
-    best_unique_models, experiment_name: str, cfg: DictConfig, task: str
-):
+    best_unique_models: dict, experiment_name: str, cfg: DictConfig, task: str
+) -> dict:
+    """
+    Group classification runs by ground truth usage pattern.
+
+    Creates groups for:
+    - pupil_gt: Both anomaly and imputation use GT
+    - anomaly_gt: Only anomaly detection uses GT
+    - ensembled_input: Both use ensemble outputs
+
+    Parameters
+    ----------
+    best_unique_models : dict
+        Dictionary to populate with grouped runs.
+    experiment_name : str
+        MLflow experiment name.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type (should be 'classification').
+
+    Returns
+    -------
+    dict
+        Dictionary with runs grouped by GT usage pattern.
+    """
     # When both anomaly detection and imputation come from ground truth
     best_unique_models["pupil_gt"] = get_used_models_from_mlflow(
         experiment_name, cfg, task, return_best_gt=True, gt_on=None
@@ -995,7 +1794,11 @@ def get_grouped_classification_runs(
     # and then ensembled those imputation methods, and now we are then ensembling different classifiers
     # for a "full-chain" of ensembled models
     best_unique_models["ensembled_input"] = get_used_models_from_mlflow(
-        experiment_name, cfg, task, return_best_gt=False, return_only_ensembled_inputs=True
+        experiment_name,
+        cfg,
+        task,
+        return_best_gt=False,
+        return_only_ensembled_inputs=True,
     )
 
     best_unique_models = check_codes_used(best_unique_models)
@@ -1005,7 +1808,29 @@ def get_grouped_classification_runs(
 
 def get_results_from_mlflow_for_ensembling(
     experiment_name: str, cfg: DictConfig, task: str, recompute_metrics: bool = False
-):
+) -> Optional[dict]:
+    """
+    Get MLflow results organized for ensemble creation.
+
+    Main entry point for retrieving submodels for ensembling across all tasks.
+    Handles task-specific logic for anomaly detection, imputation, and classification.
+
+    Parameters
+    ----------
+    experiment_name : str
+        MLflow experiment name.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type: 'anomaly_detection', 'imputation', or 'classification'.
+    recompute_metrics : bool, default False
+        If True, only retrieve runs for metric recomputation.
+
+    Returns
+    -------
+    dict or None
+        Dictionary of grouped submodel runs, or None if no valid runs found.
+    """
     best_unique_models = {}
     if task == "anomaly_detection":
         # hacky way to get the granular metrics computed, note also that this does not compute granular metric
@@ -1105,7 +1930,7 @@ def get_results_from_mlflow_for_ensembling(
                 logger.info("")
     else:
         # Happens when you run your demo data for example
-        logger.warning('None of the ensembles had any submodules found!')
-        logger.warning('OK for the demo data running case')
+        logger.warning("None of the ensembles had any submodules found!")
+        logger.warning("OK for the demo data running case")
 
     return best_unique_models

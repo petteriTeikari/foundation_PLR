@@ -1,18 +1,17 @@
-import time
 import os
+import random
+import time
 from pathlib import Path
 
-import torch
-import random
 import numpy as np
-
+import torch
 from torch import nn
 
-from src.classification.tabpfn_v1.utils import torch_nanmean
-from src.classification.tabpfn_v1.scripts.tabular_baselines import get_scoring_string
 from src.classification.tabpfn_v1.scripts import tabular_metrics
-from src.classification.tabpfn_v1.scripts.transformer_prediction_interface import *  # noqa F403
 from src.classification.tabpfn_v1.scripts.baseline_prediction_interface import *  # noqa F403
+from src.classification.tabpfn_v1.scripts.tabular_baselines import get_scoring_string
+from src.classification.tabpfn_v1.scripts.transformer_prediction_interface import *  # noqa F403
+from src.classification.tabpfn_v1.utils import torch_nanmean
 
 """
 ===============================

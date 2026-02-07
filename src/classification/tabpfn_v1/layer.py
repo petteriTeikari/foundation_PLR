@@ -2,14 +2,14 @@ from functools import partial
 
 import torch
 from torch.nn.modules.transformer import (
-    _get_activation_fn,
-    Module,
-    Tensor,
-    Optional,
-    MultiheadAttention,
-    Linear,
     Dropout,
     LayerNorm,
+    Linear,
+    Module,
+    MultiheadAttention,
+    Optional,
+    Tensor,
+    _get_activation_fn,
 )
 from torch.utils.checkpoint import checkpoint
 

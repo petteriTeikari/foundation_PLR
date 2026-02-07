@@ -1,9 +1,9 @@
-import os
-import math
 import argparse
-import random
 import datetime
 import itertools
+import math
+import os
+import random
 
 import torch
 from torch import nn

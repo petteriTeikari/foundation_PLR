@@ -11,10 +11,10 @@ from dataclasses import dataclass
 from functools import partial
 from itertools import chain, product, repeat
 from typing import TYPE_CHECKING, Literal, TypeVar
-from typing_extensions import override
 
 import numpy as np
 from sklearn.utils.validation import joblib
+from typing_extensions import override
 
 from src.classification.tabpfn.constants import (
     CLASS_SHUFFLE_OVERESTIMATE_FACTOR,

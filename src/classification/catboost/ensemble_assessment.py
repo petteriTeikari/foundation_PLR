@@ -1,10 +1,35 @@
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import precision_recall_curve
-from sklearn.metrics import auc
+from typing import Literal, Union
+
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
+from sklearn.metrics import auc, precision_recall_curve, roc_auc_score
 
 
-def prr_class(labels, probs, measure, rev: bool):
+def prr_class(
+    labels: ArrayLike, probs: ArrayLike, measure: ArrayLike, rev: bool
+) -> float:
+    """Compute prediction rejection ratio for classification tasks.
+
+    Evaluates uncertainty-based rejection by comparing against random
+    and oracle rejection baselines.
+
+    Parameters
+    ----------
+    labels : array-like
+        Ground truth class labels.
+    probs : array-like of shape (n_samples, n_classes)
+        Predicted class probabilities.
+    measure : array-like
+        Uncertainty measure for each sample used for rejection ordering.
+    rev : bool
+        If True, reverse the sorting order of the uncertainty measure.
+
+    Returns
+    -------
+    float
+        Rejection ratio as a percentage, indicating how well the uncertainty
+        measure identifies misclassifications compared to oracle rejection.
+    """
     # Get predictions
     preds = np.argmax(probs, axis=1)
 
@@ -49,7 +74,31 @@ def prr_class(labels, probs, measure, rev: bool):
     return rejection_ratio
 
 
-def prr_regression(targets, preds, measure, pos_label=1):
+def prr_regression(
+    targets: ArrayLike, preds: ArrayLike, measure: ArrayLike, pos_label: int = 1
+) -> float:
+    """Compute prediction rejection ratio for regression tasks.
+
+    Evaluates how well an uncertainty measure can identify high-error predictions
+    compared to random and oracle rejection strategies.
+
+    Parameters
+    ----------
+    targets : array-like
+        Ground truth target values.
+    preds : array-like
+        Predicted values.
+    measure : array-like
+        Uncertainty measure for each sample used for rejection ordering.
+    pos_label : int, optional
+        If not 1, the measure is negated before sorting. Default is 1.
+
+    Returns
+    -------
+    float
+        Area under the rejection ratio curve, normalized between random
+        and optimal rejection performance.
+    """
     if pos_label != 1:
         measure_loc = -1.0 * measure
     else:
@@ -106,7 +155,36 @@ def prr_regression(targets, preds, measure, pos_label=1):
     return AUC_RR
 
 
-def ood_detect(domain_labels, in_measure, out_measure, mode, pos_label=1):
+def ood_detect(
+    domain_labels: ArrayLike,
+    in_measure: ArrayLike,
+    out_measure: ArrayLike,
+    mode: Literal["PR", "ROC"],
+    pos_label: int = 1,
+) -> float:
+    """Evaluate out-of-distribution detection using uncertainty scores.
+
+    Computes detection performance metrics for distinguishing in-distribution
+    from out-of-distribution samples based on uncertainty measures.
+
+    Parameters
+    ----------
+    domain_labels : array-like
+        Binary labels indicating in-distribution (0) vs out-of-distribution (1).
+    in_measure : array-like
+        Uncertainty scores for in-distribution samples.
+    out_measure : array-like
+        Uncertainty scores for out-of-distribution samples.
+    mode : {'PR', 'ROC'}
+        Evaluation mode: 'PR' for precision-recall AUC, 'ROC' for ROC AUC.
+    pos_label : int, optional
+        If not 1, scores are negated. Default is 1.
+
+    Returns
+    -------
+    float
+        Area under the curve (AUPR or AUROC depending on mode).
+    """
     scores = np.concatenate((in_measure, out_measure), axis=0)
     scores = np.asarray(scores, dtype=np.float128)
     if pos_label != 1:
@@ -122,7 +200,35 @@ def ood_detect(domain_labels, in_measure, out_measure, mode, pos_label=1):
         return roc_auc
 
 
-def nll_regression(target, mu, var, epsilon=1e-8, raw=False):
+def nll_regression(
+    target: ArrayLike,
+    mu: ArrayLike,
+    var: ArrayLike,
+    epsilon: float = 1e-8,
+    raw: bool = False,
+) -> Union[float, NDArray[np.floating]]:
+    """Compute negative log-likelihood for Gaussian regression predictions.
+
+    Assumes predictions follow a Gaussian distribution with given mean and variance.
+
+    Parameters
+    ----------
+    target : array-like
+        Ground truth target values.
+    mu : array-like
+        Predicted mean values.
+    var : array-like
+        Predicted variance values.
+    epsilon : float, optional
+        Small constant for numerical stability. Default is 1e-8.
+    raw : bool, optional
+        If True, return per-sample NLL; if False, return mean NLL. Default is False.
+
+    Returns
+    -------
+    float or ndarray
+        Mean NLL if raw=False, per-sample NLL array if raw=True.
+    """
     nll = (
         (target - mu) ** 2 / (2.0 * var + epsilon)
         + np.log(var + epsilon) / 2.0
@@ -133,12 +239,56 @@ def nll_regression(target, mu, var, epsilon=1e-8, raw=False):
     return np.mean(nll)
 
 
-def nll_class(target, probs, epsilon=1e-10):
+def nll_class(
+    target: ArrayLike, probs: ArrayLike, epsilon: float = 1e-10
+) -> NDArray[np.floating]:
+    """Compute negative log-likelihood for binary classification predictions.
+
+    Parameters
+    ----------
+    target : array-like
+        Ground truth binary labels (0 or 1).
+    probs : array-like of shape (n_samples, 2)
+        Predicted probabilities for each class.
+    epsilon : float, optional
+        Small constant for numerical stability. Default is 1e-10.
+
+    Returns
+    -------
+    ndarray
+        Per-sample negative log-likelihood values.
+    """
     log_p = -np.log(probs + epsilon)
     return target * log_p[:, 1] + (1 - target) * log_p[:, 0]
 
 
-def ens_nll_regression(target, preds, epsilon=1e-8, raw=False):
+def ens_nll_regression(
+    target: ArrayLike,
+    preds: ArrayLike,
+    epsilon: float = 1e-8,
+    raw: bool = False,
+) -> Union[float, NDArray[np.floating]]:
+    """Compute ensemble negative log-likelihood for regression predictions.
+
+    Combines predictions from multiple ensemble members using mixture-of-Gaussians.
+
+    Parameters
+    ----------
+    target : array-like
+        Ground truth target values.
+    preds : array-like of shape (n_members, n_samples, 2)
+        Predictions from ensemble members, where [:, :, 0] is mean
+        and [:, :, 1] is variance.
+    epsilon : float, optional
+        Small constant for numerical stability. Default is 1e-8.
+    raw : bool, optional
+        If True, return per-sample NLL; if False, return mean NLL. Default is False.
+
+    Returns
+    -------
+    float or ndarray
+        Mean ensemble NLL if raw=False, per-sample NLL array if raw=True.
+    """
     mu = preds[:, :, 0]
     var = preds[:, :, 1]
     nll = (
@@ -152,13 +302,56 @@ def ens_nll_regression(target, preds, epsilon=1e-8, raw=False):
     return np.mean(-1 * np.log(np.mean(proba, axis=0)))
 
 
-def calc_rmse(preds, target, raw=False):
+def calc_rmse(
+    preds: ArrayLike, target: ArrayLike, raw: bool = False
+) -> Union[float, NDArray[np.floating]]:
+    """Calculate root mean squared error between predictions and targets.
+
+    Parameters
+    ----------
+    preds : array-like
+        Predicted values.
+    target : array-like
+        Ground truth target values.
+    raw : bool, optional
+        If True, return per-sample squared errors; if False, return RMSE.
+        Default is False.
+
+    Returns
+    -------
+    float or ndarray
+        RMSE if raw=False, per-sample squared errors if raw=True.
+    """
     if raw:
         return (preds - target) ** 2  # for individual predictions
     return np.sqrt(np.mean((preds - target) ** 2))
 
 
-def ens_rmse(target, preds, epsilon=1e-8, raw=False):
+def ens_rmse(
+    target: ArrayLike,
+    preds: ArrayLike,
+    epsilon: float = 1e-8,
+    raw: bool = False,
+) -> Union[float, NDArray[np.floating]]:
+    """Calculate RMSE for ensemble predictions using averaged means.
+
+    Parameters
+    ----------
+    target : array-like
+        Ground truth target values.
+    preds : array-like of shape (n_members, n_samples, 2)
+        Predictions from ensemble members, where [:, :, 0] is mean.
+    epsilon : float, optional
+        Unused parameter kept for API consistency. Default is 1e-8.
+    raw : bool, optional
+        If True, return per-sample squared errors; if False, return RMSE.
+        Default is False.
+
+    Returns
+    -------
+    float or ndarray
+        RMSE if raw=False, per-sample squared errors if raw=True.
+    """
     means = preds[:, :, 0]
     avg_mean = np.mean(means, axis=0)
     if raw:  # for individual predictions

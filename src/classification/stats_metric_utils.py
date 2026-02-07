@@ -1,9 +1,10 @@
 import warnings
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
 from scipy.interpolate import interp1d
 
 from src.classification.catboost.catboost_ensemble import ensemble_uncertainties
@@ -11,6 +12,7 @@ from src.classification.catboost.catboost_utils import (
     get_catboost_preds_from_results_for_bootstrap,
 )
 from src.classification.tabm.tabm_utils import get_tabm_preds_from_results_for_bootstrap
+from src.stats._defaults import DEFAULT_CI_LEVEL
 from src.stats.calibration_metrics import get_calibration_metrics
 from src.stats.classifier_metrics import get_classifier_metrics
 from src.stats.uncertainty_quantification import (
@@ -19,8 +21,39 @@ from src.stats.uncertainty_quantification import (
 )
 
 
-def interpolation_wrapper(x, y, x_new, n_samples: int, metric: str, kind="linear"):
-    def clip_illegal_calibration_values(y_new):
+def interpolation_wrapper(
+    x: np.ndarray,
+    y: np.ndarray,
+    x_new: np.ndarray,
+    n_samples: int,
+    metric: str,
+    _kind: str = "linear",
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Interpolate metric curves to a fixed number of points.
+
+    Parameters
+    ----------
+    x : array-like
+        Original x values.
+    y : array-like
+        Original y values.
+    x_new : array-like
+        New x values to interpolate to.
+    n_samples : int
+        Number of samples for interpolation.
+    metric : str
+        Metric name ('AUROC', 'AUPR', 'calibration_curve').
+    kind : str, default 'linear'
+        Interpolation method.
+
+    Returns
+    -------
+    tuple
+        (x_new, y_new) interpolated arrays.
+    """
+
+    def clip_illegal_calibration_values(y_new: np.ndarray) -> np.ndarray:
         y_new[y_new < 0] = 0
         y_new[y_new > 1] = 1
         return y_new
@@ -46,7 +79,25 @@ def interpolation_wrapper(x, y, x_new, n_samples: int, metric: str, kind="linear
     return x_new, y_new
 
 
-def bootstrap_get_array_axis_names(metric: str):
+def bootstrap_get_array_axis_names(metric: str) -> tuple[str, str]:
+    """
+    Get x and y axis names for a given metric curve.
+
+    Parameters
+    ----------
+    metric : str
+        Metric name ('AUROC', 'AUPR', 'calibration_curve').
+
+    Returns
+    -------
+    tuple
+        (x_name, y_name) axis names for the metric.
+
+    Raises
+    ------
+    ValueError
+        If unknown metric specified.
+    """
     if metric == "AUROC":
         x_name = "fpr"
         y_name = "tpr"
@@ -66,7 +117,27 @@ def bootstrap_get_array_axis_names(metric: str):
     return x_name, y_name
 
 
-def bootstrap_interpolate_metric_arrays(arrays: dict, n_samples: int = 200) -> dict:
+def bootstrap_interpolate_metric_arrays(
+    arrays: dict[str, Any], n_samples: int = 200
+) -> dict[str, Any]:
+    """
+    Interpolate all metric arrays to a fixed number of samples.
+
+    Enables aggregation of ROC/PR curves across bootstrap iterations
+    by standardizing the x-axis.
+
+    Parameters
+    ----------
+    arrays : dict
+        Dictionary of metric arrays with varying lengths.
+    n_samples : int, default 200
+        Number of points for interpolation.
+
+    Returns
+    -------
+    dict
+        Dictionary of interpolated metric arrays.
+    """
     arrays_out = {}
     for metric in arrays.keys():
         arrays_out[metric] = {}
@@ -98,8 +169,28 @@ def bootstrap_interpolate_metric_arrays(arrays: dict, n_samples: int = 200) -> d
 
 
 def bootstrap_aggregate_arrays(
-    arrays: dict, metrics_per_split: dict, main_key: str = "metrics"
-):
+    arrays: dict[str, Any], metrics_per_split: dict[str, Any], main_key: str = "metrics"
+) -> dict[str, Any]:
+    """
+    Aggregate array metrics across bootstrap iterations.
+
+    Stacks interpolated curves (ROC, PR, calibration) horizontally
+    for later statistical analysis.
+
+    Parameters
+    ----------
+    arrays : dict
+        Interpolated metric arrays from current iteration.
+    metrics_per_split : dict
+        Accumulated metrics from previous iterations.
+    main_key : str, default "metrics"
+        Key for storing metrics in output dict.
+
+    Returns
+    -------
+    dict
+        Updated metrics_per_split with new arrays appended.
+    """
     # For first bootstrap iteration, initialize the metrics_per_split dict
     if main_key not in metrics_per_split.keys():
         metrics_per_split[main_key] = {}
@@ -131,17 +222,37 @@ def bootstrap_aggregate_arrays(
                 except Exception as e:
                     logger.error(f"Could not stack arrays: {e}")
                     logger.error(
-                        f'previous shape: '
-                        f'{metrics_per_split[main_key]["arrays"][metric][variable].shape[0]}, '
-                        f'and current shape: '
-                        f'{array_var.shape}'
+                        f"previous shape: "
+                        f"{metrics_per_split[main_key]['arrays'][metric][variable].shape[0]}, "
+                        f"and current shape: "
+                        f"{array_var.shape}"
                     )
                     raise e
 
     return metrics_per_split
 
 
-def bootstrap_aggregate_scalars(metrics_dict: dict, metrics_per_split: dict):
+def bootstrap_aggregate_scalars(
+    metrics_dict: dict[str, Any], metrics_per_split: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Aggregate scalar metrics across bootstrap iterations.
+
+    Appends scalar values (AUROC, Brier, etc.) to lists for later
+    statistical analysis.
+
+    Parameters
+    ----------
+    metrics_dict : dict
+        Metrics from current iteration.
+    metrics_per_split : dict
+        Accumulated metrics from previous iterations.
+
+    Returns
+    -------
+    dict
+        Updated metrics_per_split with new scalars appended.
+    """
     # For first bootstrap iteration, initialize the metrics_per_split dict
     if "metrics" not in metrics_per_split.keys():
         metrics_per_split["metrics"] = {}
@@ -165,13 +276,39 @@ def bootstrap_aggregate_scalars(metrics_dict: dict, metrics_per_split: dict):
 
 
 def bootstrap_aggregate_by_subject_per_split(
-    arrays: dict,
-    metrics_per_split: dict,
+    arrays: dict[str, Any],
+    metrics_per_split: dict[str, Any],
     codes_per_split: np.ndarray,
     main_key: str,
     subkey: str = "predictions",
     is_init_with_correct_codes: bool = False,
-):
+) -> dict[str, Any]:
+    """
+    Aggregate predictions by subject code across bootstrap iterations.
+
+    Used for train/val splits where subjects vary between iterations
+    due to resampling. Stores predictions keyed by subject code.
+
+    Parameters
+    ----------
+    arrays : dict
+        Predictions from current iteration.
+    metrics_per_split : dict
+        Accumulated predictions from previous iterations.
+    codes_per_split : np.ndarray
+        Subject codes for current iteration.
+    main_key : str
+        Key for storing predictions.
+    subkey : str, default "predictions"
+        Subkey within arrays.
+    is_init_with_correct_codes : bool, default False
+        If True, expects codes to already exist.
+
+    Returns
+    -------
+    dict
+        Updated metrics_per_split with predictions aggregated by subject.
+    """
     # For first bootstrap iteration, initialize the metrics_per_split dict
     if main_key not in metrics_per_split.keys():
         metrics_per_split[main_key] = {}
@@ -221,8 +358,38 @@ def bootstrap_aggregate_by_subject_per_split(
 
 
 def bootstrap_aggregate_subjects(
-    metrics_per_split: dict, codes_per_split: np.ndarray, split: str, preds: dict
-):
+    metrics_per_split: dict[str, Any],
+    codes_per_split: np.ndarray,
+    split: str,
+    preds: dict[str, np.ndarray],
+) -> dict[str, Any]:
+    """
+    Aggregate subject predictions based on split type.
+
+    For test split, predictions are stacked as arrays (same subjects each iter).
+    For train/val, predictions are stored in dicts keyed by subject code.
+
+    Parameters
+    ----------
+    metrics_per_split : dict
+        Accumulated metrics and predictions.
+    codes_per_split : np.ndarray
+        Subject codes for current split.
+    split : str
+        Split name ('train', 'val', 'test').
+    preds : dict
+        Predictions from current iteration.
+
+    Returns
+    -------
+    dict
+        Updated metrics_per_split with aggregated predictions.
+
+    Raises
+    ------
+    ValueError
+        If unknown split specified.
+    """
     # Aggregate the predictions as well so you could get average probabilty per patient,
     # and some uncertainty quantification (aleatoric and epistemic uncertainty)?
 
@@ -262,17 +429,55 @@ def bootstrap_aggregate_subjects(
 def bootstrap_metrics_per_split(
     X: np.ndarray,
     y_true: np.ndarray,
-    preds: dict,
-    model,
+    preds: dict[str, np.ndarray],
+    model: Any,
     model_name: str,
-    metrics_per_split: dict,
+    metrics_per_split: dict[str, Any],
     codes_per_split: np.ndarray,
     method_cfg: DictConfig,
     cfg: DictConfig,
     split: str,
     skip_mlflow: bool = False,
     recompute_for_ensemble: bool = False,
-):
+) -> dict[str, Any]:
+    """
+    Compute and aggregate metrics for a single split in bootstrap iteration.
+
+    Calculates classifier metrics, calibration metrics, interpolates curves,
+    and aggregates all results across iterations.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Feature matrix for the split.
+    y_true : np.ndarray
+        True labels.
+    preds : dict
+        Model predictions with 'y_pred', 'y_pred_proba'.
+    model : object
+        Trained classifier model.
+    model_name : str
+        Name of the classifier.
+    metrics_per_split : dict
+        Accumulated metrics from previous iterations.
+    codes_per_split : np.ndarray
+        Subject codes for this split.
+    method_cfg : DictConfig
+        Bootstrap method configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    split : str
+        Split name ('train', 'val', 'test').
+    skip_mlflow : bool, default False
+        Skip MLflow logging.
+    recompute_for_ensemble : bool, default False
+        If True, skip subject aggregation (already done).
+
+    Returns
+    -------
+    dict
+        Updated metrics_per_split with new iteration's results.
+    """
     assert len(y_true) == len(
         preds["y_pred"]
     ), "y_true and y_pred must have the same length"
@@ -319,7 +524,35 @@ def bootstrap_metrics_per_split(
     return metrics_per_split
 
 
-def bootstrap_predict(model, X, i, split, debug_aggregation: bool = True):
+def bootstrap_predict(
+    model: Any, X: np.ndarray, i: int, split: str, debug_aggregation: bool = True
+) -> dict[str, np.ndarray]:
+    """
+    Get predictions from model for bootstrap iteration.
+
+    Parameters
+    ----------
+    model : object
+        Trained classifier with predict_proba() method.
+    X : np.ndarray
+        Feature matrix.
+    i : int
+        Bootstrap iteration index.
+    split : str
+        Split name for logging.
+    debug_aggregation : bool, default True
+        If True, log debug info for test split.
+
+    Returns
+    -------
+    dict
+        Predictions with 'y_pred_proba' and 'y_pred' keys.
+
+    Raises
+    ------
+    Exception
+        If model prediction fails.
+    """
     try:
         predict_probs = model.predict_proba(X)  # (n_samples, n_classes), e.g. (72,2)
         preds = {
@@ -335,39 +568,56 @@ def bootstrap_predict(model, X, i, split, debug_aggregation: bool = True):
     if debug_aggregation:
         if split == "test":
             logger.info(
-                f"DEBUG iter #{i+1}: 1st sample probs the test split: {preds['y_pred_proba'][0]}"
+                f"DEBUG iter #{i + 1}: 1st sample probs the test split: {preds['y_pred_proba'][0]}"
             )
 
     return preds
 
 
-def tabm_demodata_fix(preds):
+def tabm_demodata_fix(preds: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+    """
+    Fix TabM prediction array length mismatch on demo data.
 
+    Parameters
+    ----------
+    preds : dict
+        Predictions dictionary with 'y_pred_proba', 'y_pred', 'label'.
+
+    Returns
+    -------
+    dict
+        Fixed predictions dictionary.
+
+    Raises
+    ------
+    RuntimeError
+        If prediction length doesn't match expected ratio.
+    """
     no_pred_length = len(preds["y_pred_proba"])
     no_pred_labels = len(preds["label"])
 
     if no_pred_length != no_pred_labels:
-        if no_pred_length == 2*no_pred_labels:
+        if no_pred_length == 2 * no_pred_labels:
             preds["y_pred"] = preds["y_pred"][0:no_pred_labels]
             preds["y_pred_proba"] = preds["y_pred_proba"][0:no_pred_labels]
         else:
-            logger.error('Number of predictions does not match number of labels')
-            raise RuntimeError('Number of predictions does not match number of labels')
+            logger.error("Number of predictions does not match number of labels")
+            raise RuntimeError("Number of predictions does not match number of labels")
 
     return preds
 
 
 def bootstrap_metrics(
-    i,
-    model,
-    dict_splits,
-    metrics,
-    results_per_iter,
-    method_cfg,
+    i: int,
+    model: Any,
+    dict_splits: dict[str, dict[str, np.ndarray]],
+    metrics: dict[str, dict],
+    results_per_iter: dict[str, dict] | None,
+    method_cfg: DictConfig,
     cfg: DictConfig,
     debug_aggregation: bool = False,
-    model_name: str = None,
-):
+    model_name: str | None = None,
+) -> dict[str, dict]:
     """
     i: int
         which bootstrap iteration, or a submodel of the ensemble
@@ -420,7 +670,7 @@ def bootstrap_metrics(
         preds["label"] = y_true
 
         # hacky fix if you are running TabM, on demo data
-        if model_name == 'TabM':
+        if model_name == "TabM":
             preds = tabm_demodata_fix(preds)
 
         assert preds["label"].shape[0] == preds["y_pred_proba"].shape[0], (
@@ -449,13 +699,43 @@ def bootstrap_metrics(
     return metrics
 
 
-def get_p_from_alpha(alpha: float = 0.95):
+def get_p_from_alpha(alpha: float = DEFAULT_CI_LEVEL) -> float:
+    """
+    Convert confidence level alpha to percentile value.
+
+    Parameters
+    ----------
+    alpha : float, default DEFAULT_CI_LEVEL
+        Confidence level (e.g., 0.95 for 95% CI).
+
+    Returns
+    -------
+    float
+        Percentile value for lower bound (e.g., 2.5 for alpha=0.95).
+    """
     return np.round(
         ((1.0 - alpha) / 2.0) * 100, 1
     )  # e.g. 2.5 with alpha=0.95 (2.5 - 97.5%)
 
 
-def bootstrap_scalar_stats_per_metric(values: np.ndarray, method_cfg: DictConfig):
+def bootstrap_scalar_stats_per_metric(
+    values: np.ndarray, method_cfg: DictConfig
+) -> dict[str, int | float | np.ndarray]:
+    """
+    Compute summary statistics for a scalar metric across bootstrap iterations.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Array of metric values from all iterations.
+    method_cfg : DictConfig
+        Bootstrap configuration with 'alpha_CI'.
+
+    Returns
+    -------
+    dict
+        Statistics with 'n', 'mean', 'std', 'ci' keys.
+    """
     dict_out = {}
     dict_out["n"] = len(values)
     warnings.simplefilter("ignore")
@@ -474,7 +754,25 @@ def bootstrap_scalar_stats_per_metric(values: np.ndarray, method_cfg: DictConfig
     return dict_out
 
 
-def convert_inf_to_nan(values: np.ndarray):
+def convert_inf_to_nan(values: np.ndarray) -> np.ndarray:
+    """
+    Replace infinite values with NaN in array.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        2D array possibly containing inf values.
+
+    Returns
+    -------
+    np.ndarray
+        Array with inf replaced by NaN.
+
+    Raises
+    ------
+    NotImplementedError
+        If array is not 2D.
+    """
     # vector-based for 2D arrays? instead of the loop
     if np.any(np.isinf(values)):
         if len(values.shape) == 2:
@@ -490,7 +788,24 @@ def convert_inf_to_nan(values: np.ndarray):
 
 def get_array_stats_per_metric(
     values: np.ndarray, method_cfg: DictConfig, inf_to_nan: bool = True
-):
+) -> dict[str, np.ndarray]:
+    """
+    Compute summary statistics for array metrics across bootstrap iterations.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        2D array of shape (curve_length, n_iterations).
+    method_cfg : DictConfig
+        Bootstrap configuration with 'alpha_CI'.
+    inf_to_nan : bool, default True
+        Convert infinite values to NaN before computing stats.
+
+    Returns
+    -------
+    dict
+        Statistics with 'mean', 'std', 'ci' arrays.
+    """
     if inf_to_nan:
         values = convert_inf_to_nan(values)
     warnings.simplefilter("ignore")
@@ -509,7 +824,26 @@ def get_array_stats_per_metric(
     return dict_out
 
 
-def bootstrap_scalar_stats(metrics_per_split, method_cfg, split):
+def bootstrap_scalar_stats(
+    metrics_per_split: dict[str, np.ndarray], method_cfg: DictConfig, split: str
+) -> dict[str, dict[str, int | float | np.ndarray]]:
+    """
+    Compute statistics for all scalar metrics in a split.
+
+    Parameters
+    ----------
+    metrics_per_split : dict
+        Accumulated scalar metrics per metric name.
+    method_cfg : DictConfig
+        Bootstrap configuration.
+    split : str
+        Split name (unused, for signature compatibility).
+
+    Returns
+    -------
+    dict
+        Statistics per metric with mean, std, CI.
+    """
     metrics_out = {}
     for metric in metrics_per_split.keys():
         metrics_out[metric] = bootstrap_scalar_stats_per_metric(
@@ -519,7 +853,24 @@ def bootstrap_scalar_stats(metrics_per_split, method_cfg, split):
     return metrics_out
 
 
-def bootstrap_array_stats(metrics_per_split, method_cfg):
+def bootstrap_array_stats(
+    metrics_per_split: dict[str, dict[str, np.ndarray]], method_cfg: DictConfig
+) -> dict[str, dict[str, dict[str, np.ndarray]]]:
+    """
+    Compute statistics for all array metrics (curves) in a split.
+
+    Parameters
+    ----------
+    metrics_per_split : dict
+        Accumulated array metrics per metric name.
+    method_cfg : DictConfig
+        Bootstrap configuration.
+
+    Returns
+    -------
+    dict
+        Statistics per metric and variable with mean, std, CI arrays.
+    """
     metrics_out = {}
     for metric in metrics_per_split.keys():
         metrics_out[metric] = {}
@@ -531,7 +882,19 @@ def bootstrap_array_stats(metrics_per_split, method_cfg):
     return metrics_out
 
 
-def check_bootstrap_probability_predictions(metrics: dict):
+def check_bootstrap_probability_predictions(metrics: dict[str, dict]) -> None:
+    """
+    Validate that bootstrap predictions vary across iterations.
+
+    Warns if all predictions are identical, which indicates a bug
+    in model retraining or bootstrap resampling.
+
+    Parameters
+    ----------
+    metrics : dict
+        Accumulated metrics with predictions per split.
+    """
+
     def check_probs_array(probs_array, split):
         if isinstance(probs_array, list):
             # These are list if coming from train/val
@@ -579,7 +942,33 @@ def check_bootstrap_probability_predictions(metrics: dict):
             raise ValueError
 
 
-def bootstrap_compute_stats(metrics, method_cfg, call_from: str, verbose: bool = True):
+def bootstrap_compute_stats(
+    metrics: dict[str, dict],
+    method_cfg: DictConfig,
+    call_from: str,
+    verbose: bool = True,
+) -> dict[str, dict[str, dict]]:
+    """
+    Compute final statistics from all bootstrap iterations.
+
+    Aggregates scalar and array metrics into mean, std, and CI values.
+
+    Parameters
+    ----------
+    metrics : dict
+        Accumulated metrics from all bootstrap iterations.
+    method_cfg : DictConfig
+        Bootstrap configuration.
+    call_from : str
+        Caller identifier for conditional checks.
+    verbose : bool, default True
+        Enable logging.
+
+    Returns
+    -------
+    dict
+        Statistics per split with scalars and arrays.
+    """
     if verbose:
         logger.info("Compute Bootstrap statistics (AUROC, ROC Curves, etc.)")
     warnings.simplefilter("ignore")
@@ -615,10 +1004,25 @@ def bootstrap_compute_stats(metrics, method_cfg, call_from: str, verbose: bool =
 
 def bootstrap_subject_stats_numpy_array(
     preds_per_key: np.ndarray, labels: np.ndarray, key: str
-):
+) -> dict[str, np.ndarray]:
     """
-    args:
-        preds_per_key: np.ndarray, shape (n_subjects, n_iterations)
+    Compute per-subject statistics from 2D prediction array.
+
+    Used for test split where subjects are consistent across iterations.
+
+    Parameters
+    ----------
+    preds_per_key : np.ndarray
+        Predictions of shape (n_subjects, n_iterations).
+    labels : np.ndarray
+        True labels (unused, for signature consistency).
+    key : str
+        Prediction key (unused, for signature consistency).
+
+    Returns
+    -------
+    dict
+        Statistics with 'mean' and 'std' arrays (n_subjects,).
     """
     dict_out = {}
     warnings.simplefilter("ignore")
@@ -629,7 +1033,24 @@ def bootstrap_subject_stats_numpy_array(
     return dict_out
 
 
-def aggregate_dict_subjects(dict_out, stats_per_code):
+def aggregate_dict_subjects(
+    dict_out: dict[str, np.ndarray], stats_per_code: dict[str, np.ndarray]
+) -> dict[str, np.ndarray]:
+    """
+    Aggregate subject statistics by horizontal stacking.
+
+    Parameters
+    ----------
+    dict_out : dict
+        Accumulated statistics.
+    stats_per_code : dict
+        Statistics for a single subject code.
+
+    Returns
+    -------
+    dict
+        Updated statistics with new subject appended.
+    """
     for key, scalar_in_array in stats_per_code.items():
         if key not in dict_out.keys():
             dict_out[key] = scalar_in_array
@@ -640,14 +1061,42 @@ def aggregate_dict_subjects(dict_out, stats_per_code):
 
 
 def bootstrap_subject_stats_dict(
-    preds_per_key: dict,
+    preds_per_key: dict[str, list[float]],
     labels: np.ndarray,
-    codes_train: np.ndarray,
+    _codes_train: np.ndarray,
     key: str,
-    split=str,
+    split: str = "train",
     verbose: bool = True,
     check_preds: bool = False,
-):
+) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
+    """
+    Compute per-subject statistics from dictionary of predictions.
+
+    Used for train/val splits where predictions are stored by subject code.
+    Also computes uncertainty quantification for probability predictions.
+
+    Parameters
+    ----------
+    preds_per_key : dict
+        Predictions keyed by subject code.
+    labels : np.ndarray
+        True labels for subjects.
+    codes_train : np.ndarray
+        Subject codes for ordering.
+    key : str
+        Prediction key (e.g., 'y_pred_proba').
+    split : str
+        Split name for logging.
+    verbose : bool, default True
+        Enable logging.
+    check_preds : bool, default False
+        Validate predictions vary per subject.
+
+    Returns
+    -------
+    tuple
+        (stats_dict, uq_dict) with per-subject statistics and uncertainty.
+    """
     warnings.simplefilter("ignore")
     dict_out = {}
     for code in preds_per_key.keys():
@@ -681,8 +1130,30 @@ def bootstrap_subject_stats_dict(
 
 
 def sort_dict_keys_based_on_list(
-    dict_to_sort: dict, list_to_sort_by: list, sort_list: bool = True
-):
+    dict_to_sort: dict[str, Any], list_to_sort_by: list[str], sort_list: bool = True
+) -> dict[str, Any]:
+    """
+    Sort dictionary keys to match a reference list order.
+
+    Parameters
+    ----------
+    dict_to_sort : dict
+        Dictionary to reorder.
+    list_to_sort_by : list
+        Reference list defining key order.
+    sort_list : bool, default True
+        If True, reorder to match list. If False, just sort alphabetically.
+
+    Returns
+    -------
+    dict
+        Reordered dictionary.
+
+    Raises
+    ------
+    Exception
+        If keys don't match reference list.
+    """
     # sort the keys based on original train codes as you now get arrays for the stats
     dict_to_sort = dict(sorted(dict_to_sort.items()))
 
@@ -700,6 +1171,18 @@ def sort_dict_keys_based_on_list(
 def bootstrap_check_that_samples_different(
     preds_per_key: dict, key: str, check_preds: bool = False
 ):
+    """
+    Verify predictions vary across bootstrap iterations per subject.
+
+    Parameters
+    ----------
+    preds_per_key : dict
+        Predictions keyed by subject code.
+    key : str
+        Prediction type key.
+    check_preds : bool, default False
+        If True, perform detailed validation.
+    """
     for subject_code in list(preds_per_key.keys()):
         preds_per_code = preds_per_key[subject_code]
         if check_preds:
@@ -710,9 +1193,24 @@ def check_indiv_code_for_different_preds(
     subject_code: str, preds_per_code: list, key: str
 ):
     """
-    Tricky check as if you would have clean data and your model predicts 0.5 for both classes, you would clearly have
-    a problem. But now as we are doing this downstream analysis, the input data at worse can be garbage. Needlessly
-    will raise issues then for these bad quality data runs
+    Check if predictions for a subject vary across iterations.
+
+    Note: May raise false alarms for garbage input data where model
+    consistently outputs same predictions.
+
+    Parameters
+    ----------
+    subject_code : str
+        Subject identifier.
+    preds_per_code : list
+        List of predictions for this subject across iterations.
+    key : str
+        Prediction type (e.g., 'y_pred_proba').
+
+    Raises
+    ------
+    ValueError
+        If all predictions are identical for probability predictions.
     """
     if key == "y_pred_proba":
         # could happen that class labels are same for tiny bootstraps?
@@ -731,6 +1229,32 @@ def bootstrap_compute_subject_stats(
     call_from: str = None,
     verbose: bool = True,
 ):
+    """
+    Compute per-subject statistics from bootstrap iterations.
+
+    Aggregates predictions across bootstrap iterations to compute
+    mean predictions and uncertainty per subject.
+
+    Parameters
+    ----------
+    metrics_iter : dict
+        Accumulated metrics from all iterations.
+    dict_arrays : dict
+        Original data arrays with labels and codes.
+    method_cfg : DictConfig
+        Bootstrap configuration.
+    sort_list : bool, default True
+        Sort results to match original code order.
+    call_from : str, optional
+        Caller identifier for special handling.
+    verbose : bool, default True
+        Enable logging.
+
+    Returns
+    -------
+    dict
+        Per-subject statistics per split.
+    """
     if verbose:
         logger.info(
             "Compute subject-wise Bootstrap statistics (class probabiities, uncertainty quantification, etc."
@@ -837,6 +1361,27 @@ def global_subject_stats(
     variable: str,
     method_cfg: DictConfig,
 ):
+    """
+    Compute global statistics stratified by class label.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Per-subject values to aggregate.
+    labels : np.ndarray
+        Class labels for stratification.
+    key : str
+        Prediction key (unused, for logging).
+    variable : str
+        Variable name (unused, for logging).
+    method_cfg : DictConfig
+        Bootstrap configuration.
+
+    Returns
+    -------
+    dict
+        Statistics per class label with mean, std, CI.
+    """
     dict_out = {}
     # not much point in averaging all the subject probabilities together without accounting for the label
     unique_labels = np.unique(labels)
@@ -850,6 +1395,28 @@ def global_subject_stats(
 
 
 def get_labels_and_codes(split, dict_arrays, call_from):
+    """
+    Get labels and codes for a split, handling bootstrap vs ensemble cases.
+
+    Parameters
+    ----------
+    split : str
+        Split name ('train', 'val', 'test').
+    dict_arrays : dict
+        Data arrays with labels and codes.
+    call_from : str or None
+        Caller identifier for special handling.
+
+    Returns
+    -------
+    tuple
+        (labels, codes) arrays for the split.
+
+    Raises
+    ------
+    ValueError
+        If unknown split specified.
+    """
     # These splits are now "bootstrapping splits" so the labels, codes are from the original Train
     if split == "train" or split == "val":
         if call_from is None or call_from == "classification_ensemble":
@@ -874,6 +1441,26 @@ def get_labels_and_codes(split, dict_arrays, call_from):
 def bootstrap_compute_global_subject_stats(
     subjectwise_stats, method_cfg, verbose: bool = True
 ):
+    """
+    Compute global subject-level statistics across all subjects.
+
+    Aggregates per-subject statistics (e.g., mean probability, uncertainty)
+    into population-level summaries stratified by class.
+
+    Parameters
+    ----------
+    subjectwise_stats : dict
+        Per-subject statistics from bootstrap_compute_subject_stats.
+    method_cfg : DictConfig
+        Bootstrap configuration.
+    verbose : bool, default True
+        Enable logging.
+
+    Returns
+    -------
+    dict
+        Global statistics per split, key, variable, and class.
+    """
     # Compute the "mean response" of the subjects, e.g. scalar mean UQ metric to describe the whole model uncertainty
 
     subject_global_stats = {}
@@ -897,7 +1484,25 @@ def bootstrap_compute_global_subject_stats(
 
 def compute_uq_unks_from_dict_of_subjects(probs_dict: dict):
     """
-    i.e. train/val splits that do not have the same number of samples for each subject
+    Compute uncertainty metrics from subject-keyed probability dictionary.
+
+    Used for train/val splits where different subjects appear in different
+    bootstrap iterations. Computes ensemble-style uncertainty metrics.
+
+    Parameters
+    ----------
+    probs_dict : dict
+        Probabilities keyed by subject code, each a list of predictions.
+
+    Returns
+    -------
+    dict
+        Uncertainty metrics (confidence, entropy, mutual_information) per subject.
+
+    Notes
+    -----
+    Uses ensemble_uncertainties from CatBoost tutorial code for metrics like
+    total uncertainty, data uncertainty, and knowledge uncertainty.
     """
     uq = None
     iters = []
@@ -929,6 +1534,26 @@ def compute_uq_unks_from_dict_of_subjects(probs_dict: dict):
 def compute_uq_for_subjectwise_stats(
     metrics_iter, subjectwise_stats, verbose: bool = True
 ):
+    """
+    Compute and merge uncertainty quantification into subject-wise stats.
+
+    Computes ensemble-based uncertainty metrics (confidence, entropy,
+    mutual information) and adds them to subjectwise_stats.
+
+    Parameters
+    ----------
+    metrics_iter : dict
+        Accumulated metrics with predictions per split.
+    subjectwise_stats : dict
+        Per-subject statistics to augment.
+    verbose : bool, default True
+        Enable logging.
+
+    Returns
+    -------
+    dict
+        Updated subjectwise_stats with uncertainty metrics added.
+    """
     from src.classification.catboost.catboost_main import (
         combine_unks_with_subjectwise_stats,
     )

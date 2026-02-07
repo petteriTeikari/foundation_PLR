@@ -1,6 +1,7 @@
 import mlflow
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
+
 from src.classification.bootstrap_evaluation import bootstrap_evaluator
 from src.classification.classifier_log_utils import (
     classifier_log_cls_evaluation_to_mlflow,
@@ -12,6 +13,24 @@ from src.stats.classifier_metrics import get_classifier_metrics
 
 
 def get_preds(model, dict_arrays):
+    """
+    Get predictions from a trained model for train and test splits.
+
+    Parameters
+    ----------
+    model : object
+        Trained classifier with predict() and predict_proba() methods.
+    dict_arrays : dict
+        Dictionary containing 'x_train', 'x_test', 'y_train', 'y_test'.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'train' and 'test' keys, each containing:
+        - 'y_pred_proba': Class 1 probabilities (n_samples,)
+        - 'y_pred': Predicted class labels (n_samples,)
+        - 'label': True labels
+    """
     preds = {}
     for split in ["train", "test"]:
         X = dict_arrays[f"x_{split}"]
@@ -28,6 +47,22 @@ def get_preds(model, dict_arrays):
 
 
 def arrange_to_match_bootstrap_results(preds, metrics_dict):
+    """
+    Rearrange predictions and metrics to match bootstrap result structure.
+
+    Parameters
+    ----------
+    preds : dict
+        Predictions per split from get_preds().
+    metrics_dict : dict
+        Metrics dictionary per split.
+
+    Returns
+    -------
+    dict
+        Results dictionary with 'metrics' key containing nested structure
+        matching bootstrap evaluation output format.
+    """
     for split, preds_dict in preds.items():
         metrics_dict[split]["preds"] = {}
         metrics_dict[split]["preds"]["arrays"] = {}
@@ -38,6 +73,26 @@ def arrange_to_match_bootstrap_results(preds, metrics_dict):
 
 
 def eval_sklearn_baseline_results(model, dict_arrays, cfg):
+    """
+    Evaluate sklearn-style model and compute STRATOS-compliant metrics.
+
+    Computes classifier metrics (AUROC, etc.) and calibration metrics
+    for a baseline model without bootstrap uncertainty estimation.
+
+    Parameters
+    ----------
+    model : object
+        Trained sklearn-compatible classifier.
+    dict_arrays : dict
+        Data arrays with train/test splits.
+    cfg : DictConfig
+        Hydra configuration.
+
+    Returns
+    -------
+    dict
+        Baseline results with metrics structured to match bootstrap output.
+    """
     metrics_dict = {}
     preds = get_preds(model, dict_arrays)
     for split in preds.keys():
@@ -64,6 +119,35 @@ def get_the_baseline_model(
     dict_arrays: dict,
     weights_dict: dict,
 ):
+    """
+    Train and evaluate a single baseline model without bootstrap.
+
+    Used as reference before bootstrap evaluation to get deterministic
+    baseline performance metrics.
+
+    Parameters
+    ----------
+    model_name : str
+        Classifier name (e.g., 'CatBoost', 'XGBoost', 'TabM').
+    cls_model_cfg : DictConfig
+        Classifier model configuration.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    best_params : dict
+        Best hyperparameters from optimization.
+    dict_arrays : dict
+        Data arrays with train/test splits.
+    weights_dict : dict
+        Sample weights per split.
+
+    Returns
+    -------
+    tuple
+        (model, baseline_results) where model is the trained classifier
+        and baseline_results contains metrics in bootstrap-compatible format.
+    """
     model, baseline_results = bootstrap_model_selector(
         model_name=model_name,
         cls_model_cfg=cls_model_cfg,
@@ -93,6 +177,40 @@ def evaluate_sklearn_classifier(
     cfg: DictConfig,
     run_name: str,
 ):
+    """
+    Evaluate an sklearn-compatible classifier with bootstrap CI estimation.
+
+    Trains a baseline model and then performs bootstrap evaluation to
+    estimate confidence intervals for STRATOS-compliant metrics.
+
+    Parameters
+    ----------
+    model_name : str
+        Classifier name (e.g., 'LogisticRegression', 'XGBoost').
+    dict_arrays : dict
+        Data arrays with train/test splits.
+    best_params : dict
+        Best hyperparameters from optimization.
+    cls_model_cfg : DictConfig
+        Classifier model configuration.
+    eval_cfg : DictConfig
+        Evaluation configuration with method and parameters.
+    cfg : DictConfig
+        Full Hydra configuration.
+    run_name : str
+        MLflow run name for logging.
+
+    Returns
+    -------
+    tuple
+        (models, metrics) where models is list of bootstrap models
+        and metrics contains aggregated statistics.
+
+    Raises
+    ------
+    ValueError
+        If unknown evaluation method specified.
+    """
     eval_method = eval_cfg["method"]
     method_cfg = eval_cfg[eval_method]
     hparam_cfg = cfg["CLS_HYPERPARAMS"][model_name]

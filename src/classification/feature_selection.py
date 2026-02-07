@@ -63,7 +63,7 @@ def xgboost_feature_selection(i, model, dict_arrays, xgboost_cfg):
 
 def rfe_feature_selector(model, dict_arrays: dict, xgboost_cfg: DictConfig):
     logger.info(
-        f'Feature selection with RFE, params: {xgboost_cfg["FEATURE_SELECTION"]["RFE"]}'
+        f"Feature selection with RFE, params: {xgboost_cfg['FEATURE_SELECTION']['RFE']}"
     )
     rfe = RFE(
         estimator=model,
@@ -76,7 +76,7 @@ def rfe_feature_selector(model, dict_arrays: dict, xgboost_cfg: DictConfig):
     rfe_ranking = rfe.ranking_
     for i in range(len(rfe_ranking)):
         logger.info(
-            f'Feature {dict_arrays["feature_names"][i]} has rank {rfe_ranking[i]}'
+            f"Feature {dict_arrays['feature_names'][i]} has rank {rfe_ranking[i]}"
         )
 
     # Drop the undesired features

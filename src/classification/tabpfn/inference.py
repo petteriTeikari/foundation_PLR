@@ -10,10 +10,10 @@ from collections.abc import Iterator, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
-from typing_extensions import override
 
 import numpy as np
 import torch
+from typing_extensions import override
 
 from src.classification.tabpfn.model.memory import MemoryUsageEstimator
 from src.classification.tabpfn.preprocessing import fit_preprocessing

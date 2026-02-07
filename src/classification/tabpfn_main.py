@@ -1,20 +1,19 @@
 import warnings
+from typing import Any, Dict, List, Tuple
 
+import mlflow
 import numpy as np
 import polars as pl
 import torch
-from omegaconf import DictConfig
 from loguru import logger
-import mlflow
-from sklearn.metrics import roc_curve, auc
-
-from src.classification.tabpfn import TabPFNClassifier
+from omegaconf import DictConfig
+from sklearn.metrics import auc, roc_curve
 
 from src.classification.classifier_log_utils import (
     classifier_log_cls_evaluation_to_mlflow,
     log_classifier_sources_as_params,
 )
-
+from src.classification.tabpfn import TabPFNClassifier
 from src.classification.weighing_utils import return_weights_as_dict
 from src.classification.xgboost_cls.xgboost_utils import data_transform_wrapper
 from src.orchestration.tabm_hyperparams import (
@@ -22,7 +21,27 @@ from src.orchestration.tabm_hyperparams import (
 )
 
 
-def eval_tabpfn_model(model, dict_arrays):
+def eval_tabpfn_model(
+    model: Any, dict_arrays: Dict[str, np.ndarray]
+) -> Tuple[Dict[str, Dict[str, np.ndarray]], float]:
+    """
+    Evaluate TabPFN model on all available splits.
+
+    Computes predictions and optionally AUROC for baseline evaluation.
+
+    Parameters
+    ----------
+    model : TabPFNClassifier
+        Fitted TabPFN model.
+    dict_arrays : dict
+        Data arrays with train/test/optionally val splits.
+
+    Returns
+    -------
+    tuple
+        (results, auroc) where results contains predictions per split and
+        auroc is test AUROC (or NaN if validation split present).
+    """
     if "x_val" in dict_arrays:
         splits = ["train", "val", "test"]
     else:
@@ -55,7 +74,32 @@ def eval_tabpfn_model(model, dict_arrays):
         return results, np.nan
 
 
-def train_and_eval_tabpfn(dict_arrays: dict, hparams: dict):
+def train_and_eval_tabpfn(
+    dict_arrays: Dict[str, np.ndarray], hparams: Dict[str, Any]
+) -> Tuple[None, Dict[str, Dict[str, np.ndarray]], float]:
+    """
+    Train and evaluate TabPFN classifier.
+
+    TabPFN is a prior-fitted network that requires no training on the
+    target dataset - it uses in-context learning.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Data arrays with train/test splits.
+    hparams : dict
+        Hyperparameters for TabPFN (currently unused for v2).
+
+    Returns
+    -------
+    tuple
+        (model, results, metric) where model is None (to save RAM),
+        results contains predictions, and metric is test AUROC.
+
+    References
+    ----------
+    TabPFN: https://github.com/automl/TabPFN
+    """
     # see https://github.com/automl/TabPFN?tab=readme-ov-file#getting-started
     # # When N_ensemble_configurations > #features * #classes, no further averaging is applied.
     # 17 > 8 x 2
@@ -80,12 +124,38 @@ def train_and_eval_tabpfn(dict_arrays: dict, hparams: dict):
 
 
 def tabpfn_wrapper(
-    dict_arrays: dict,
+    dict_arrays: Dict[str, np.ndarray],
     cls_model_cfg: DictConfig,
     hparam_cfg: DictConfig,
     cfg: DictConfig,
     run_HPO: bool = False,
-):
+) -> Tuple[None, Dict[str, Dict[str, np.ndarray]], Dict[str, Any]]:
+    """
+    Wrapper for TabPFN training with optional hyperparameter optimization.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Data arrays with train/test splits.
+    cls_model_cfg : DictConfig
+        TabPFN model configuration.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration.
+    cfg : DictConfig
+        Full Hydra configuration.
+    run_HPO : bool, default False
+        Run hyperparameter optimization (not implemented for v2).
+
+    Returns
+    -------
+    tuple
+        (model, results, best_hparams) from training.
+
+    Raises
+    ------
+    NotImplementedError
+        If run_HPO is True (was for TabPFN v1).
+    """
     if run_HPO:
         raise NotImplementedError("HPO was for TabFPN v1")
         # quick'n'dirty one param HPO
@@ -128,8 +198,32 @@ def tabpfn_main(
     cfg: DictConfig,
     cls_model_cfg: DictConfig,
     hparam_cfg: DictConfig,
-    features_per_source: dict,
-):
+    features_per_source: Dict[str, List[str]],
+) -> None:
+    """
+    Main entry point for TabPFN classifier training with MLflow tracking.
+
+    TabPFN uses in-context learning and doesn't require traditional training.
+    This function handles data preparation, bootstrap evaluation, and
+    MLflow logging.
+
+    Parameters
+    ----------
+    train_df : pl.DataFrame
+        Training data as Polars DataFrame.
+    test_df : pl.DataFrame
+        Test data as Polars DataFrame.
+    run_name : str
+        MLflow run name.
+    cfg : DictConfig
+        Full Hydra configuration.
+    cls_model_cfg : DictConfig
+        TabPFN model configuration.
+    hparam_cfg : DictConfig
+        Hyperparameter configuration.
+    features_per_source : dict
+        Feature source metadata for logging.
+    """
     with mlflow.start_run(run_name=run_name):
         mlflow.log_param("model_name", "TabPFN")
         for k, v in cls_model_cfg.items():
@@ -148,8 +242,8 @@ def tabpfn_main(
 
         # Define the baseline model
         # Get the baseline model
-        from src.classification.classifier_evaluation import get_the_baseline_model
         from src.classification.bootstrap_evaluation import bootstrap_evaluator
+        from src.classification.classifier_evaluation import get_the_baseline_model
 
         weights_dict = return_weights_as_dict(dict_arrays, cls_model_cfg)
         model, baseline_results = get_the_baseline_model(

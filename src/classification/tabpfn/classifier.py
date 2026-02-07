@@ -21,12 +21,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
-from typing_extensions import Self
 
 import numpy as np
 import torch
 from sklearn.base import BaseEstimator, ClassifierMixin, check_is_fitted
 from sklearn.preprocessing import LabelEncoder
+from typing_extensions import Self
 
 from src.classification.tabpfn.base import (
     create_inference_engine,

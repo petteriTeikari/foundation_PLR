@@ -1,11 +1,18 @@
-import os
+"""
+Ensemble MLflow logging module.
 
-import numpy as np
-from loguru import logger
+Provides utilities for logging ensemble results to MLflow,
+including metrics, artifacts, and run naming.
+"""
+
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import mlflow
+import numpy as np
 import pandas as pd
+from loguru import logger
 from omegaconf import DictConfig
-
 
 from src.classification.classifier_log_utils import (
     classifier_log_cls_evaluation_to_mlflow,
@@ -16,10 +23,38 @@ from src.utils import get_artifacts_dir
 
 
 def get_ensemble_pickle_name(ensemble_name: str) -> str:
+    """
+    Generate pickle filename for ensemble results.
+
+    Parameters
+    ----------
+    ensemble_name : str
+        Name of the ensemble.
+
+    Returns
+    -------
+    str
+        Filename in format 'ensemble_{name}_results.pickle'.
+    """
     return f"ensemble_{ensemble_name}_results.pickle"
 
 
-def get_source_runs(ensemble_mlflow_runs_per_name) -> list:
+def get_source_runs(
+    ensemble_mlflow_runs_per_name: Union[Dict[str, Dict[str, Any]], pd.DataFrame],
+) -> List[str]:
+    """
+    Extract run IDs from ensemble submodel data.
+
+    Parameters
+    ----------
+    ensemble_mlflow_runs_per_name : dict or pd.DataFrame
+        Submodel data (dict of dicts or DataFrame).
+
+    Returns
+    -------
+    list
+        List of MLflow run IDs.
+    """
     run_ids = []
     if isinstance(ensemble_mlflow_runs_per_name, dict):
         for model_name, model_dict in ensemble_mlflow_runs_per_name.items():
@@ -32,11 +67,30 @@ def get_source_runs(ensemble_mlflow_runs_per_name) -> list:
 
 
 def get_ensemble_name(
-    runs_per_name,
+    runs_per_name: Union[pd.DataFrame, Dict[str, Any]],
     ensemble_name_base: str,
     ensemble_prefix_str: str,
     sort_name: str = "params.model",
 ) -> str:
+    """
+    Generate ensemble run name from submodel names.
+
+    Parameters
+    ----------
+    runs_per_name : pd.DataFrame or dict
+        Submodel runs data.
+    ensemble_name_base : str
+        Base name (e.g., source like 'pupil_gt').
+    ensemble_prefix_str : str
+        Prefix (e.g., 'ensemble' or 'ensembleThresholded').
+    sort_name : str, default 'params.model'
+        Column/key to sort models by.
+
+    Returns
+    -------
+    str
+        Ensemble name in format '{prefix}-{model1}-{model2}...{__{base}}'.
+    """
     if isinstance(runs_per_name, pd.DataFrame):
         ensemble_name = ""
         runs_per_name = runs_per_name.sort_values(by=sort_name)
@@ -57,7 +111,19 @@ def get_ensemble_name(
     return f"{ensemble_prefix_str}-" + ensemble_name + "__" + ensemble_name_base
 
 
-def log_ensemble_metrics(metrics, task):
+def log_ensemble_metrics(metrics: Dict[str, Any], task: str) -> None:
+    """
+    Log ensemble metrics to MLflow.
+
+    Handles different metric structures for anomaly detection and imputation.
+
+    Parameters
+    ----------
+    metrics : dict
+        Metrics dictionary.
+    task : str
+        Task type ('anomaly_detection' or 'imputation').
+    """
     if task == "anomaly_detection":
         write_granular_outlier_metrics(metrics)
         # for metric, value in metrics[split].items():
@@ -80,12 +146,25 @@ def log_ensemble_metrics(metrics, task):
                         raise e
 
 
-def log_ensemble_arrays(pred_masks, task, ensemble_name):
-    artifact_dir = get_artifacts_dir(service_name=task)
-    if not os.path.exists(artifact_dir):
-        os.makedirs(artifact_dir, exist_ok=True)
-    results_path = os.path.join(artifact_dir, get_ensemble_pickle_name(ensemble_name))
-    save_results_dict(results_dict=pred_masks, results_path=results_path)
+def log_ensemble_arrays(
+    pred_masks: Dict[str, Any], task: str, ensemble_name: str
+) -> None:
+    """
+    Save and log ensemble arrays as MLflow artifact.
+
+    Parameters
+    ----------
+    pred_masks : dict
+        Prediction data to save.
+    task : str
+        Task type for artifact subdirectory.
+    ensemble_name : str
+        Name for the pickle file.
+    """
+    artifact_dir = Path(get_artifacts_dir(service_name=task))
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    results_path = artifact_dir / get_ensemble_pickle_name(ensemble_name)
+    save_results_dict(results_dict=pred_masks, results_path=str(results_path))
     if task == "anomaly_detection":
         mlflow.log_artifact(
             results_path, "outlier_detection"
@@ -96,7 +175,25 @@ def log_ensemble_arrays(pred_masks, task, ensemble_name):
         raise NotImplementedError("Classification metrics not yet implemented")
 
 
-def ensemble_is_empty(ensemble_mlflow_runs, ensemble_name):
+def ensemble_is_empty(
+    ensemble_mlflow_runs: Dict[str, Union[Dict[str, Any], pd.DataFrame]],
+    ensemble_name: str,
+) -> bool:
+    """
+    Check if ensemble has no submodels.
+
+    Parameters
+    ----------
+    ensemble_mlflow_runs : dict
+        Dictionary of ensemble runs.
+    ensemble_name : str
+        Name of ensemble to check.
+
+    Returns
+    -------
+    bool
+        True if ensemble is empty.
+    """
     if isinstance(ensemble_mlflow_runs[ensemble_name], dict):
         ensemble_is_empty = len(ensemble_mlflow_runs[ensemble_name]) == 0
     elif isinstance(ensemble_mlflow_runs[ensemble_name], pd.DataFrame):
@@ -112,7 +209,20 @@ def ensemble_is_empty(ensemble_mlflow_runs, ensemble_name):
     return ensemble_is_empty
 
 
-def get_sort_name(task):
+def get_sort_name(task: str) -> str:
+    """
+    Get parameter name for sorting models by task.
+
+    Parameters
+    ----------
+    task : str
+        Task type.
+
+    Returns
+    -------
+    str
+        MLflow parameter column name for model name.
+    """
     if task == "classification":
         sort_name = "params.model_name"
     else:
@@ -121,7 +231,22 @@ def get_sort_name(task):
     return sort_name
 
 
-def get_ensemble_quality_threshold(task, cfg):
+def get_ensemble_quality_threshold(task: str, cfg: DictConfig) -> Optional[float]:
+    """
+    Get quality threshold for ensemble submodel selection.
+
+    Parameters
+    ----------
+    task : str
+        Task type.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    float or None
+        Quality threshold value, or None if not applicable.
+    """
     if task == "anomaly_detection":
         ensemble_quality_threshold = cfg["OUTLIER_DETECTION"]["best_metric"][
             "ensemble_quality_threshold"
@@ -136,7 +261,22 @@ def get_ensemble_quality_threshold(task, cfg):
     return ensemble_quality_threshold
 
 
-def get_ensemble_prefix(task, cfg):
+def get_ensemble_prefix(task: str, cfg: DictConfig) -> str:
+    """
+    Get prefix string for ensemble name based on quality thresholding.
+
+    Parameters
+    ----------
+    task : str
+        Task type.
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    str
+        'ensembleThresholded' if threshold set, 'ensemble' otherwise.
+    """
     threshold = get_ensemble_quality_threshold(task, cfg)
     if threshold is not None:
         ensemble_prefix_str = "ensembleThresholded"
@@ -147,13 +287,30 @@ def get_ensemble_prefix(task, cfg):
 
 
 def get_mlflow_ensemble_name(
-    task, ensemble_mlflow_runs, ensemble_name, cfg: DictConfig
-):
+    task: str,
+    ensemble_mlflow_runs: Dict[str, Union[Dict[str, Any], pd.DataFrame]],
+    ensemble_name: str,
+    cfg: DictConfig,
+) -> Optional[str]:
     """
-    ensemble_name: str (source)
-        e.g. "pupil_gt"
-    mlflow_ensemble_name: str (model, source)
-        e.g. "ensemble-CatBoost-LogisticRegression-TabM-XGBoost__pupil_gt"
+    Generate full MLflow run name for ensemble.
+
+    Parameters
+    ----------
+    task : str
+        Task type.
+    ensemble_mlflow_runs : dict
+        Dictionary of ensemble submodel runs.
+    ensemble_name : str
+        Source name (e.g., 'pupil_gt').
+    cfg : DictConfig
+        Main Hydra configuration.
+
+    Returns
+    -------
+    str or None
+        Full ensemble name (e.g., 'ensemble-CatBoost-XGBoost__pupil_gt'),
+        or None if ensemble is empty.
     """
     sort_name = get_sort_name(task)
     ensemble_prefix_str = get_ensemble_prefix(task, cfg)
@@ -171,7 +328,26 @@ def get_mlflow_ensemble_name(
     return mlflow_ensemble_name
 
 
-def get_existing_runs(experiment_name, mlflow_ensemble_name):
+def get_existing_runs(
+    experiment_name: str, mlflow_ensemble_name: str
+) -> Tuple[pd.DataFrame, bool]:
+    """
+    Check for existing MLflow runs with same name.
+
+    Parameters
+    ----------
+    experiment_name : str
+        MLflow experiment name.
+    mlflow_ensemble_name : str
+        Ensemble run name to search for.
+
+    Returns
+    -------
+    pd.DataFrame
+        Matching runs.
+    bool
+        True if matching runs exist.
+    """
     mlflow_runs = mlflow.search_runs(experiment_names=[experiment_name])
     if mlflow_runs.shape[0] > 0:
         runs = mlflow_runs[mlflow_runs["tags.mlflow.runName"] == mlflow_ensemble_name]
@@ -183,8 +359,30 @@ def get_existing_runs(experiment_name, mlflow_ensemble_name):
 
 
 def check_for_old_run(
-    experiment_name, mlflow_ensemble_name, cfg, delete_old_mlflow_run: bool = True
-):
+    experiment_name: str,
+    mlflow_ensemble_name: str,
+    cfg: DictConfig,
+    delete_old_mlflow_run: bool = True,
+) -> bool:
+    """
+    Check for and optionally delete existing ensemble runs.
+
+    Parameters
+    ----------
+    experiment_name : str
+        MLflow experiment name.
+    mlflow_ensemble_name : str
+        Ensemble run name.
+    cfg : DictConfig
+        Main Hydra configuration.
+    delete_old_mlflow_run : bool, default True
+        If True, delete existing runs with same name.
+
+    Returns
+    -------
+    bool
+        True if logging should continue.
+    """
     runs, old_exists = get_existing_runs(experiment_name, mlflow_ensemble_name)
     if old_exists:
         if delete_old_mlflow_run:
@@ -211,14 +409,39 @@ def check_for_old_run(
 
 def log_ensembling_to_mlflow(
     experiment_name: str,
-    ensemble_mlflow_runs: dict,
+    ensemble_mlflow_runs: Dict[str, Union[Dict[str, Any], pd.DataFrame]],
     ensemble_name: str,
     cfg: DictConfig,
     task: str,
-    metrics: dict = None,
-    pred_masks: dict = None,
-    output_dict: dict = None,
-):
+    metrics: Optional[Dict[str, Any]] = None,
+    pred_masks: Optional[Dict[str, Any]] = None,
+    output_dict: Optional[Dict[str, Any]] = None,
+) -> None:
+    """
+    Log ensemble results to MLflow.
+
+    Creates a new MLflow run for the ensemble, logs metrics, parameters,
+    and artifacts based on task type.
+
+    Parameters
+    ----------
+    experiment_name : str
+        MLflow experiment name.
+    ensemble_mlflow_runs : dict
+        Dictionary of ensemble submodel runs.
+    ensemble_name : str
+        Source name for the ensemble.
+    cfg : DictConfig
+        Main Hydra configuration.
+    task : str
+        Task type ('anomaly_detection', 'imputation', or 'classification').
+    metrics : dict, optional
+        Pre-computed metrics (for anomaly detection).
+    pred_masks : dict, optional
+        Prediction masks (for anomaly detection).
+    output_dict : dict, optional
+        Full output dictionary (for imputation/classification).
+    """
     # Log the ensembling results to MLflow
     run_ids = get_source_runs(
         ensemble_mlflow_runs_per_name=ensemble_mlflow_runs[ensemble_name]

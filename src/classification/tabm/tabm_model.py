@@ -1,8 +1,6 @@
-import numpy as np
+import rtdl_num_embeddings  # https://github.com/yandex-research/rtdl-num-embeddings
 import torch
 from loguru import logger
-
-import rtdl_num_embeddings  # https://github.com/yandex-research/rtdl-num-embeddings
 
 from src.classification.tabm.tabm_reference import Model, make_parameter_groups
 
@@ -35,25 +33,31 @@ def create_tabm_model(
         except Exception as e:
             try:
                 logger.warning(e)
-                logger.warning('Trying a smaller bin number, e.g. when you are running the demo data')
+                logger.warning(
+                    "Trying a smaller bin number, e.g. when you are running the demo data"
+                )
                 bins = rtdl_num_embeddings.compute_bins(
-                    data["train"]["x_cont"],
-                    n_bins=2
+                    data["train"]["x_cont"], n_bins=2
                 )  # astype(np.float32)
             except Exception as e2:
                 try:
                     logger.warning(e)
-                    logger.warning('Smaller bin number did not work out, duplicating the train data')
-                    data["train"]["x_cont"] = data["train"]["x_cont"].repeat(2,1)
+                    logger.warning(
+                        "Smaller bin number did not work out, duplicating the train data"
+                    )
+                    data["train"]["x_cont"] = data["train"]["x_cont"].repeat(2, 1)
                     data["train"]["y"] = data["train"]["y"].repeat(2)
                     bins = rtdl_num_embeddings.compute_bins(
-                        data["train"]["x_cont"],
-                        n_bins=2
+                        data["train"]["x_cont"], n_bins=2
                     )  # astype(np.float32)
 
-                except Exception as e3:
-                    logger.error('Failed to compute bins for TabM, error: {}'.format(e2))
-                    raise ValueError('Failed to compute bins for TabM, error: {}'.format(e2))
+                except Exception:
+                    logger.error(
+                        "Failed to compute bins for TabM, error: {}".format(e2)
+                    )
+                    raise ValueError(
+                        "Failed to compute bins for TabM, error: {}".format(e2)
+                    )
     else:
         logger.error(
             f"Unknown architecture type: {arch_type}, only tabm-mini is supported now."

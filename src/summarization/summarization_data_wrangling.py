@@ -1,16 +1,16 @@
 # import polars as pl
-import os
 import tempfile
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-import numpy as np
-import psutil
-from tqdm import tqdm
-
-import mlflow
-import pandas as pd
-from omegaconf import DictConfig
-from loguru import logger
 import duckdb
+import mlflow
+import numpy as np
+import pandas as pd
+import psutil
+from loguru import logger
+from omegaconf import DictConfig
+from tqdm import tqdm
 
 from src.anomaly_detection.anomaly_utils import get_artifact
 from src.classification.subflow_feature_classification import get_the_features
@@ -18,17 +18,42 @@ from src.data_io.define_sources_for_flow import define_sources_for_flow
 from src.ensemble.ensemble_logging import get_sort_name
 from src.log_helpers.local_artifacts import load_results_dict, save_results_dict
 from src.log_helpers.log_naming_uris_and_dirs import (
+    get_summary_artifacts_fpath,
     get_summary_fname,
     get_summary_fpath,
     parse_task_from_exp_name,
-    get_summary_artifacts_fpath,
 )
 from src.summarization.summarize_classification import get_classification_summary_data
 
 
 def export_summary_db_to_mlflow(
-    data, db_path, artifact_path, summary_experiment_name, experiment_name, cfg
-):
+    data: Dict[str, Any],
+    db_path: str,
+    artifact_path: str,
+    summary_experiment_name: str,
+    experiment_name: str,
+    cfg: DictConfig,
+) -> None:
+    """Export summary database and artifacts to MLflow.
+
+    Logs the DuckDB database file and artifacts pickle to MLflow,
+    along with metadata about the number of unique runs.
+
+    Parameters
+    ----------
+    data : dict
+        Summary data containing 'data_df' and 'artifacts_dict_summary'.
+    db_path : str
+        Path to the DuckDB database file.
+    artifact_path : str
+        Path to the artifacts pickle file.
+    summary_experiment_name : str
+        Name of the MLflow experiment for summaries.
+    experiment_name : str
+        Name of the source experiment being summarized.
+    cfg : DictConfig
+        Configuration dictionary.
+    """
     mlflow.set_experiment(summary_experiment_name)
     logger.info(f"Logging summarization data to MLflow: {summary_experiment_name}")
 
@@ -44,7 +69,33 @@ def export_summary_db_to_mlflow(
     mlflow.log_artifact(artifact_path, artifact_path="artifacts")
 
 
-def import_summary_db_from_mlflow(experiment_name, summary_exp_name, cfg):
+def import_summary_db_from_mlflow(
+    experiment_name: str, summary_exp_name: str, cfg: DictConfig
+) -> Dict[str, pd.DataFrame]:
+    """Import summary database from MLflow artifacts.
+
+    Downloads the most recent DuckDB database file from MLflow and
+    reads it into a dictionary of DataFrames.
+
+    Parameters
+    ----------
+    experiment_name : str
+        Name of the source experiment to import summaries for.
+    summary_exp_name : str
+        Name of the MLflow summary experiment.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    dict
+        Dictionary containing 'data_df' and 'mlflow_runs' DataFrames.
+
+    Raises
+    ------
+    ValueError
+        If no runs are found in the MLflow experiment.
+    """
     run_name = "summary_tmp"
     mlflow.set_experiment(experiment_name)
     logger.info(
@@ -82,8 +133,22 @@ def import_summary_db_from_mlflow(experiment_name, summary_exp_name, cfg):
     return df
 
 
-def import_summary_dataframe_from_duckdb(db_path):
-    filesize = os.path.getsize(db_path) / 1024**2
+def import_summary_dataframe_from_duckdb(db_path: str) -> Dict[str, pd.DataFrame]:
+    """Read summary DataFrames from a DuckDB database file.
+
+    Parameters
+    ----------
+    db_path : str
+        Path to the DuckDB database file.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'data_df': Main data DataFrame
+        - 'mlflow_runs': MLflow run metadata DataFrame
+    """
+    filesize = Path(db_path).stat().st_size / 1024**2
     logger.info(
         f"Reading summarization dataframe from DuckDB Database ({filesize:.2f} MB): {db_path}"
     )
@@ -102,13 +167,34 @@ def import_summary_dataframe_from_duckdb(db_path):
 
 def export_summary_dataframe_to_duckdb(
     db_path: str,
-    data: dict,
+    data: Dict[str, Any],
     debug_DuckDBWrite: bool = False,
-):
+) -> str:
+    """Export summary DataFrames to a DuckDB database file.
+
+    Creates tables for data_df and mlflow_runs in the database.
+    Overwrites any existing database at the specified path.
+
+    Parameters
+    ----------
+    db_path : str
+        Path where the DuckDB database will be created.
+    data : dict
+        Dictionary containing 'data_df' and 'mlflow_runs' DataFrames.
+    debug_DuckDBWrite : bool, optional
+        If True, reads back the database to verify write success.
+        Default is False.
+
+    Returns
+    -------
+    str
+        Path to the created database file.
+    """
     logger.info("Writing dataframe to DuckDB Database: {}".format(db_path))
-    if os.path.exists(db_path):
+    db_path_obj = Path(db_path)
+    if db_path_obj.exists():
         logger.warning("DuckDB Database already exists, removing the old one")
-        os.remove(db_path)
+        db_path_obj.unlink()
 
     with duckdb.connect(database=db_path, read_only=False) as con:
         data_df = data["data_df"]  # noqa: F841
@@ -123,7 +209,7 @@ def export_summary_dataframe_to_duckdb(
         # con.execute("""
         #                     CREATE TABLE IF NOT EXISTS 'artifacts_dict_summary' AS SELECT * FROM artifacts_dict_summary;
         #                 """)
-    filesize = os.path.getsize(db_path) / 1024**2
+    filesize = Path(db_path).stat().st_size / 1024**2
     logger.info(f"Filesize of DuckDB Database ({filesize:.2f} MB): {db_path}")
     if debug_DuckDBWrite:
         import_summary_dataframe_from_duckdb(db_path)
@@ -131,7 +217,28 @@ def export_summary_dataframe_to_duckdb(
     return db_path
 
 
-def export_summarization_flow_data(data, experiment_name, summary_experiment_name, cfg):
+def export_summarization_flow_data(
+    data: Dict[str, Any],
+    experiment_name: str,
+    summary_experiment_name: str,
+    cfg: DictConfig,
+) -> None:
+    """Export complete summarization flow data to disk and MLflow.
+
+    Saves data to DuckDB database and artifacts pickle file, then
+    logs both to MLflow for reproducibility.
+
+    Parameters
+    ----------
+    data : dict
+        Summary data dictionary containing DataFrames and artifacts.
+    experiment_name : str
+        Name of the source experiment being summarized.
+    summary_experiment_name : str
+        Name of the MLflow summary experiment.
+    cfg : DictConfig
+        Configuration dictionary.
+    """
     db_path = get_summary_fpath(experiment_name)
     export_summary_dataframe_to_duckdb(db_path=db_path, data=data)
     artifact_path = get_summary_artifacts_fpath(experiment_name)
@@ -146,7 +253,26 @@ def export_summarization_flow_data(data, experiment_name, summary_experiment_nam
     )
 
 
-def flatten_data_per_split(split, split_data_dict):
+def flatten_data_per_split(
+    split: str, split_data_dict: Dict[str, Dict[str, np.ndarray]]
+) -> pd.DataFrame:
+    """Flatten multi-dimensional data arrays into a single DataFrame.
+
+    Converts nested data arrays from (subjects x timepoints) format
+    into a flat format suitable for DataFrame storage.
+
+    Parameters
+    ----------
+    split : str
+        Data split identifier (unused, kept for API consistency).
+    split_data_dict : dict
+        Dictionary with 'data' key containing {variable: array} mappings.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with flattened data, one column per variable.
+    """
     dict_tmp = {}
     for category, variable_dict in split_data_dict.items():
         if (
@@ -163,7 +289,26 @@ def flatten_data_per_split(split, split_data_dict):
     return pd.DataFrame(dict_tmp)
 
 
-def create_dataframe_from_single_source(source_data: dict, source_name: str):
+def create_dataframe_from_single_source(
+    source_data: Dict[str, Any], source_name: str
+) -> pd.DataFrame:
+    """Create a combined DataFrame from a single data source.
+
+    Flattens data across all splits and combines them into a single
+    DataFrame with source identification.
+
+    Parameters
+    ----------
+    source_data : dict
+        Dictionary containing 'df' with nested split data.
+    source_name : str
+        Identifier for the data source (e.g., method name).
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined DataFrame with all splits and source_name column.
+    """
     dict_splits = source_data["df"]
     df_dict: dict[str, pd.DataFrame] = {}
     for split, split_data_dict in dict_splits.items():
@@ -183,7 +328,30 @@ def create_dataframe_from_single_source(source_data: dict, source_name: str):
     return df_out
 
 
-def get_artifacts_dict(mlflow_run: pd.Series, experiment_name: str):
+def get_artifacts_dict(
+    mlflow_run: Optional[pd.Series], experiment_name: str
+) -> Optional[Dict[str, Any]]:
+    """Load artifacts dictionary from an MLflow run.
+
+    Downloads and loads the pickled artifacts (metrics, predictions)
+    from the specified MLflow run.
+
+    Parameters
+    ----------
+    mlflow_run : pd.Series or None
+        MLflow run metadata as a pandas Series. None for ground truth sources.
+    experiment_name : str
+        Name of the experiment to determine artifact subdirectory.
+
+    Returns
+    -------
+    dict or None
+        Loaded artifacts dictionary, or None if mlflow_run is None.
+
+    Notes
+    -----
+    For imputation tasks, 'source_data' is removed from artifacts to save RAM.
+    """
     if mlflow_run is not None:
         task = parse_task_from_exp_name(experiment_name)
         run_id = mlflow_run["run_id"]
@@ -200,7 +368,22 @@ def get_artifacts_dict(mlflow_run: pd.Series, experiment_name: str):
         return None
 
 
-def concatenate_dataframes_from_disk(df_sources_tmp_files: list):
+def concatenate_dataframes_from_disk(df_sources_tmp_files: List[str]) -> pd.DataFrame:
+    """Concatenate multiple CSV files into a single DataFrame.
+
+    Reads temporary CSV files from disk and combines them into
+    one DataFrame. Used to reduce memory usage during processing.
+
+    Parameters
+    ----------
+    df_sources_tmp_files : list
+        List of paths to temporary CSV files.
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined DataFrame from all source files.
+    """
     logger.info("Concatenating dataframes from disk")
     for i, df_sources_tmp_file in enumerate(
         tqdm(df_sources_tmp_files, desc="Concatenating dataframes")
@@ -214,7 +397,31 @@ def concatenate_dataframes_from_disk(df_sources_tmp_files: list):
     return df_sources
 
 
-def get_data_from_sources(sources, experiment_name, cfg):
+def get_data_from_sources(
+    sources: Dict[str, Dict[str, Any]], experiment_name: str, cfg: DictConfig
+) -> Dict[str, Any]:
+    """Extract and combine data from multiple experiment sources.
+
+    Processes each source's data into a DataFrame, saves to temporary
+    files to manage memory, and collects MLflow run metadata and artifacts.
+
+    Parameters
+    ----------
+    sources : dict
+        Dictionary mapping source names to their data dictionaries.
+    experiment_name : str
+        Name of the experiment being summarized.
+    cfg : DictConfig
+        Configuration dictionary.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'data_df': Combined DataFrame from all sources
+        - 'mlflow_runs': DataFrame of MLflow run metadata
+        - 'artifacts_dict_summary': Dictionary of artifacts per source
+    """
     df_sources_tmp_files = []
     mlflow_runs = pd.DataFrame()
     artifacts_dict = {}
@@ -231,7 +438,7 @@ def get_data_from_sources(sources, experiment_name, cfg):
         )
 
         df = create_dataframe_from_single_source(sources[source_name], source_name)
-        df_sources_tmp_file = os.path.join(tmp_dir.name, f"{source_name}.csv")
+        df_sources_tmp_file = str(Path(tmp_dir.name) / f"{source_name}.csv")
         df.to_csv(df_sources_tmp_file, index=False)
         df_sources_tmp_files.append(df_sources_tmp_file)
 
@@ -260,7 +467,25 @@ def get_data_from_sources(sources, experiment_name, cfg):
     return data
 
 
-def get_detaframe_from_features(features):
+def get_detaframe_from_features(features: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    """Create summary DataFrame from featurization results.
+
+    Combines feature data from multiple sources and splits into
+    a single DataFrame with featurization type annotations.
+
+    Parameters
+    ----------
+    features : dict
+        Dictionary mapping feature source names to their data and metadata.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'data_df': Combined features DataFrame
+        - 'mlflow_runs': MLflow run metadata
+        - 'artifacts_dict_summary': Empty dict (placeholder)
+    """
     df_features = pd.DataFrame()
     mlflow_runs = pd.DataFrame()
 
@@ -292,6 +517,25 @@ def get_detaframe_from_features(features):
 def get_summarization_flow_data(
     cfg: DictConfig, experiment_name: str, summary_exp_name: str
 ) -> dict:
+    """Get or generate summarization data for an experiment.
+
+    Either imports existing summaries from DuckDB/MLflow or generates
+    new summaries by processing all experiment sources.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration with SUMMARIZATION settings.
+    experiment_name : str
+        Name of the experiment to summarize.
+    summary_exp_name : str
+        Name of the summary experiment in MLflow.
+
+    Returns
+    -------
+    dict
+        Summary data dictionary containing DataFrames and artifacts.
+    """
     if cfg["SUMMARIZATION"]["import_from_duckdb"]:
         data = import_summary_db_from_mlflow(experiment_name, summary_exp_name, cfg)
         data["artifacts_dict_summary"] = (

@@ -1,18 +1,35 @@
 import numpy as np
-from torch.utils.data import Dataset
-from matplotlib import pyplot as plt
 import seaborn as sns
+from matplotlib import pyplot as plt
+from torch.utils.data import Dataset
 
 from src.classification.catboost.catboost_ensemble import (
-    make_new_coordinates,
     CatBoost_Ensemble,
     eval_ensemble,
+    make_new_coordinates,
 )
 
 sns.set()
 
 
 def create_single_spiral(n_points, angle_offset, noise=0.1):
+    """
+    Generate points along a single Archimedean spiral.
+
+    Parameters
+    ----------
+    n_points : int
+        Number of points to generate along the spiral.
+    angle_offset : float
+        Angular offset in radians for the spiral starting position.
+    noise : float, optional
+        Noise level for random perturbation of points. Default is 0.1.
+
+    Returns
+    -------
+    ndarray
+        Array of shape (n_points, 2) containing x and y coordinates.
+    """
     # Create numbers in the range [0., 6 pi], where the initial square root maps the uniformly
     # distributed points to lie mainly towards the upper limit of the range
     n = np.sqrt(np.random.rand(n_points, 1)) * 3 * (2 * np.pi)
@@ -30,7 +47,25 @@ def create_single_spiral(n_points, angle_offset, noise=0.1):
 
 def create_spirals(n_points, n_spirals=3, noise=0.1, seed=100):
     """
-    Returns the three spirals dataset.
+    Generate a multi-spiral dataset for classification.
+
+    Parameters
+    ----------
+    n_points : int
+        Number of points per spiral.
+    n_spirals : int, optional
+        Number of spiral classes to generate. Default is 3.
+    noise : float, optional
+        Noise level for random perturbation of points. Default is 0.1.
+    seed : int, optional
+        Random seed for reproducibility. Default is 100.
+
+    Returns
+    -------
+    X : ndarray
+        Feature array of shape (n_points * n_spirals, 2) with x, y coordinates.
+    Y : ndarray
+        Label array of shape (n_points * n_spirals,) with class indices.
     """
     np.random.seed(seed)
 
@@ -51,9 +86,23 @@ def create_spirals(n_points, n_spirals=3, noise=0.1, seed=100):
 
 
 class SpiralDataset(Dataset):
-    """The Toy Three Class Dataset"""
+    """The Toy Three Class Dataset."""
 
     def __init__(self, size, noise, scale, seed=100):
+        """
+        Initialize the spiral dataset.
+
+        Parameters
+        ----------
+        size : int
+            Number of points per spiral class.
+        noise : float
+            Noise level for random perturbation of spiral points.
+        scale : float
+            Scale factor for the dataset (stored but not applied to data).
+        seed : int, optional
+            Random seed for reproducibility. Default is 100.
+        """
         self.scale = scale
         self.size = size
         self.noise = noise
@@ -65,12 +114,50 @@ class SpiralDataset(Dataset):
         return
 
     def __len__(self):
+        """
+        Return the total number of samples in the dataset.
+
+        Returns
+        -------
+        int
+            Total number of samples (size * 3 for three spiral classes).
+        """
         return self.size * 3
 
     def __getitem__(self, idx):
+        """
+        Get a sample by index.
+
+        Parameters
+        ----------
+        idx : int
+            Index of the sample to retrieve.
+
+        Returns
+        -------
+        tuple
+            Tuple of (features, label) where features is a 2D coordinate array.
+        """
         return self.x[idx], self.y[idx]
 
     def plot(self, ax=None, s=10.0, alpha=0.7):
+        """
+        Plot the spiral dataset with different colors per class.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axes object to plot on. If None, creates a new figure.
+        s : float, optional
+            Marker size for scatter plot. Default is 10.0.
+        alpha : float, optional
+            Transparency of markers. Default is 0.7.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The axes object with the plotted data.
+        """
         if ax is None:
             fig, ax = plt.subplots()
             ax.set(aspect="equal")
@@ -89,6 +176,19 @@ class SpiralDataset(Dataset):
 
 
 def create_spiral_train_and_eval_data():
+    """
+    Create training and evaluation datasets from spiral data with derived features.
+
+    Generates two spiral datasets with different random seeds and transforms
+    the 2D coordinates into expanded feature representations.
+
+    Returns
+    -------
+    new_data : tuple
+        Training data as (features, labels) with shape ((4500, 9), (4500,)).
+    eval_data : tuple
+        Evaluation data as (features, labels) with shape ((4500, 9), (4500,)).
+    """
     # data = SpiralDataset(size=1500, scale=3, noise=0.4)
     # data.plot()
 
@@ -119,6 +219,17 @@ def create_spiral_train_and_eval_data():
 
 
 def demo_spiral_ensemble():
+    """
+    Demonstrate CatBoost ensemble classification on spiral dataset.
+
+    Trains a CatBoost ensemble on synthetic spiral data and evaluates
+    prediction probabilities and uncertainties over a 2D grid.
+
+    Returns
+    -------
+    None
+        Prints ensemble predictions and uncertainties.
+    """
     new_data, eval_data = create_spiral_train_and_eval_data()
     ens = CatBoost_Ensemble(
         esize=20,

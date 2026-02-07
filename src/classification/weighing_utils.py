@@ -1,3 +1,5 @@
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 from loguru import logger
@@ -5,8 +7,36 @@ from omegaconf import DictConfig
 
 
 def zscore_norm(
-    weights_array, i, feature_stats, samples, xgboost_cfg, samplewise: bool = True
-):
+    weights_array: np.ndarray,
+    i: int,
+    feature_stats: Dict[int, Dict[str, float]],
+    samples: np.ndarray,
+    xgboost_cfg: DictConfig,
+    samplewise: bool = True,
+) -> Tuple[np.ndarray, Dict[int, Dict[str, float]]]:
+    """
+    Apply z-score normalization to a feature column.
+
+    Parameters
+    ----------
+    weights_array : np.ndarray
+        2D array of weights with shape (n_samples, n_features).
+    i : int
+        Index of the feature column to normalize.
+    feature_stats : dict
+        Dictionary to store normalization statistics (mean, std).
+    samples : np.ndarray
+        1D array of sample values for the feature.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    samplewise : bool, optional
+        If True, normalize along sample axis. Default is True.
+
+    Returns
+    -------
+    tuple
+        Updated weights_array and feature_stats dictionary.
+    """
     if np.isnan(samples).all():
         nanmean = np.nan
         nanstd = np.nan
@@ -19,8 +49,37 @@ def zscore_norm(
 
 
 def minmax_norm(
-    weights_array, i, feature_stats, samples, xgboost_cfg, samplewise: bool = True
-):
+    weights_array: np.ndarray,
+    i: int,
+    feature_stats: Dict[int, Dict[str, float]],
+    samples: np.ndarray,
+    xgboost_cfg: DictConfig,
+    samplewise: bool = True,
+) -> Tuple[np.ndarray, Dict[int, Dict[str, float]]]:
+    """
+    Apply min-max normalization to scale values to [0, 1] range.
+
+    Parameters
+    ----------
+    weights_array : np.ndarray
+        2D array of weights with shape (n_samples, n_features).
+    i : int
+        Index of the feature column or sample row to normalize.
+    feature_stats : dict
+        Dictionary to store normalization statistics (min, max).
+    samples : np.ndarray
+        1D array of sample values for the feature.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    samplewise : bool, optional
+        If True, normalize along sample axis; otherwise along feature axis.
+        Default is True.
+
+    Returns
+    -------
+    tuple
+        Updated weights_array and feature_stats dictionary.
+    """
     if np.isnan(samples).all():
         min_val = np.nan
         max_val = np.nan
@@ -35,7 +94,30 @@ def minmax_norm(
     return weights_array, feature_stats
 
 
-def fix_nans_in_weights(sample_feature_weights, method="unity"):
+def fix_nans_in_weights(
+    sample_feature_weights: np.ndarray, method: str = "unity"
+) -> np.ndarray:
+    """
+    Replace NaN values in feature weights with imputed values.
+
+    Parameters
+    ----------
+    sample_feature_weights : np.ndarray
+        1D array of feature weights for a single sample.
+    method : str, optional
+        Imputation method: "mean" replaces NaNs with mean weight,
+        "unity" replaces NaNs with 1.0. Default is "unity".
+
+    Returns
+    -------
+    np.ndarray
+        Feature weights with NaN values replaced.
+
+    Raises
+    ------
+    ValueError
+        If method is not "mean" or "unity".
+    """
     # no_features = len(sample_feature_weights)
     # Now with timing and AUC features, you do not have any std from the bin
     # quick guestimate is to use the mean feature weight for the sample to impute the nans
@@ -56,7 +138,24 @@ def fix_nans_in_weights(sample_feature_weights, method="unity"):
     return sample_feature_weights
 
 
-def fix_feature_weights(weights_array, xgboost_cfg):
+def fix_feature_weights(
+    weights_array: np.ndarray, xgboost_cfg: DictConfig
+) -> np.ndarray:
+    """
+    Fix NaN values in all rows of the weights array.
+
+    Parameters
+    ----------
+    weights_array : np.ndarray
+        2D array of weights with shape (n_samples, n_features).
+    xgboost_cfg : DictConfig
+        XGBoost configuration containing NaN fixing method.
+
+    Returns
+    -------
+    np.ndarray
+        Weights array with NaN values fixed for all samples.
+    """
     for sample_idx in range(weights_array.shape[0]):
         weights_array[sample_idx, :] = fix_nans_in_weights(
             sample_feature_weights=weights_array[sample_idx, :],
@@ -67,19 +166,52 @@ def fix_feature_weights(weights_array, xgboost_cfg):
 
 
 def normalize_to_unity(
-    weights_array, i, feature_stats, samples, xgboost_cfg, samplewise: bool = True
-):
+    weights_array: np.ndarray,
+    i: int,
+    feature_stats: Dict[int, Dict[str, float]],
+    samples: np.ndarray,
+    xgboost_cfg: DictConfig,
+    samplewise: bool = True,
+) -> Tuple[np.ndarray, Dict[int, Dict[str, float]]]:
+    """
+    Normalize values to sum to unity and scale by maximum.
+
+    Parameters
+    ----------
+    weights_array : np.ndarray
+        2D array of weights with shape (n_samples, n_features).
+    i : int
+        Index of the feature column or sample row to normalize.
+    feature_stats : dict
+        Dictionary to store normalization statistics (sum).
+    samples : np.ndarray
+        1D array of sample values for the feature.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    samplewise : bool, optional
+        If True, normalize along sample axis; otherwise along feature axis.
+        Default is True.
+
+    Returns
+    -------
+    tuple
+        Updated weights_array and feature_stats dictionary.
+    """
     if np.isnan(samples).all():
         nansum = np.nan
     else:
         nansum = np.nansum(samples)
         if samplewise:
             weights_array[:, i] = samples / nansum
-            weights_array[:, i] /= np.nanmax(weights_array[:, i])
+            max_val = np.nanmax(weights_array[:, i])
+            if max_val != 0 and not np.isnan(max_val):
+                weights_array[:, i] /= max_val
 
         else:
             weights_array[i, :] = samples / nansum
-            weights_array[i, :] /= np.nanmax(weights_array[i, :])
+            max_val = np.nanmax(weights_array[i, :])
+            if max_val != 0 and not np.isnan(max_val):
+                weights_array[i, :] /= max_val
 
         # Both for samplewise (sample weighting) and feature weighting, you need
         # to do feature-wise fixing of NaN weights that come from missing stdevs in features
@@ -91,8 +223,37 @@ def normalize_to_unity(
 
 
 def norm_wrapper(
-    weights_array, xgboost_cfg, method="normalize", samplewise: bool = True
-):
+    weights_array: np.ndarray,
+    xgboost_cfg: DictConfig,
+    method: str = "normalize",
+    samplewise: bool = True,
+) -> Tuple[np.ndarray, Dict[int, Dict[str, float]]]:
+    """
+    Wrapper to apply normalization to weights array using specified method.
+
+    Parameters
+    ----------
+    weights_array : np.ndarray
+        2D array of weights with shape (n_samples, n_features).
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    method : str, optional
+        Normalization method: "zscore", "minmax", or "normalize".
+        Default is "normalize".
+    samplewise : bool, optional
+        If True, normalize along sample axis (per feature);
+        otherwise normalize along feature axis (per sample). Default is True.
+
+    Returns
+    -------
+    tuple
+        Normalized weights array (float) and feature_stats dictionary.
+
+    Raises
+    ------
+    ValueError
+        If method is not recognized.
+    """
     # Normalize the feature columns
     no_samples, no_features = weights_array.shape
     if samplewise:
@@ -100,7 +261,7 @@ def norm_wrapper(
     else:
         no_items = no_samples
 
-    feature_stats = {}
+    feature_stats: Dict[int, Dict[str, float]] = {}
     for i in range(no_items):
         if samplewise:
             # As in now we are normalizing over the samples of one feature
@@ -150,7 +311,9 @@ def norm_wrapper(
     return weights_array.astype(float), feature_stats
 
 
-def normalize_mean(weights_array, xgboost_cfg, samplewise: bool = True):
+def normalize_mean(
+    weights_array: np.ndarray, xgboost_cfg: DictConfig, samplewise: bool = True
+) -> Tuple[np.ndarray, Dict[int, Dict[str, float]]]:
     """
     Sample weighing: Z-score mean
         We are interested in how much a given sample deviates from the mean of the feature across all subject
@@ -183,7 +346,29 @@ def normalize_mean(weights_array, xgboost_cfg, samplewise: bool = True):
     return weights, norm_stats
 
 
-def get_1d_sample_weights(weights_array: np.ndarray, xgboost_cfg: DictConfig):
+def get_1d_sample_weights(
+    weights_array: np.ndarray, xgboost_cfg: DictConfig
+) -> Tuple[np.ndarray, Dict[int, Dict[str, float]]]:
+    """
+    Compute 1D sample weights from 2D weights array.
+
+    Parameters
+    ----------
+    weights_array : np.ndarray
+        2D array of weights with shape (n_samples, n_features).
+    xgboost_cfg : DictConfig
+        XGBoost configuration specifying weight creation method.
+
+    Returns
+    -------
+    tuple
+        1D sample weights array and normalization statistics dictionary.
+
+    Raises
+    ------
+    ValueError
+        If sample weights creation method is not recognized.
+    """
     if (
         xgboost_cfg["MODEL"]["WEIGHING"]["weights_sample_creation_method"]
         == "normalize_mean"
@@ -204,7 +389,34 @@ def get_1d_sample_weights(weights_array: np.ndarray, xgboost_cfg: DictConfig):
     return sample_weight, norm_stats
 
 
-def sample_weight_wrapper(dict_arrays: dict, xgboost_cfg: DictConfig):
+def sample_weight_wrapper(
+    dict_arrays: Dict[str, np.ndarray], xgboost_cfg: DictConfig
+) -> Tuple[
+    Optional[np.ndarray],
+    Optional[List[np.ndarray]],
+    Optional[Dict[int, Dict[str, float]]],
+]:
+    """
+    Compute sample weights for training and evaluation sets.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing training, test, and optionally validation
+        weight arrays (keys: "x_train_w", "x_test_w", "x_val_w").
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+
+    Returns
+    -------
+    tuple
+        sample_weight : np.ndarray or None
+            1D sample weights for training.
+        sample_weight_eval_set : list or None
+            List of sample weights for each evaluation set.
+        sample_stats : dict or None
+            Normalization statistics.
+    """
     if xgboost_cfg["MODEL"]["WEIGHING"]["weigh_the_samples"]:
         logger.debug("Using sample weighing for XGBoost")
         sample_weight, sample_stats = get_1d_sample_weights(
@@ -241,7 +453,27 @@ def sample_weight_wrapper(dict_arrays: dict, xgboost_cfg: DictConfig):
     return sample_weight, sample_weight_eval_set, sample_stats
 
 
-def feature_weight_wrapper(dict_arrays: dict, xgboost_cfg: DictConfig):
+def feature_weight_wrapper(
+    dict_arrays: Dict[str, np.ndarray], xgboost_cfg: DictConfig
+) -> Tuple[Optional[np.ndarray], Optional[Dict[int, Dict[str, float]]]]:
+    """
+    Compute feature weights for XGBoost training.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing training weight array (key: "x_train_w").
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+
+    Returns
+    -------
+    tuple
+        feature_weight : np.ndarray or None
+            1D feature weights array.
+        feature_stats : dict or None
+            Normalization statistics.
+    """
     if xgboost_cfg["MODEL"]["WEIGHING"]["weigh_the_features"]:
         logger.debug("Using feature weighing for XGBoost")
         # TODO! if you want to control the normalization method, you can add it here
@@ -260,7 +492,27 @@ def feature_weight_wrapper(dict_arrays: dict, xgboost_cfg: DictConfig):
         return None, None
 
 
-def class_weight_wrapper(dict_arrays: dict, xgboost_cfg: DictConfig):
+def class_weight_wrapper(
+    dict_arrays: Dict[str, np.ndarray], xgboost_cfg: DictConfig
+) -> Tuple[Optional[float], Optional[Dict[str, int]]]:
+    """
+    Compute class weight for handling class imbalance.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing training labels (key: "y_train").
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+
+    Returns
+    -------
+    tuple
+        scale_pos_weight : float or None
+            Ratio of negative to positive class samples.
+        class_stats : dict or None
+            Dictionary with class counts.
+    """
     if xgboost_cfg["MODEL"]["WEIGHING"]["weigh_the_classes"]:
         # TODO! if you want to control the normalization method, you can add it here
         class_stats = {
@@ -277,8 +529,43 @@ def class_weight_wrapper(dict_arrays: dict, xgboost_cfg: DictConfig):
 
 
 def get_weights_for_xgboost_fit(
-    dict_arrays, xgboost_cfg, write_to_mlflow: bool = False
-):
+    dict_arrays: Dict[str, np.ndarray],
+    xgboost_cfg: DictConfig,
+    write_to_mlflow: bool = False,
+) -> Tuple[
+    Optional[np.ndarray],
+    Optional[List[np.ndarray]],
+    Optional[np.ndarray],
+    Optional[float],
+    Dict[str, Any],
+]:
+    """
+    Compute all weights (sample, feature, class) for XGBoost training.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing feature arrays and labels.
+    xgboost_cfg : DictConfig
+        XGBoost configuration dictionary.
+    write_to_mlflow : bool, optional
+        If True, log weights to MLflow. Not implemented. Default is False.
+
+    Returns
+    -------
+    tuple
+        sample_weight : np.ndarray or None
+        sample_weight_eval_set : list or None
+        feature_weights : np.ndarray or None
+        scale_pos_weight : float or None
+        norm_stats : dict
+            Combined normalization statistics.
+
+    Raises
+    ------
+    NotImplementedError
+        If write_to_mlflow is True.
+    """
     # Get the sample weights (or return Nones if not used)
     sample_weight, sample_weight_eval_set, sample_stats = sample_weight_wrapper(
         dict_arrays, xgboost_cfg
@@ -312,7 +599,27 @@ def get_weights_for_xgboost_fit(
     )
 
 
-def return_weights_as_dict(dict_arrays, cls_model_cfg) -> dict:
+def return_weights_as_dict(
+    dict_arrays: Dict[str, np.ndarray], cls_model_cfg: DictConfig
+) -> Dict[str, Any]:
+    """
+    Compute weights and return as a structured dictionary.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing feature arrays and labels.
+    cls_model_cfg : DictConfig
+        Classifier model configuration dictionary.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - "weights": dict with "samples", "features", "classes" keys
+        - "norm_stats": normalization statistics
+        - "sample_weight_eval_set": evaluation set weights
+    """
     # TODO! rename this and make it general for sklearn API classifiers as nothing
     #  XGBoost-specific should happen here
     # if np.all(np.isnan(dict_arrays["x_train_w"])):
@@ -338,7 +645,27 @@ def return_weights_as_dict(dict_arrays, cls_model_cfg) -> dict:
     return weights_dict
 
 
-def weights_dict_wrapper(dict_arrays, cls_model_cfg):
+def weights_dict_wrapper(
+    dict_arrays: Dict[str, np.ndarray], cls_model_cfg: DictConfig
+) -> Dict[str, Any]:
+    """
+    Wrapper to compute all weights and package into a dictionary.
+
+    Parameters
+    ----------
+    dict_arrays : dict
+        Dictionary containing feature arrays and labels.
+    cls_model_cfg : DictConfig
+        Classifier model configuration dictionary.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - "weights": dict with "samples", "features", "classes" keys
+        - "norm_stats": normalization statistics
+        - "sample_weight_eval_set": evaluation set weights
+    """
     (
         sample_weight,
         sample_weight_eval_set,

@@ -8,7 +8,6 @@ from collections import UserList
 from collections.abc import Sequence
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar
-from typing_extensions import Self, override
 
 import numpy as np
 import scipy
@@ -29,6 +28,7 @@ from sklearn.preprocessing import (
     RobustScaler,
     StandardScaler,
 )
+from typing_extensions import Self, override
 
 from src.classification.tabpfn.utils import infer_random_state
 

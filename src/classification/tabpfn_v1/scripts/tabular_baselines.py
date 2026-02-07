@@ -1,37 +1,30 @@
-from catboost import CatBoostClassifier
-from sklearn.model_selection import KFold
-
-import tempfile
-import random
 import math
-import sklearn
 import os
+import random
+import sys
+import tempfile
+import time
+
+import numpy as np
+import pandas as pd
+import sklearn
+import torch
+import xgboost as xgb
+from catboost import CatBoostClassifier
+from hyperopt import Trials, fmin, hp, rand, space_eval
+from sklearn import neighbors
+from sklearn.compose import ColumnTransformer
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.model_selection import KFold, cross_val_score
+from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 
 # from pytorch_tabnet.tab_model import TabNetClassifier, TabNetRegressor
 from torch import nn
-from sklearn.impute import SimpleImputer
 
-
-import xgboost as xgb
-from sklearn import neighbors
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
-import numpy as np
-
-import torch
 from src.classification.tabpfn_v1.scripts import tabular_metrics
-import pandas as pd
-
-from sklearn.linear_model import LogisticRegression, Ridge
-from sklearn.model_selection import cross_val_score
-import time
-
-from hyperopt import fmin, hp, Trials, space_eval, rand
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.preprocessing import MinMaxScaler
-
-import sys
 
 np.warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 tabpfn_path = "../../"
@@ -373,10 +366,11 @@ def get_updates_for_regularization_cocktails(categorical_indicator: np.ndarray):
             The search space updates like setting different hps to different values or ranges.
             Lastly include updates, which can be used to include different features.
     """
+    import argparse
+
     from autoPyTorch.utils.hyperparameter_search_space_update import (
         HyperparameterSearchSpaceUpdates,
     )
-    import argparse
 
     augmentation_names_to_trainers = {  # noqa F841
         "mixup": "MixUpTrainer",
@@ -734,10 +728,10 @@ def get_smac_object(
     Returns:
         (SMAC4AC): sequential model algorithm configuration object
     """
+    from smac.facade.smac_ac_facade import SMAC4AC
     from smac.intensification.simple_intensifier import SimpleIntensifier
     from smac.runhistory.runhistory2epm import RunHistory2EPM4LogCost
     from smac.scenario.scenario import Scenario
-    from smac.facade.smac_ac_facade import SMAC4AC
 
     # multi-fidelity is disabled, that is why initial_budget and max_budget
     # are not used.
@@ -817,11 +811,11 @@ def well_tuned_simple_nets_metric(
         prefix=f"{len(X_train)}_{len(X_test)}_{max_time}"
     ) as temp_dir:
         from autoPyTorch.api.tabular_classification import TabularClassificationTask
+        from autoPyTorch.data.tabular_validator import TabularInputValidator
         from autoPyTorch.datasets.resampling_strategy import (
             HoldoutValTypes,
             NoResamplingStrategyTypes,
         )
-        from autoPyTorch.data.tabular_validator import TabularInputValidator
         from autoPyTorch.datasets.tabular_dataset import TabularDataset
 
         # append random folder to temp_dir to avoid collisions
@@ -1010,8 +1004,8 @@ def autosklearn_metric(x, y, test_x, test_y, cat_features, metric_used, max_time
 def autosklearn2_metric(
     x, y, test_x, test_y, cat_features, metric_used, max_time=300, version=2
 ):
-    from autosklearn.experimental.askl2 import AutoSklearn2Classifier
     from autosklearn.classification import AutoSklearnClassifier
+    from autosklearn.experimental.askl2 import AutoSklearn2Classifier
     from autosklearn.regression import AutoSklearnRegressor
 
     x, y, test_x, test_y = preprocess_impute(

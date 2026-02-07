@@ -1,9 +1,9 @@
+import io
 import os
+import pickle
 from pathlib import Path
 
-import io
 import torch
-import pickle
 
 
 def print_models(base_path, model_string):
