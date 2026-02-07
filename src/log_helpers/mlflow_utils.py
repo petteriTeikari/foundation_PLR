@@ -68,7 +68,7 @@ def init_mlflow_experiment(
         Name of the experiment to create/get.
     override_default_location : bool, default False
         If True, use custom artifact location.
-    permanent_delete : bool, default True
+    _permanent_delete : bool, default True
         Permanent deletion flag (currently unused).
 
     Raises

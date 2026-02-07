@@ -194,8 +194,8 @@ def pick_correct_data_and_label_for_experiment(
         Configuration dictionary.
     task : str
         Task name.
-    task_cfg : DictConfig
-        Task-specific configuration.
+    _task_cfg : DictConfig
+        Task-specific configuration (currently unused).
 
     Notes
     -----

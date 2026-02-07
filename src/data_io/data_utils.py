@@ -668,8 +668,6 @@ def set_missing_in_data(
         Input dataframe containing the column with missing values.
     X : np.ndarray
         Numpy array to apply missingness pattern to.
-    missingness_cfg : DictConfig
-        Configuration for missingness handling.
     col_name : str, optional
         Name of the column to get missingness from, by default "pupil_raw".
     split : str, optional
@@ -1796,8 +1794,6 @@ def transform_for_moment_fm_length(
         Interpolation method for resampling, by default "cubic".
     split_subjects_to_windows : bool, optional
         Whether to split into fixed-size windows, by default True.
-    binarize_output : bool, optional
-        Whether to binarize the output (for masks), by default False.
     fill_na : str, optional
         Strategy for filling NaN values, by default None.
     model_name : str, optional

@@ -180,8 +180,8 @@ def if_recompute_and_viz_imputation_metrics(_recompute: bool = True) -> bool:
 
     Parameters
     ----------
-    recompute : bool, default True
-        Input flag (currently unused - placeholder implementation).
+    _recompute : bool, default True
+        Input flag (currently unused — placeholder implementation).
 
     Returns
     -------

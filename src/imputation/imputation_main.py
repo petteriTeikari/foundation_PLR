@@ -281,8 +281,8 @@ def imputation_PLR_workflow(
         MLflow run name for this imputation experiment.
     experiment_name : str
         MLflow experiment name to log results under.
-    visualize : bool, optional
-        Whether to generate visualizations. Default is False.
+    _visualize : bool, optional
+        Whether to generate visualizations (currently unused). Default is False.
 
     Returns
     -------

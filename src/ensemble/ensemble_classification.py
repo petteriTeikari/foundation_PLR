@@ -202,7 +202,7 @@ def concatenate_arrays(
         Accumulated predictions.
     preds_var_out : dict or None
         Accumulated prediction variances.
-    labels_out : dict or None
+    _labels_out : dict or None
         Accumulated labels (not modified, labels are same across models).
     y_pred_proba : dict
         Predictions from current submodel.
@@ -243,7 +243,7 @@ def check_dicts(
         Accumulated predictions.
     preds_var_out : dict
         Accumulated variances.
-    labels_out : dict
+    _labels_out : dict
         Labels (unused, kept for API compatibility).
     no_submodel_runs : int
         Expected number of submodels.

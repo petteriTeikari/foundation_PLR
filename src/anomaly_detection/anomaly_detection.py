@@ -59,7 +59,9 @@ def outlier_detection_selector(
         'MOMENT', 'TimesNet', 'UniTS', 'LOF', 'OneClassSVM',
         'PROPHET', 'SigLLM'.
 
-    Note: SubPCA/EIF (TSB_AD) was archived - see archived/TSB_AD/ (not used in final paper).
+    Notes
+    -----
+    SubPCA/EIF (TSB_AD) was archived - see archived/TSB_AD/ (not used in final paper).
 
     Returns
     -------
