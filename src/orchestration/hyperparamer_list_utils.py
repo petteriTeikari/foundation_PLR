@@ -1,15 +1,27 @@
 import itertools
 
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.log_helpers.log_naming_uris_and_dirs import (
-    update_outlier_detection_run_name,
     update_imputation_run_name,
+    update_outlier_detection_run_name,
 )
 
 
 def clean_param(param):
+    """Convert snake_case parameter name to camelCase.
+
+    Parameters
+    ----------
+    param : str
+        Parameter name in snake_case (e.g., 'd_ffn').
+
+    Returns
+    -------
+    str
+        Parameter name in camelCase (e.g., 'dFfn').
+    """
     fields = param.split("_")
     if len(fields) > 1:
         # e.g. d_ffn -> dFfn
@@ -30,6 +42,35 @@ def create_hyperparam_name(
     value_key_delimiter: str = "",
     param_delimiter: str = "_",
 ):
+    """Create a standardized name string for a hyperparameter value.
+
+    Parameters
+    ----------
+    param : str
+        Parameter name.
+    value_from_list : Any
+        Value of the parameter.
+    i : int, optional
+        Index in the value list (unused). Default is 0.
+    j : int, optional
+        Current parameter index. Default is 0.
+    n_params : int, optional
+        Total number of parameters. Default is 1.
+    value_key_delimiter : str, optional
+        Delimiter between param name and value. Default is ''.
+    param_delimiter : str, optional
+        Delimiter between parameters. Default is '_'.
+
+    Returns
+    -------
+    str
+        Formatted parameter key string (e.g., 'dFfn128_').
+
+    Raises
+    ------
+    ValueError
+        If parameter cleaning fails.
+    """
     try:
         param = clean_param(param)
     except Exception:
@@ -42,6 +83,20 @@ def create_hyperparam_name(
 
 
 def create_name_from_model_params(model_name: str, param_cfg: DictConfig) -> str:
+    """Create a descriptive name from model name and parameters.
+
+    Parameters
+    ----------
+    model_name : str
+        Base model name (e.g., 'SAITS').
+    param_cfg : DictConfig
+        Model parameter configuration.
+
+    Returns
+    -------
+    str
+        Combined name with model and parameters (e.g., 'SAITS_dFfn128_nLayers2').
+    """
     cfg_name = f"{model_name}_"
     for j, (param, value) in enumerate(param_cfg.items()):
         string = f"{create_hyperparam_name(param, value, j=j, n_params=len(param_cfg.keys()))}"
@@ -52,15 +107,44 @@ def create_name_from_model_params(model_name: str, param_cfg: DictConfig) -> str
 def define_list_hyperparam_combos(
     cfg_model: DictConfig, param_dict: DictConfig, model: str, task: str, cfg_key: str
 ) -> dict:
+    """Generate configurations from parallel parameter lists.
+
+    Creates one configuration per index across all parameter lists,
+    where all lists must have the same length.
+
+    Parameters
+    ----------
+    cfg_model : DictConfig
+        Base model configuration.
+    param_dict : DictConfig
+        Dictionary mapping parameter names to value lists.
+    model : str
+        Model name.
+    task : str
+        Task type for naming.
+    cfg_key : str
+        Configuration key for model access.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping configuration names to configs.
+
+    Raises
+    ------
+    ValueError
+        If parameter not found in model config or lists have different lengths.
+    """
+
     def check_no_of_values(param_dict):
         # all params must have the same number of values in the LIST method
         no_of_values_per_param = []
         for i, param in enumerate(param_dict.keys()):
             no_of_values_per_param.append(len(param_dict[param]))
             if i > 0:
-                assert (
-                    no_of_values_per_param[i] == no_of_values_per_param[i - 1]
-                ), "All parameters must have the same number of values"
+                assert no_of_values_per_param[i] == no_of_values_per_param[i - 1], (
+                    "All parameters must have the same number of values"
+                )
         return no_of_values_per_param
 
     cfg_params = {}
@@ -83,7 +167,7 @@ def define_list_hyperparam_combos(
                     f"Parameter {param} not found in the model {model} (typo in your search_space?"
                 )
                 logger.error(
-                    f'Possible param keys for assignment = {cfg_tmp[cfg_key][model]["MODEL"].keys()}'
+                    f"Possible param keys for assignment = {cfg_tmp[cfg_key][model]['MODEL'].keys()}"
                 )
                 raise ValueError(
                     f"Parameter {param} not found in the model {model} (typo in your search_space?"
@@ -96,6 +180,33 @@ def define_list_hyperparam_combos(
 def define_grid_hyperparam_combos(
     cfg_model: DictConfig, param_dict: DictConfig, model: str, task: str, cfg_key: str
 ) -> dict:
+    """Generate configurations for all combinations in a grid search.
+
+    Creates the Cartesian product of all parameter value lists.
+
+    Parameters
+    ----------
+    cfg_model : DictConfig
+        Base model configuration.
+    param_dict : DictConfig
+        Dictionary mapping parameter names to value lists.
+    model : str
+        Model name.
+    task : str
+        Task type: 'outlier_detection' or 'imputation'.
+    cfg_key : str
+        Configuration key for model access.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping configuration names to configs.
+
+    Raises
+    ------
+    ValueError
+        If task type is not recognized for naming.
+    """
     choice_keys = list(param_dict.keys())
     choices = list(itertools.product(*param_dict.values()))
 

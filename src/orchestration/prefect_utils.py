@@ -1,9 +1,9 @@
+import subprocess
+
+import hydra
 import torch
 from loguru import logger
-import subprocess
 from omegaconf import DictConfig
-import hydra
-
 
 # TO CONTROL PREFECT LOGGING, see:
 # https://discourse.prefect.io/t/how-do-i-suppress-created-task-run-logs/750/8
@@ -17,6 +17,16 @@ import hydra
 
 
 def pre_flow_prefect_checks(prefect_cfg: DictConfig):
+    """Perform pre-flight checks before running a Prefect flow.
+
+    Logs the Hydra output directory, optionally starts the Prefect server,
+    and checks CUDA availability with appropriate warnings.
+
+    Parameters
+    ----------
+    prefect_cfg : DictConfig
+        Prefect configuration with SERVER.autostart setting.
+    """
     logger.info(
         'Hydra output directory = "{}"'.format(
             hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
@@ -42,6 +52,15 @@ def pre_flow_prefect_checks(prefect_cfg: DictConfig):
 
 
 def pre_check_server():
+    """Check and start the Prefect server if not running.
+
+    Attempts to start the Prefect server and logs status. If port 4200
+    is already in use, assumes server is running.
+
+    Notes
+    -----
+    Dashboard is available at http://127.0.0.1:4200/dashboard when running.
+    """
     # see https://orion-docs.prefect.io/latest/api-ref/prefect/cli/server/
     logger.debug("PREFECT SERVER AUTOSTART=True: Trying to autostart Prefect server")
     p = subprocess.Popen(
@@ -65,6 +84,15 @@ def pre_check_server():
 
 
 def pre_check_workpool():
+    """Check and create a Prefect work pool if not exists.
+
+    Attempts to create a process-type work pool named 'my-work-pool'.
+
+    Notes
+    -----
+    Work pools are used for distributed task execution in Prefect.
+    See: https://docs.prefect.io/3.0/get-started/quickstart#create-a-work-pool
+    """
     # https://docs.prefect.io/3.0/get-started/quickstart#create-a-work-pool
     workpool_name = "my-work-pool"
     logger.debug(
@@ -84,6 +112,20 @@ def pre_check_workpool():
 
 
 def post_flow_prefect_housekeeping(prefect_cfg: DictConfig):
+    """Perform cleanup tasks after a Prefect flow completes.
+
+    Placeholder for post-flow housekeeping such as stopping servers
+    or cleaning up resources.
+
+    Parameters
+    ----------
+    prefect_cfg : DictConfig
+        Prefect configuration dictionary.
+
+    Notes
+    -----
+    Currently a stub - implementation pending.
+    """
     logger.info("Prefect housekeeping Placeholder")
     # TODO! Stop the server for example, the following does not find any running server though?
     # p = subprocess.Popen(["nohup", "prefect", "server", "stop"], stdout=subprocess.PIPE)
