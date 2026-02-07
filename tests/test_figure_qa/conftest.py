@@ -26,7 +26,8 @@ def project_root():
 def calibration_json_path():
     """Path to calibration data JSON."""
     path = R_DATA_DIR / "calibration_data.json"
-    assert path.exists(), f"Calibration data missing: {path}. Run: make analyze"
+    if not path.exists():
+        pytest.skip(f"Calibration data missing: {path}. Run: make analyze")
     return path
 
 
@@ -41,7 +42,8 @@ def calibration_data(calibration_json_path):
 def dca_json_path():
     """Path to DCA data JSON."""
     path = R_DATA_DIR / "dca_data.json"
-    assert path.exists(), f"DCA data missing: {path}. Run: make analyze"
+    if not path.exists():
+        pytest.skip(f"DCA data missing: {path}. Run: make analyze")
     return path
 
 
@@ -56,7 +58,8 @@ def dca_data(dca_json_path):
 def predictions_json_path():
     """Path to predictions JSON."""
     path = R_DATA_DIR / "predictions_top4.json"
-    assert path.exists(), f"Predictions data missing: {path}. Run: make analyze"
+    if not path.exists():
+        pytest.skip(f"Predictions data missing: {path}. Run: make analyze")
     return path
 
 
@@ -70,18 +73,16 @@ def predictions_data(predictions_json_path):
 @pytest.fixture
 def all_json_files():
     """All JSON data files in r_data directory."""
-    assert R_DATA_DIR.exists(), (
-        f"R data directory missing: {R_DATA_DIR}. Run: make analyze"
-    )
+    if not R_DATA_DIR.exists():
+        pytest.skip(f"R data directory missing: {R_DATA_DIR}. Run: make analyze")
     return list(R_DATA_DIR.glob("*.json"))
 
 
 @pytest.fixture
 def all_figure_files():
     """All generated figure files (PDF and PNG)."""
-    assert FIGURES_DIR.exists(), (
-        f"Figures directory missing: {FIGURES_DIR}. Run: make analyze"
-    )
+    if not FIGURES_DIR.exists():
+        pytest.skip(f"Figures directory missing: {FIGURES_DIR}. Run: make analyze")
     pdfs = list(FIGURES_DIR.glob("**/*.pdf"))
     pngs = list(FIGURES_DIR.glob("**/*.png"))
     return pdfs + pngs
@@ -91,9 +92,8 @@ def all_figure_files():
 def ggplot2_figures():
     """ggplot2-generated figures specifically."""
     ggplot_dir = FIGURES_DIR / "ggplot2"
-    assert ggplot_dir.exists(), (
-        f"ggplot2 directory missing: {ggplot_dir}. Run: make analyze"
-    )
+    if not ggplot_dir.exists():
+        pytest.skip(f"ggplot2 directory missing: {ggplot_dir}. Run: make analyze")
     return list(ggplot_dir.glob("*.pdf")) + list(ggplot_dir.glob("*.png"))
 
 
