@@ -42,7 +42,7 @@ class TestGroundTruthAUROC:
             SELECT auroc FROM essential_metrics
             WHERE outlier_method = 'pupil-gt'
               AND imputation_method = 'pupil-gt'
-              AND classifier = 'CATBOOST'
+              AND LOWER(classifier) = 'catboost'
               AND featurization = 'simple1.0'
         """).fetchone()
         conn.close()
@@ -109,7 +109,7 @@ class TestGroundTruthAUROC:
             JOIN essential_metrics em ON p.config_id = em.config_id
             WHERE em.outlier_method = 'pupil-gt'
               AND em.imputation_method = 'pupil-gt'
-              AND em.classifier = 'CATBOOST'
+              AND LOWER(em.classifier) = 'catboost'
               AND em.featurization = 'simple1.0'
         """).fetchall()
         conn.close()
@@ -152,7 +152,7 @@ class TestPredictionCounts:
             JOIN essential_metrics em ON p.config_id = em.config_id
             WHERE em.outlier_method = 'pupil-gt'
               AND em.imputation_method = 'pupil-gt'
-              AND em.classifier = 'CATBOOST'
+              AND LOWER(em.classifier) = 'catboost'
               AND em.featurization = 'simple1.0'
         """).fetchone()
         conn.close()

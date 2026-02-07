@@ -312,9 +312,8 @@ class TestInstabilityFigure3Groups:
         json_path = (
             project_root / "data" / "r_data" / "pminternal_bootstrap_predictions.json"
         )
-        assert json_path.exists(), (
-            f"pminternal data not found: {json_path}. Run: make analyze"
-        )
+        if not json_path.exists():
+            pytest.skip(f"pminternal data not found: {json_path}. Run: make analyze")
 
         with open(json_path) as f:
             return json.load(f)
