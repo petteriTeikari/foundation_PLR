@@ -11,7 +11,7 @@
 #
 # None of these files contain PII (subject IDs are anonymized H/G codes).
 
-_version: "1.0"
+_version: "1.1"
 
 files:
   foundation_plr_results.db:
@@ -25,8 +25,12 @@ files:
       - distribution_stats   # Probability distribution statistics
     source: "make extract (MLflow → DuckDB)"
     pii: false
+    git_tracked: false  # See GH#44 — to be committed for reproducibility
+    docker_included: true  # .dockerignore exception: !data/public/*.db
 
   cd_diagram_data.duckdb:
     description: "Critical difference diagram rankings"
     source: "scripts/extraction/extract_cd_diagram_data.py"
     pii: false
+    git_tracked: false  # See GH#44
+    docker_included: true  # .dockerignore exception: !data/public/*.duckdb
