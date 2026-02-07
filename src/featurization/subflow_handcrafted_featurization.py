@@ -16,6 +16,22 @@ from src.log_helpers.log_naming_uris_and_dirs import (
 def flow_handcrafted_featurization(
     cfg: DictConfig, sources: dict, experiment_name: str, prev_experiment_name: str
 ) -> None:
+    """Execute handcrafted featurization for all data sources.
+
+    Iterates through all imputation sources and feature configurations,
+    running the featurization script for each combination.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Configuration dictionary with PLR_FEATURIZATION settings.
+    sources : dict
+        Dictionary of data sources keyed by source name.
+    experiment_name : str
+        MLflow experiment name for featurization.
+    prev_experiment_name : str
+        Previous experiment name (imputation).
+    """
     # Define the featurization methods
     # 1) You could use multiple .YAML files to define the hand-crafted features
     # 2) You could train MOMENT embeddings and use those for your classifier on next stage (e.g. XGBoost
@@ -27,12 +43,12 @@ def flow_handcrafted_featurization(
     # Featurize (or skip if previous results found from MLflow)
     for source_idx, (source_name, source_data) in enumerate(sources.items()):
         for idx, (featurization_method, feature_cfg) in enumerate(feature_cfgs.items()):
-            logger.info(f"Source #{source_idx+1}/{len(sources)}: {source_name}")
+            logger.info(f"Source #{source_idx + 1}/{len(sources)}: {source_name}")
             logger.info(
-                f"Running pipeline for featurization method #{idx+1}/{len(feature_cfgs)}: {featurization_method}"
+                f"Running pipeline for featurization method #{idx + 1}/{len(feature_cfgs)}: {featurization_method}"
             )
             run_name = f"{featurization_method}__{source_name}"
-            logger.info(f"Run name #{run_idx+1}/{no_of_runs}: {run_name}")
+            logger.info(f"Run name #{run_idx + 1}/{no_of_runs}: {run_name}")
             run_idx += 1
 
             featurization_script(

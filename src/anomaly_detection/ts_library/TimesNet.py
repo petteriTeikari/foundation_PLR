@@ -1,12 +1,40 @@
+from typing import Any, Optional, Tuple
+
+import numpy as np
 import torch
+import torch.fft
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.fft
-from .layers.Embed import DataEmbedding
+
 from .layers.Conv_Blocks import Inception_Block_V1
+from .layers.Embed import DataEmbedding
 
 
-def FFT_for_Period(x, k=2):
+def FFT_for_Period(x: torch.Tensor, k: int = 2) -> Tuple[np.ndarray, torch.Tensor]:
+    """
+    Extract dominant periods from input tensor using Fast Fourier Transform.
+
+    Computes the FFT of the input time series and identifies the top-k dominant
+    frequency components based on amplitude. Returns the corresponding periods
+    and their weights.
+
+    Parameters
+    ----------
+    x : torch.Tensor
+        Input tensor of shape [B, T, C] where B is batch size, T is sequence
+        length, and C is number of channels.
+    k : int, optional
+        Number of top frequency components to extract, by default 2.
+
+    Returns
+    -------
+    period : np.ndarray
+        Array of shape (k,) containing the periods corresponding to the top-k
+        frequency components. Period = sequence_length / frequency_index.
+    period_weight : torch.Tensor
+        Tensor of shape [B, k] containing the mean amplitudes of the top-k
+        frequency components for each sample in the batch.
+    """
     # [B, T, C]
     xf = torch.fft.rfft(x, dim=1)
     # find period by amplitudes
@@ -19,7 +47,7 @@ def FFT_for_Period(x, k=2):
 
 
 class TimesBlock(nn.Module):
-    def __init__(self, configs):
+    def __init__(self, configs: Any) -> None:
         super(TimesBlock, self).__init__()
         self.seq_len = configs.seq_len
         self.pred_len = configs.pred_len
@@ -35,7 +63,7 @@ class TimesBlock(nn.Module):
             ),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, N = x.size()
         period_list, period_weight = FFT_for_Period(x, self.k)
 
@@ -78,7 +106,7 @@ class Model(nn.Module):
     Paper link: https://openreview.net/pdf?id=ju_Uqw384Oq
     """
 
-    def __init__(self, configs):
+    def __init__(self, configs: Any) -> None:
         super(Model, self).__init__()
         self.configs = configs
         self.task_name = configs.task_name
@@ -112,7 +140,36 @@ class Model(nn.Module):
                 configs.d_model * configs.seq_len, configs.num_class
             )
 
-    def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
+    def forecast(
+        self,
+        x_enc: torch.Tensor,
+        x_mark_enc: Optional[torch.Tensor],
+        x_dec: torch.Tensor,
+        x_mark_dec: Optional[torch.Tensor],
+    ) -> torch.Tensor:
+        """
+        Perform time series forecasting.
+
+        Applies instance normalization, temporal embedding, and TimesNet blocks
+        to generate future predictions. Uses the Non-stationary Transformer
+        normalization scheme.
+
+        Parameters
+        ----------
+        x_enc : torch.Tensor
+            Encoder input tensor of shape [B, seq_len, enc_in].
+        x_mark_enc : Optional[torch.Tensor]
+            Encoder temporal marks of shape [B, seq_len, mark_dim], or None.
+        x_dec : torch.Tensor
+            Decoder input tensor (used for consistency with interface).
+        x_mark_dec : Optional[torch.Tensor]
+            Decoder temporal marks (used for consistency with interface).
+
+        Returns
+        -------
+        torch.Tensor
+            Forecast output of shape [B, pred_len + seq_len, c_out].
+        """
         # Normalization from Non-stationary Transformer
         means = x_enc.mean(1, keepdim=True).detach()
         x_enc = x_enc - means
@@ -139,7 +196,42 @@ class Model(nn.Module):
         )
         return dec_out
 
-    def imputation(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask):
+    def imputation(
+        self,
+        x_enc: torch.Tensor,
+        x_mark_enc: Optional[torch.Tensor],
+        x_dec: torch.Tensor,
+        x_mark_dec: Optional[torch.Tensor],
+        mask: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Perform time series imputation for missing values.
+
+        Reconstructs missing values in the input sequence using masked
+        normalization and TimesNet blocks. Only observed values (where mask=1)
+        contribute to normalization statistics.
+
+        Parameters
+        ----------
+        x_enc : torch.Tensor
+            Encoder input tensor of shape [B, seq_len, enc_in] with missing
+            values to be imputed.
+        x_mark_enc : Optional[torch.Tensor]
+            Encoder temporal marks of shape [B, seq_len, mark_dim], or None.
+        x_dec : torch.Tensor
+            Decoder input tensor (used for consistency with interface).
+        x_mark_dec : Optional[torch.Tensor]
+            Decoder temporal marks (used for consistency with interface).
+        mask : torch.Tensor
+            Binary mask of shape [B, seq_len, enc_in] where 1 indicates observed
+            values and 0 indicates missing values.
+
+        Returns
+        -------
+        torch.Tensor
+            Imputed output of shape [B, pred_len + seq_len, c_out] with missing
+            values reconstructed.
+        """
         # Normalization from Non-stationary Transformer
         means = torch.sum(x_enc, dim=1) / torch.sum(mask == 1, dim=1)
         means = means.unsqueeze(1).detach()
@@ -168,7 +260,25 @@ class Model(nn.Module):
         )
         return dec_out
 
-    def anomaly_detection(self, x_enc):
+    def anomaly_detection(self, x_enc: torch.Tensor) -> torch.Tensor:
+        """
+        Perform anomaly detection on time series data.
+
+        Processes the input sequence through normalization, embedding, and
+        TimesNet blocks to produce a reconstruction. Anomalies can be detected
+        by comparing the reconstruction error with the original input.
+
+        Parameters
+        ----------
+        x_enc : torch.Tensor
+            Encoder input tensor of shape [B, seq_len, enc_in].
+
+        Returns
+        -------
+        torch.Tensor
+            Reconstructed output of shape [B, pred_len + seq_len, c_out].
+            High reconstruction error indicates potential anomalies.
+        """
         # Normalization from Non-stationary Transformer
         means = x_enc.mean(1, keepdim=True).detach()
         x_enc = x_enc - means
@@ -192,7 +302,29 @@ class Model(nn.Module):
         )
         return dec_out
 
-    def classification(self, x_enc, x_mark_enc):
+    def classification(
+        self, x_enc: torch.Tensor, x_mark_enc: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Perform time series classification.
+
+        Processes the input sequence through embedding and TimesNet blocks,
+        then applies GELU activation, dropout, and a linear projection to
+        produce class logits.
+
+        Parameters
+        ----------
+        x_enc : torch.Tensor
+            Encoder input tensor of shape [B, seq_len, enc_in].
+        x_mark_enc : torch.Tensor
+            Binary mask of shape [B, seq_len] indicating valid positions.
+            Used to zero-out padding embeddings before projection.
+
+        Returns
+        -------
+        torch.Tensor
+            Classification logits of shape [B, num_classes].
+        """
         # embedding
         enc_out = self.enc_embedding(x_enc, None)  # [B,T,C]
         # TimesNet
@@ -210,7 +342,45 @@ class Model(nn.Module):
         output = self.projection(output)  # (batch_size, num_classes)
         return output
 
-    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
+    def forward(
+        self,
+        x_enc: torch.Tensor,
+        x_mark_enc: Optional[torch.Tensor],
+        x_dec: Optional[torch.Tensor],
+        x_mark_dec: Optional[torch.Tensor],
+        mask: Optional[torch.Tensor] = None,
+    ) -> Optional[torch.Tensor]:
+        """
+        Forward pass that dispatches to task-specific methods.
+
+        Routes the input to the appropriate task method based on the
+        `task_name` configuration. Supports forecasting, imputation,
+        anomaly detection, and classification tasks.
+
+        Parameters
+        ----------
+        x_enc : torch.Tensor
+            Encoder input tensor of shape [B, seq_len, enc_in].
+        x_mark_enc : Optional[torch.Tensor]
+            Encoder temporal marks of shape [B, seq_len, mark_dim], or None.
+        x_dec : Optional[torch.Tensor]
+            Decoder input tensor, or None. Used for forecasting tasks.
+        x_mark_dec : Optional[torch.Tensor]
+            Decoder temporal marks, or None. Used for forecasting tasks.
+        mask : Optional[torch.Tensor], optional
+            Binary mask for imputation task of shape [B, seq_len, enc_in],
+            where 1 indicates observed and 0 indicates missing, by default None.
+
+        Returns
+        -------
+        Optional[torch.Tensor]
+            Task-dependent output:
+            - Forecasting: [B, pred_len, c_out]
+            - Imputation: [B, seq_len, c_out]
+            - Anomaly detection: [B, seq_len, c_out]
+            - Classification: [B, num_classes]
+            - None if task_name is not recognized.
+        """
         if (
             self.task_name == "long_term_forecast"
             or self.task_name == "short_term_forecast"

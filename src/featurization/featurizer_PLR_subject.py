@@ -1,8 +1,9 @@
 from copy import deepcopy
+from typing import Any, Optional
 
-from loguru import logger
 import numpy as np
 import polars as pl
+from loguru import logger
 from omegaconf import DictConfig
 from sklearn.metrics import auc
 
@@ -13,7 +14,28 @@ from src.featurization.feature_utils import (
 )
 
 
-def nan_auc(x, y, method=""):
+def nan_auc(x: np.ndarray, y: np.ndarray, method: str = "") -> float:
+    """Compute AUC while handling NaN values.
+
+    Parameters
+    ----------
+    x : array-like
+        X values for AUC computation.
+    y : array-like
+        Y values for AUC computation.
+    method : str, optional
+        Method for handling NaNs, by default ''.
+
+    Returns
+    -------
+    float
+        Computed AUC score.
+
+    Raises
+    ------
+    NotImplementedError
+        This function is not yet implemented.
+    """
     raise NotImplementedError
     # if method == "imputation":
     #     data = pd.DataFrame({"x": x, "y": y})
@@ -26,7 +48,23 @@ def nan_auc(x, y, method=""):
     # return auc_score
 
 
-def compute_AUC(y, fps: int = 30, return_abs_AUC: bool = False):
+def compute_AUC(y: np.ndarray, fps: int = 30, return_abs_AUC: bool = False) -> float:
+    """Compute area under the curve for a time series.
+
+    Parameters
+    ----------
+    y : array-like
+        Y values (e.g., pupil size measurements).
+    fps : int, optional
+        Frames per second for time axis calculation, by default 30.
+    return_abs_AUC : bool, optional
+        If True, return absolute value of AUC, by default False.
+
+    Returns
+    -------
+    float
+        AUC value, or NaN if y contains NaN values.
+    """
     x = np.linspace(0, len(y) - 1, len(y)) / fps
     if np.any(np.isnan(y)):
         # what to do with missing values?
@@ -42,9 +80,44 @@ def compute_AUC(y, fps: int = 30, return_abs_AUC: bool = False):
 
 
 def compute_feature(
-    feature_samples, feature, feature_params, feature_col="imputation_mean"
-):
-    def get_amplitude_feature(feature_samples, feature, feature_params, feature_col):
+    feature_samples: pl.DataFrame,
+    feature: str,
+    feature_params: dict[str, Any],
+    feature_col: str = "imputation_mean",
+) -> dict[str, Any]:
+    """Compute a single feature from sampled time points.
+
+    Dispatches to amplitude or timing feature computation based on
+    feature_params['measure'].
+
+    Parameters
+    ----------
+    feature_samples : pl.DataFrame
+        Dataframe with time points within the feature window.
+    feature : str
+        Feature name being computed.
+    feature_params : dict
+        Feature parameters including 'measure' and 'stat'.
+    feature_col : str, optional
+        Column name for feature values, by default 'imputation_mean'.
+
+    Returns
+    -------
+    dict
+        Feature dictionary with 'value', 'std', 'ci_pos', and 'ci_neg'.
+
+    Raises
+    ------
+    NotImplementedError
+        If feature measure type is not 'amplitude' or 'timing'.
+    """
+
+    def get_amplitude_feature(
+        feature_samples: pl.DataFrame,
+        feature: str,
+        feature_params: dict[str, Any],
+        feature_col: str,
+    ) -> dict[str, Any]:
         y = feature_samples[feature_col].to_numpy()
         if "CI_pos" not in feature_samples.columns:
             logger.error("No confidence interval columns found in the feature samples")
@@ -104,7 +177,12 @@ def compute_feature(
 
         return feature_dict
 
-    def get_timing_feature(feature_samples, feature, feature_params, feature_col):
+    def get_timing_feature(
+        feature_samples: pl.DataFrame,
+        feature: str,
+        feature_params: dict[str, Any],
+        feature_col: str,
+    ) -> dict[str, Any]:
         t0 = feature_samples[0, "time"]
         min_time = get_top1_of_col(feature_samples, feature_col, descending=False).item(
             0, "time"
@@ -142,14 +220,46 @@ def compute_feature(
 
 
 def get_individual_feature(
-    df_subject,
-    light_timing,
-    feature_cfg,
+    df_subject: pl.DataFrame,
+    light_timing: dict[str, Any],
+    feature_cfg: DictConfig,
     color: str,
     feature: str,
-    feature_params,
-    feature_col="mean",
-):
+    feature_params: dict[str, Any],
+    feature_col: str = "mean",
+) -> Optional[dict[str, Any]]:
+    """Extract a single feature for a subject at a specific light color.
+
+    Converts relative timing to absolute, extracts samples within the
+    time window, and computes the feature value.
+
+    Parameters
+    ----------
+    df_subject : pl.DataFrame
+        Subject dataframe with time series data.
+    light_timing : dict
+        Light timing information with onset/offset times.
+    feature_cfg : DictConfig
+        Feature configuration.
+    color : str
+        Light color ('Red' or 'Blue').
+    feature : str
+        Feature name to compute.
+    feature_params : dict
+        Feature parameters with timing and statistic info.
+    feature_col : str, optional
+        Column name for feature values, by default 'mean'.
+
+    Returns
+    -------
+    dict or None
+        Feature dictionary with value, std, and CI, or None on error.
+
+    Raises
+    ------
+    Exception
+        Re-raised if error occurs during feature extraction.
+    """
     # subject_code = df_subject["subject_code"].to_numpy()[0]
     # Get the absolute timing from the recording
     feature_params_abs = convert_relative_timing_to_absolute_timing(
@@ -172,18 +282,37 @@ def get_individual_feature(
             )
         )
         raise e
-        feature_dict = None
 
     return feature_dict
 
 
 def get_features_per_color(
     df_subject: pl.DataFrame,
-    light_timing: dict,
+    light_timing: dict[str, Any],
     bin_cfg: DictConfig,
     color: str,
     feature_col: str,
-):
+) -> dict[str, Optional[dict[str, Any]]]:
+    """Compute all configured features for a specific light color.
+
+    Parameters
+    ----------
+    df_subject : pl.DataFrame
+        Subject dataframe with time series data.
+    light_timing : dict
+        Light timing information with onset/offset times.
+    bin_cfg : DictConfig
+        Configuration defining which features to compute.
+    color : str
+        Light color ('Red' or 'Blue').
+    feature_col : str
+        Column name for feature values.
+
+    Returns
+    -------
+    dict
+        Dictionary keyed by feature name containing feature dictionaries.
+    """
     features = {}
     for feature in bin_cfg.keys():
         features[feature] = get_individual_feature(
@@ -199,8 +328,26 @@ def get_features_per_color(
     return features
 
 
-def check_that_features_are_not_the_same_for_colors(features):
-    def compare_lists(list1, list2):
+def check_that_features_are_not_the_same_for_colors(
+    features: dict[str, dict[str, dict[str, Any]]],
+) -> None:
+    """Validate that red and blue light features are different.
+
+    Ensures that features computed for different light colors are not
+    identical, which would indicate a data processing error.
+
+    Parameters
+    ----------
+    features : dict
+        Dictionary keyed by color containing feature dictionaries.
+
+    Raises
+    ------
+    ValueError
+        If feature values are identical for both colors.
+    """
+
+    def compare_lists(list1: list[Any], list2: list[Any]) -> bool:
         return all([list1[i] != list2[i] for i in range(len(list1))])
 
     vals = {}

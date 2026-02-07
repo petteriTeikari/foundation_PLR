@@ -2,9 +2,10 @@ import warnings
 
 import torch
 from loguru import logger
+
 from src.imputation.momentfm.moment_utils import (
-    check_output_for_nans,
     add_empty_channel,
+    check_output_for_nans,
     remove_empty_channel,
 )
 
@@ -20,6 +21,51 @@ def momentfm_forward_pass(
     detect_anomalies: bool = False,
     task_name: str = None,
 ):
+    """
+    Execute forward pass through MOMENT model.
+
+    Handles data formatting, model inference, and loss computation for
+    reconstruction-based outlier detection.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        MOMENT model.
+    batch_x : torch.Tensor
+        Input batch of shape (batch_sz, no_timesteps).
+    labels : torch.Tensor
+        Outlier labels of shape (batch_sz, no_timesteps).
+    input_masks : torch.Tensor
+        Masks indicating valid timepoints.
+    device : str
+        Device to run on ('cpu' or 'cuda').
+    criterion : torch.nn.Module, optional
+        Loss function. If None, loss is not computed. Default is None.
+    anomaly_criterion : str, optional
+        Anomaly detection criterion type. Default is None.
+    detect_anomalies : bool, optional
+        Whether to use detect_anomalies method. Default is False.
+    task_name : str, optional
+        Task name for logging. Default is None.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - output : object
+            MOMENT model output with reconstruction.
+        - loss : torch.Tensor or None
+            Reconstruction loss if criterion provided.
+        - valid_dict : dict
+            Dictionary with valid_x, valid_recon, valid_labels.
+
+    Raises
+    ------
+    NotImplementedError
+        If detect_anomalies=True (produces unexpected results).
+    ValueError
+        If computed loss is NaN.
+    """
     # The data is expected to be 3D (batch_sz, no_channels, no_timesteps)
     batch_x = add_empty_channel(batch_x.to(device).float())
     assert (

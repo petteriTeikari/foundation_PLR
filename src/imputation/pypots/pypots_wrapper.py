@@ -1,8 +1,9 @@
-from loguru import logger
 import os
 import time
-from omegaconf import DictConfig
+from typing import Any, Dict, Optional, Tuple
 
+from loguru import logger
+from omegaconf import DictConfig
 
 from src.imputation.impute_with_models import pypots_imputer_wrapper
 from src.imputation.pypots.pypots_utils import (
@@ -12,12 +13,12 @@ from src.imputation.pypots.pypots_utils import (
 
 
 def pypots_wrapper(
-    source_data: dict,
+    source_data: Dict[str, Any],
     model_cfg: DictConfig,
     cfg: DictConfig,
-    model_name: str = None,
-    run_name: str = None,
-):
+    model_name: Optional[str] = None,
+    run_name: Optional[str] = None,
+) -> Tuple[Any, Dict[str, Any]]:
     """
     Wrapper function for the PyPOTS models
     https://github.com/WenjieDu/PyPOTS
@@ -52,8 +53,12 @@ def pypots_wrapper(
 
 
 def saits_model_wrapper(
-    dataset, cfg, model_params, artifact_dir: str = None, results: dict = None
-):
+    dataset: Dict[str, Any],
+    cfg: DictConfig,
+    model_params: DictConfig,
+    artifact_dir: Optional[str] = None,
+    results: Optional[Dict[str, Any]] = None,
+) -> Tuple[Any, Dict[str, Any]]:
     from pypots.imputation import SAITS
 
     n_steps = dataset["X"].shape[1]
@@ -81,16 +86,16 @@ def saits_model_wrapper(
 
 
 def pypots_model_wrapper(
-    dataset_train: dict,
-    dataset_test: dict,
+    dataset_train: Dict[str, Any],
+    dataset_test: Dict[str, Any],
     cfg: DictConfig,
     model_params: DictConfig,
     artifact_dir: str,
     model_name: str,
-):
+) -> Tuple[Any, Dict[str, Any]]:
     from pypots.imputation import (
-        SAITS,
         CSDI,
+        SAITS,
         TimesNet,
     )  # will import the annoying ASCII logo
 
@@ -146,7 +151,9 @@ def pypots_model_wrapper(
     return model, model_artifacts
 
 
-def export_pypots_model(model, model_path, results: dict, debug_load: bool = True):
+def export_pypots_model(
+    model: Any, model_path: str, results: Dict[str, Any], debug_load: bool = True
+) -> Dict[str, Any]:
     artifact_dir, fname = os.path.split(model_path)
     if not os.path.exists(artifact_dir):
         logger.warning(

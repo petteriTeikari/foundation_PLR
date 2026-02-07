@@ -1,18 +1,38 @@
 from copy import deepcopy
 
 import numpy as np
+from loguru import logger
 from momentfm.utils.anomaly_detection_metrics import (
     adjust_predicts,
     f1_score,
 )
 from omegaconf import DictConfig
-from loguru import logger
 from sklearn.metrics import confusion_matrix
 
 from src.imputation.momentfm.moment_utils import reshape_np_array_windows
 
 
 def get_best_outlier_metric(scalar_metrics, outlier_model_cfg) -> float:
+    """
+    Retrieve the best outlier detection metric value based on configuration.
+
+    Parameters
+    ----------
+    scalar_metrics : dict
+        Dictionary containing computed metrics with a 'global' key for global metrics.
+    outlier_model_cfg : dict or DictConfig
+        Outlier model configuration containing EVALUATION.best_metric.
+
+    Returns
+    -------
+    float
+        The value of the specified best metric from global metrics.
+
+    Raises
+    ------
+    ValueError
+        If the specified metric is not found in scalar_metrics.
+    """
     metric_name = outlier_model_cfg["EVALUATION"]["best_metric"]
     if metric_name in scalar_metrics["global"]:
         return scalar_metrics["global"][metric_name]
@@ -22,6 +42,21 @@ def get_best_outlier_metric(scalar_metrics, outlier_model_cfg) -> float:
 
 
 def anomaly_MSE_metric(trues, preds):
+    """
+    Compute element-wise Mean Squared Error as anomaly score.
+
+    Parameters
+    ----------
+    trues : np.ndarray
+        Ground truth values (observed time series).
+    preds : np.ndarray
+        Predicted values from the reconstruction model.
+
+    Returns
+    -------
+    np.ndarray
+        Element-wise squared error between true and predicted values.
+    """
     return (trues - preds) ** 2
 
 
@@ -31,6 +66,33 @@ def adjbestf1_with_threshold(
     n_splits: int = 100,
     adj_f1_threshold: float = None,
 ):
+    """
+    Compute adjusted best F1 score with optimal threshold selection.
+
+    Finds the threshold that maximizes the adjusted F1 score for anomaly detection.
+    The adjustment accounts for temporal nature by crediting detection of any
+    timestep within an anomaly sequence as correct detection of the full sequence.
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        Ground truth binary labels (1 for anomaly, 0 for normal).
+    y_scores : np.ndarray
+        Anomaly scores (higher indicates more anomalous).
+    n_splits : int, optional
+        Number of threshold candidates to evaluate. Default is 100.
+    adj_f1_threshold : float, optional
+        If provided, use this fixed threshold instead of the optimal one.
+        Useful for applying a global threshold to subjectwise evaluation.
+
+    Returns
+    -------
+    best_adjusted_f1 : float
+        The best (or fixed threshold) adjusted F1 score.
+    best_threshold : float
+        The threshold that achieved the best F1 (always returns optimal,
+        even when adj_f1_threshold is provided for comparison).
+    """
     # modified from the original MOMENT code
     thresholds = np.linspace(y_scores.min(), y_scores.max(), n_splits)
     adjusted_f1 = np.zeros(thresholds.shape)
@@ -63,6 +125,30 @@ def adjbestf1_with_threshold(
 
 
 def metrics_per_split_v2(split_results, split, cfg, outlier_model_cfg):
+    """
+    Compute anomaly detection metrics for a single data split (version 2).
+
+    This version reshapes windowed arrays before computing metrics and uses
+    the extended outlier detection evaluation module.
+
+    Parameters
+    ----------
+    split_results : dict
+        Dictionary containing 'arrays' with 'trues', 'preds', and 'labels'.
+    split : str
+        Name of the data split (e.g., 'train', 'test').
+    cfg : DictConfig
+        Main configuration object.
+    outlier_model_cfg : DictConfig
+        Outlier model specific configuration.
+
+    Returns
+    -------
+    metrics : dict
+        Dictionary containing 'arrays_flat' and 'scalars' with computed metrics.
+    pred_mask : dict
+        Dictionary containing predicted anomaly mask in 'arrays.pred_mask'.
+    """
     from src.anomaly_detection.extra_eval.eval_outlier_detection import (
         get_scalar_outlier_metrics,
     )
@@ -103,6 +189,28 @@ def metrics_per_split_v2(split_results, split, cfg, outlier_model_cfg):
 
 
 def metrics_per_split(split_results, split):
+    """
+    Compute anomaly detection metrics for a single data split.
+
+    Computes MSE-based anomaly scores and adjusted best F1 with optimal threshold.
+    Uses the same scalar vs array split as imputation metrics for easy MLflow logging.
+
+    Parameters
+    ----------
+    split_results : dict
+        Dictionary containing 'arrays' with shape (no_batches, batch_size, n_timesteps)
+        and 'arrays_flat' with flattened valid data.
+    split : str
+        Name of the data split (e.g., 'train', 'test').
+
+    Returns
+    -------
+    metrics : dict
+        Dictionary with 'scalars' (f1, adjbestf1_threshold, fp),
+        'arrays' (MSE), and 'arrays_flat' keys.
+    preds : dict
+        Dictionary containing predicted anomaly mask in 'arrays.pred_mask'.
+    """
     # Using the same scalar vs. array split here as for imputation metrics
     # Easy to log all the scalar metrics to MLflow, and then arrays can be useful for plotting
     metrics = {}
@@ -172,9 +280,31 @@ def compute_outlier_detection_metrics(
     outlier_results: dict, cfg: DictConfig, outlier_model_cfg: DictConfig
 ):
     """
+    Compute outlier detection metrics across all data splits.
+
+    Iterates over all splits in outlier_results and computes per-split metrics
+    using MSE-based anomaly scoring and adjusted best F1.
+
+    Parameters
+    ----------
+    outlier_results : dict
+        Dictionary mapping split names to split results containing arrays.
+    cfg : DictConfig
+        Main configuration object.
+    outlier_model_cfg : DictConfig
+        Outlier model specific configuration.
+
+    Returns
+    -------
+    metrics : dict
+        Dictionary mapping split names to their computed metrics.
+    preds : dict
+        Dictionary mapping split names to their predicted anomaly masks.
+
+    References
+    ----------
     https://github.com/moment-timeseries-foundation-model/moment/blob/main/tutorials/anomaly_detection.ipynb
     """
-
     metrics, preds = {}, {}
     for split, split_results in outlier_results.items():
         metrics[split], preds[split] = metrics_per_split(split_results, split)

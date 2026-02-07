@@ -1,9 +1,9 @@
 import numpy as np
-from loguru import logger
 import torch
-from torch import optim
 import torch.nn as nn
+from loguru import logger
 from momentfm.utils.forecasting_metrics import sMAPELoss
+from torch import optim
 
 from src.anomaly_detection.anomaly_utils import (
     check_outlier_results,
@@ -14,6 +14,28 @@ from src.anomaly_detection.momentfm_outlier.moment_optims import (
 
 
 def select_criterion(loss_type: str = "mse", reduction: str = "none", **kwargs):
+    """
+    Select loss criterion for reconstruction.
+
+    Parameters
+    ----------
+    loss_type : str, optional
+        Type of loss: 'mse', 'mae', 'huber', or 'smape'. Default is 'mse'.
+    reduction : str, optional
+        Reduction mode: 'none', 'mean', or 'sum'. Default is 'none'.
+    **kwargs : dict
+        Additional arguments (e.g., delta for Huber loss).
+
+    Returns
+    -------
+    torch.nn.Module
+        The configured loss criterion.
+
+    Raises
+    ------
+    NotImplementedError
+        If loss_type is not supported.
+    """
     if loss_type == "mse":
         criterion = nn.MSELoss(reduction=reduction)
     elif loss_type == "mae":
@@ -31,6 +53,30 @@ def select_criterion(loss_type: str = "mse", reduction: str = "none", **kwargs):
 def select_optimizer(
     model, init_lr: float, weight_decay: float, optimizer_name: str = "AdamW"
 ):
+    """
+    Select optimizer for model training.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Model whose parameters to optimize.
+    init_lr : float
+        Initial learning rate.
+    weight_decay : float
+        Weight decay coefficient.
+    optimizer_name : str, optional
+        Optimizer type: 'AdamW' or 'Adam'. Default is 'AdamW'.
+
+    Returns
+    -------
+    torch.optim.Optimizer
+        Configured optimizer.
+
+    Raises
+    ------
+    NotImplementedError
+        If optimizer_name is not supported.
+    """
     if optimizer_name == "AdamW":
         optimizer = optim.AdamW(
             model.parameters(),
@@ -72,7 +118,36 @@ def init_lr_scheduler(
     type: str = "linearwarmupcosinelr",
 ):
     """
-    The Class implementation of the original paper was nicer
+    Initialize learning rate scheduler.
+
+    Parameters
+    ----------
+    optimizer : torch.optim.Optimizer
+        Optimizer to schedule.
+    max_epoch : int
+        Maximum number of training epochs.
+    min_lr : float
+        Minimum learning rate.
+    init_lr : float
+        Initial learning rate.
+    decay_rate : float
+        Learning rate decay rate.
+    warmup_start_lr : float
+        Starting learning rate for warmup.
+    warmup_steps : int
+        Number of warmup steps.
+    train_dataloader : torch.utils.data.DataLoader
+        Training dataloader (for steps_per_epoch).
+    pct_start : float
+        Percentage of cycle spent increasing LR (for OneCycleLR).
+    type : str, optional
+        Scheduler type: 'linearwarmupcosinelr', 'onecyclelr', or 'none'.
+        Default is 'linearwarmupcosinelr'.
+
+    Returns
+    -------
+    object or None
+        The configured scheduler, or None if type='none'.
     """
 
     if type == "linearwarmupcosinelr":
@@ -101,6 +176,19 @@ def init_lr_scheduler(
 
 
 def dtype_map(dtype: str):
+    """
+    Map string dtype to PyTorch dtype.
+
+    Parameters
+    ----------
+    dtype : str
+        String representation of dtype (e.g., 'float16', 'float32').
+
+    Returns
+    -------
+    torch.dtype
+        Corresponding PyTorch dtype.
+    """
     map = {
         "float16": torch.float16,
         "float32": torch.float32,
@@ -117,6 +205,29 @@ def dtype_map(dtype: str):
 
 
 def debug_model_outputs(model, loss, outputs, batch_x, **kwargs):
+    """
+    Debug model outputs and gradients for training issues.
+
+    Checks for NaN/Inf in loss, outputs, and gradients across model components.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        MOMENT model to debug.
+    loss : torch.Tensor
+        Current loss value.
+    outputs : object
+        Model outputs with 'illegal_output' attribute.
+    batch_x : torch.Tensor
+        Input batch (currently unused).
+    **kwargs : dict
+        Additional arguments (currently unused).
+
+    Notes
+    -----
+    Triggers breakpoint if loss is NaN/Inf or outputs are illegal.
+    Logs warning if gradients contain NaN/Inf values.
+    """
     # Debugging code
     if torch.any(torch.isnan(loss)) or torch.any(torch.isinf(loss)) or (loss < 1e-3):
         logger.error(f"Loss is NaN or Inf or too small. Loss is {loss.item()}.")
@@ -165,6 +276,29 @@ def debug_model_outputs(model, loss, outputs, batch_x, **kwargs):
 
 
 def rearrange_moment_outlier_finetune_output(eval_dicts, best_epoch):
+    """
+    Rearrange fine-tuning output to match expected format.
+
+    Extracts metrics and predictions for the best epoch from evaluation results.
+
+    Parameters
+    ----------
+    eval_dicts : dict
+        Evaluation results per epoch and split.
+    best_epoch : int
+        Index of the best epoch.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - eval_dicts : dict
+            Original evaluation dictionaries.
+        - metrics : dict
+            Metrics per split for best epoch.
+        - preds : dict
+            Predictions per split for best epoch.
+    """
     metrics, preds = {}, {}
     for split in eval_dicts[best_epoch]:
         metrics[split] = eval_dicts[best_epoch][split]["results_dict"]["metrics"]
@@ -178,6 +312,27 @@ def rearrange_moment_outlier_finetune_output(eval_dicts, best_epoch):
 
 
 def rearrange_moment_outlier_zeroshot_output(outlier_results):
+    """
+    Rearrange zero-shot output to match expected format.
+
+    Extracts metrics and predictions from zero-shot evaluation results.
+
+    Parameters
+    ----------
+    outlier_results : dict
+        Zero-shot outlier detection results per split.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - outlier_results : dict
+            Original results.
+        - metrics : dict
+            Metrics per split.
+        - preds : dict
+            Predictions per split.
+    """
     metrics, preds = {}, {}
     check_outlier_results(outlier_results=outlier_results)
     for split in outlier_results:
@@ -188,6 +343,19 @@ def rearrange_moment_outlier_zeroshot_output(outlier_results):
 
 
 def list_of_arrays_to_array(list_of_arrays: list) -> np.ndarray:
+    """
+    Concatenate list of arrays into single array.
+
+    Parameters
+    ----------
+    list_of_arrays : list
+        List of numpy arrays to concatenate.
+
+    Returns
+    -------
+    np.ndarray
+        Concatenated array. 3D arrays are squeezed to 2D.
+    """
     for i in range(len(list_of_arrays)):
         if i == 0:
             array_out = list_of_arrays[i]
@@ -209,12 +377,49 @@ def check_if_improved(
     cfg,
     finetune_cfg,
 ):
+    """
+    Check if model performance has improved.
+
+    Compares current validation loss and metric against best values.
+
+    Parameters
+    ----------
+    cur_epoch : int
+        Current training epoch.
+    loss : torch.Tensor
+        Current training loss.
+    eval_dicts : dict
+        Evaluation results for all splits.
+    best_validation_loss : float
+        Best validation loss so far.
+    best_validation_metric : float
+        Best validation metric so far.
+    cfg : DictConfig
+        Full Hydra configuration.
+    finetune_cfg : DictConfig
+        Fine-tuning configuration.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - improved_loss : bool
+            Whether validation loss improved.
+        - best_validation_loss : float
+            Updated best validation loss.
+        - best_validation_metric : float
+            Updated best validation metric.
+
+    Notes
+    -----
+    Assumes larger metric values are better.
+    """
     improved_loss = False
 
     # Log the training loss
     if cfg["EXPERIMENT"]["debug"]:
         logger.info(
-            f"{cur_epoch+1}/{finetune_cfg['max_epoch']}: Training Loss {loss.item():.3f}"
+            f"{cur_epoch + 1}/{finetune_cfg['max_epoch']}: Training Loss {loss.item():.3f}"
         )
 
     # check if loss has improved

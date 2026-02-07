@@ -1,11 +1,11 @@
-import torch
 import momentfm
-from omegaconf import DictConfig
+import torch
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.anomaly_detection.anomaly_utils import (
-    check_split_results,
     check_outlier_results,
+    check_split_results,
 )
 from src.anomaly_detection.momentfm_outlier.moment_anomaly_utils import (
     rearrange_moment_outlier_zeroshot_output,
@@ -26,6 +26,42 @@ def momentfm_outlier_zeroshot(
     task_name: str,
     tqdm_string="Zero-shot ",
 ):
+    """
+    Run zero-shot outlier detection with MOMENT.
+
+    Uses the pretrained MOMENT model without fine-tuning to detect outliers
+    based on reconstruction error.
+
+    Parameters
+    ----------
+    model : momentfm.MOMENTPipeline
+        Pretrained MOMENT model.
+    dataloaders : dict[str, torch.utils.data.DataLoader]
+        Dictionary of dataloaders for each split.
+    data_dict : dict
+        Data dictionary with arrays and metadata.
+    cfg : DictConfig
+        Full Hydra configuration.
+    outlier_model_cfg : DictConfig
+        Model configuration.
+    run_name : str
+        MLflow run name.
+    task_name : str
+        Task name for logging.
+    tqdm_string : str, optional
+        Progress bar prefix. Default is "Zero-shot ".
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - outlier_results : dict
+            Per-split outlier detection results.
+        - metrics : dict
+            Evaluation metrics per split.
+        - preds : dict
+            Predictions per split.
+    """
     # We can compute the same loss as when finetuning, even though we are not optimizing any model parameters
     criterion = select_criterion(
         loss_type=outlier_model_cfg["LINEAR_PROBING"]["loss_type"], reduction="mean"

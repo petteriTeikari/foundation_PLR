@@ -1,6 +1,6 @@
+import polars as pl
 from loguru import logger
 from omegaconf import DictConfig
-import polars as pl
 
 from src.anomaly_detection.anomaly_detection import (
     outlier_detection_PLR_workflow,
@@ -20,16 +20,36 @@ from src.orchestration.hyperparameter_sweep_utils import define_hyperparam_group
 # )
 def flow_anomaly_detection(cfg: DictConfig, df: pl.DataFrame) -> pl.DataFrame:
     """
-    Placeholder for anomaly detection
-    - df: polars.DataFrame
-        - 'pupil_orig': Original recording coming from the pupillometer, the pupillometry software has rejected already
-                        some clear artifacts (null), but there are still a lot of blink artifacts (and others) left
-        - 'pupil_raw': This is now the "output from anomaly detection", or the ground truth for this anomaly detection
-                       flow that you would like model. Now all the outliers are set to null, and you can impute then
-                       the missing values to this artifact-free PLR data
-        - 'gt': The ground truth (for imputation) that contains manually-supervised imputation (manually placed points,
-                combined with MissForest imputation), the imputation is then denoised with CEEMD. This signal lacks
-                the "high-frequency noise" that is present in the raw signal
+    Run the complete anomaly detection flow for PLR data.
+
+    Orchestrates outlier detection across multiple hyperparameter configurations
+    and creates ensembles of the individual models.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Hydra configuration containing model and experiment parameters.
+    df : pl.DataFrame
+        Input PLR data with the following columns:
+        - 'pupil_orig': Original recording from the pupillometer. The software
+          has rejected some clear artifacts (null), but blink artifacts remain.
+        - 'pupil_raw': Output from anomaly detection (ground truth for modeling).
+          All outliers are set to null for subsequent imputation.
+        - 'gt': Ground truth for imputation containing manually-supervised
+          imputation (manually placed points + MissForest), denoised with CEEMD.
+          This signal lacks the high-frequency noise present in raw signal.
+
+    Returns
+    -------
+    pl.DataFrame
+        The input DataFrame (currently unchanged; results logged to MLflow).
+
+    Notes
+    -----
+    This function:
+    1. Runs outlier detection for each hyperparameter configuration
+    2. Logs results to MLflow
+    3. Creates ensemble models from individual detectors
     """
     experiment_name = get_outlier_detection_experiment_name(cfg)
     logger.info("FLOW | Name: {}".format(experiment_name))
@@ -46,7 +66,9 @@ def flow_anomaly_detection(cfg: DictConfig, df: pl.DataFrame) -> pl.DataFrame:
 
     # The ensembling part will fetch the trained imputation models from MLflow
     data_dict = convert_df_to_dict(data_df=df, cfg=cfg)
-    task_ensemble(cfg=cfg, task="anomaly_detection", sources=data_dict, recompute_metrics=True)
+    task_ensemble(
+        cfg=cfg, task="anomaly_detection", sources=data_dict, recompute_metrics=True
+    )
     task_ensemble(
         cfg=cfg, task="anomaly_detection", sources=data_dict, recompute_metrics=False
     )

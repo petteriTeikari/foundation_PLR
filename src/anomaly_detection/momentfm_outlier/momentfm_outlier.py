@@ -1,8 +1,8 @@
+import momentfm
 import polars as pl
 import torch
-from omegaconf import DictConfig
 from loguru import logger
-import momentfm
+from omegaconf import DictConfig
 
 from src.anomaly_detection.anomaly_utils import check_outlier_detection_artifact
 from src.anomaly_detection.log_anomaly_detection import log_anomaly_detection_to_mlflow
@@ -17,8 +17,8 @@ from src.anomaly_detection.momentfm_outlier.momentfm_outlier_finetune import (
 )
 from src.data_io.data_wrangler import convert_df_to_dict
 from src.imputation.momentfm.moment_utils import (
-    init_torch_training,
     import_moment_model,
+    init_torch_training,
 )
 
 
@@ -31,6 +31,42 @@ def momentfm_outlier_model_train_and_eval(
     run_name: str,
     model_name: str,
 ):
+    """
+    Train and evaluate MOMENT model for outlier detection.
+
+    Supports both zero-shot and fine-tuning approaches based on configuration.
+
+    Parameters
+    ----------
+    model : momentfm.MOMENTPipeline
+        Pre-loaded MOMENT model.
+    dataloaders : dict[str, torch.utils.data.DataLoader]
+        Dictionary of dataloaders for train, test, outlier_train, outlier_test.
+    data_dict : dict
+        Data dictionary with arrays and metadata.
+    cfg : DictConfig
+        Full Hydra configuration.
+    outlier_model_cfg : DictConfig
+        MOMENT model configuration.
+    run_name : str
+        MLflow run name.
+    model_name : str
+        Model name for logging.
+
+    Returns
+    -------
+    dict
+        Outlier detection artifacts containing:
+        - 'outlier_results': per-epoch results
+        - 'metrics': evaluation metrics
+        - 'preds': predictions
+        - 'metadata': with 'best_epoch'
+
+    Raises
+    ------
+    ValueError
+        If detection_type is not 'zero-shot' or 'fine-tune'.
+    """
     if outlier_model_cfg["MODEL"]["detection_type"] == "zero-shot":
         logger.info("MOMENT | Outlier Detection | Zero-shot")
         logger.info(f"run_name: {run_name}")
@@ -98,6 +134,35 @@ def momentfm_outlier_main(
     run_name: str,
     model_name: str = "MOMENT",
 ):
+    """
+    Main entry point for MOMENT-based outlier detection.
+
+    Initializes the MOMENT model, prepares data, and runs training/evaluation.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        Input PLR data.
+    cfg : DictConfig
+        Full Hydra configuration.
+    outlier_model_cfg : DictConfig
+        MOMENT model configuration.
+    experiment_name : str
+        MLflow experiment name.
+    run_name : str
+        MLflow run name.
+    model_name : str, optional
+        Model name for logging. Default is 'MOMENT'.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - outlier_artifacts : dict
+            Complete outlier detection results.
+        - model : momentfm.MOMENTPipeline
+            The (potentially fine-tuned) MOMENT model.
+    """
     # init stuff
     data_dict = convert_df_to_dict(data_df=df, cfg=cfg)
     dataloaders = init_torch_training(

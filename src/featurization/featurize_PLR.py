@@ -1,13 +1,14 @@
 from copy import deepcopy
+
 import mlflow
 import polars as pl
-from omegaconf import DictConfig
 from loguru import logger
+from omegaconf import DictConfig
 from tqdm import tqdm
 
 from src.data_io.data_wrangler import (
-    get_subject_dict_for_featurization,
     convert_subject_dict_of_arrays_to_df,
+    get_subject_dict_for_featurization,
 )
 from src.featurization.feature_log import (
     export_features_to_mlflow,
@@ -18,10 +19,9 @@ from src.featurization.feature_utils import (
     get_light_stimuli_timings,
 )
 from src.featurization.featurizer_PLR_subject import (
-    get_features_per_color,
     check_that_features_are_not_the_same_for_colors,
+    get_features_per_color,
 )
-
 from src.featurization.visualize_features import visualize_features_of_all_sources
 from src.log_helpers.mlflow_utils import get_mlflow_info
 from src.log_helpers.retrain_or_not import if_refeaturize_from_imputation
@@ -38,6 +38,30 @@ def featurize_subject(
     i: int,
     feature_col: str = "X",
 ):
+    """Compute all features for a single subject.
+
+    Extracts features for each light color and combines with metadata.
+
+    Parameters
+    ----------
+    subject_dict : dict
+        Dictionary containing subject data arrays.
+    subject_code : str
+        Unique subject identifier.
+    cfg : DictConfig
+        Main configuration dictionary.
+    feature_cfg : DictConfig
+        Feature-specific configuration.
+    i : int
+        Subject index in the dataset.
+    feature_col : str, optional
+        Column name for feature values, by default 'X'.
+
+    Returns
+    -------
+    dict
+        Dictionary with features per color and metadata.
+    """
     features = {}
 
     # Convert to Polars dataframe
@@ -71,6 +95,29 @@ def compute_features_from_dict(
     feature_cfg: DictConfig,
     cfg: DictConfig,
 ):
+    """Compute features for all subjects in a data split.
+
+    Destandardizes data if needed, then iterates through subjects to
+    compute hand-crafted PLR features.
+
+    Parameters
+    ----------
+    split_dict : dict
+        Dictionary containing split data with 'data' and 'X' arrays.
+    split : str
+        Split name (e.g., 'train', 'test').
+    preprocess_dict : dict
+        Preprocessing statistics for destandardization.
+    feature_cfg : DictConfig
+        Feature configuration.
+    cfg : DictConfig
+        Main configuration dictionary.
+
+    Returns
+    -------
+    dict
+        Dictionary keyed by subject_code containing computed features.
+    """
     # Destandardize the data (if needed)
     split_dict = destandardize_the_data_dict_for_featurization(
         split, split_dict, preprocess_dict, cfg
@@ -108,6 +155,25 @@ def compute_features_from_dict(
 def get_handcrafted_PLR_features(
     source_data: dict, cfg: DictConfig, feature_cfg: DictConfig
 ):
+    """Extract handcrafted PLR features from source data.
+
+    Processes all splits, computes features per subject, and flattens
+    the nested structure into dataframes.
+
+    Parameters
+    ----------
+    source_data : dict
+        Source data dictionary with 'df', 'preprocess', and 'mlflow' keys.
+    cfg : DictConfig
+        Main configuration dictionary.
+    feature_cfg : DictConfig
+        Feature-specific configuration.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'data' (dataframes per split) and 'mlflow_run'.
+    """
     features_nested = {}
     preprocess_dict = source_data["preprocess"]
     for split, split_dict in deepcopy(source_data["df"]).items():
@@ -133,6 +199,30 @@ def featurization_script(
     feature_cfg: DictConfig,
     run_name: str,
 ):
+    """Execute the featurization pipeline for a single source.
+
+    Runs featurization with MLflow tracking, logging parameters, metrics,
+    and artifacts. Supports handcrafted features and embeddings.
+
+    Parameters
+    ----------
+    experiment_name : str
+        MLflow experiment name for featurization.
+    prev_experiment_name : str
+        Previous experiment name (imputation).
+    cfg : DictConfig
+        Main configuration dictionary.
+    source_name : str
+        Name of the data source being featurized.
+    source_data : dict
+        Source data dictionary.
+    featurization_method : str
+        Method name ('handcrafted_features' or 'embeddings').
+    feature_cfg : DictConfig
+        Feature configuration.
+    run_name : str
+        MLflow run name.
+    """
     if if_refeaturize_from_imputation(
         run_name=run_name, experiment_name=experiment_name, cfg=cfg
     ):
