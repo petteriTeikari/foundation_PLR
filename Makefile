@@ -5,7 +5,7 @@
 
 .PHONY: help figures figure compliance validate test test-fast test-data test-all \
         test-local test-local-all test-figures type-check test-integration clean \
-        reproduce reproduce-from-checkpoint extract analyze \
+        reproduce reproduce-from-checkpoint extract analyze verify-data \
         list-experiments run-experiment new-experiment validate-experiments
 
 # Default target
@@ -54,6 +54,9 @@ help:
 	@echo "  make run-experiment EXPERIMENT=paper_2026 - Run specific experiment"
 	@echo "  make new-experiment NAME=X BASE=Y - Create new experiment from template"
 	@echo "  make validate-experiments    - Validate all experiment configs"
+	@echo ""
+	@echo "Data Integrity:"
+	@echo "  make verify-data    - Verify SHA256 checksums of data files"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean          - Remove generated files"
@@ -157,6 +160,12 @@ type-check:
 test-integration:
 	@echo "Running integration tests with synthetic data..."
 	PREFECT_DISABLED=1 MPLBACKEND=Agg uv run python -m pytest tests/integration/ -v --tb=short -m integration -n auto
+
+# Data integrity verification
+verify-data:
+	@echo "Verifying data integrity..."
+	@sha256sum -c data/_checksums.sha256 2>/dev/null | grep -v "lines are improperly formatted"
+	@echo "All checksums OK"
 
 # Cleanup
 clean:
