@@ -70,7 +70,7 @@ jobs:
 
       - name: Verify config content hashes
         run: |
-          uv run python scripts/config_versioning.py verify
+          uv run python scripts/infra/config_versioning.py verify
 
       - name: Check manifest is up-to-date
         run: |
@@ -79,7 +79,7 @@ jobs:
           import yaml
           from pathlib import Path
           import sys
-          sys.path.insert(0, 'scripts')
+          sys.path.insert(0, 'scripts/infra')
           from config_versioning import generate_manifest, load_manifest
 
           current = generate_manifest()
@@ -108,7 +108,7 @@ jobs:
               for m in mismatches:
                   print(f'  - {m}')
               print()
-              print('Run: python scripts/config_versioning.py generate')
+              print('Run: python scripts/infra/config_versioning.py generate')
               print('Then commit the updated manifest.')
               exit(1)
 
@@ -136,6 +136,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Install PyYAML for config check
+        run: pip install pyyaml
 
       - name: Check for frozen config modifications
         run: |

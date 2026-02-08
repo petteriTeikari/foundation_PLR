@@ -1,0 +1,112 @@
+# Environment Card - Foundation PLR
+# Documents the compute environment for reproducibility
+# Reference: Han (2025) BMC Medical Genomics
+# See also: docs/planning/reproducibility-and-mlsecops-improvements.md (Issue K)
+_version: "1.0.0"
+
+environment_card:
+  name: "Foundation PLR Experiment Environment"
+  version: "1.0.0"
+  last_updated: "2026-02-08"
+
+  languages:
+    python:
+      version: "3.11"
+      constraint: ">=3.11"
+      source: "pyproject.toml line 6"
+    r:
+      version: "4.5.2"
+      source: "renv.lock, rocker/tidyverse:4.5.2"
+    nodejs:
+      version: "20 LTS"
+      source: "Dockerfile (nodesource setup_20.x)"
+
+  package_managers:
+    python: "uv 0.9"
+    r: "renv 1.1.6"
+    javascript: "npm (Node.js 20 LTS bundled)"
+
+  docker_base_images:
+    python_builder:
+      image: "python:3.11-slim-bookworm"
+      # TODO: Add SHA256 digest pin (see GH#43)
+    r_analysis:
+      image: "rocker/tidyverse:4.5.2"
+      # TODO: Add SHA256 digest pin (see GH#43)
+    r_shiny:
+      image: "rocker/shiny:4.5.2"
+      # TODO: Add SHA256 digest pin (see GH#43)
+    uv:
+      image: "ghcr.io/astral-sh/uv:0.9"
+      # TODO: Add SHA256 digest pin (see GH#43)
+
+  key_dependencies:
+    # Pinned exactly (compatibility constraint)
+    - name: "numpy"
+      version: "1.25.2"
+      pin: "exact"
+      reason: "Compatibility constraint with ML packages"
+
+    # Core ML stack
+    - name: "catboost"
+      version: ">=1.2.7"
+      role: "Primary classifier (fixed per research design)"
+    - name: "scikit-learn"
+      version: ">=1.5.2"
+      role: "ML utilities, metrics, preprocessing"
+    - name: "xgboost"
+      version: ">=2.1.2"
+      role: "Comparison classifier"
+
+    # Time series / imputation
+    - name: "pypots"
+      version: ">=0.8.1"
+      role: "SAITS, CSDI, TimesNet imputation"
+    - name: "momentfm"
+      version: ">=0.1.1"
+      role: "MOMENT foundation model"
+
+    # Data / tracking
+    - name: "duckdb"
+      version: ">=1.1.2"
+      role: "Results database, two-block architecture"
+    - name: "mlflow"
+      version: ">=2.22.4"
+      role: "Experiment tracking"
+    - name: "polars"
+      version: ">=1.12.0"
+      role: "DataFrame operations"
+    - name: "pandas"
+      version: ">=2.1.0"
+      role: "DataFrame operations (legacy)"
+
+    # R packages (from renv.lock)
+    - name: "ggplot2"
+      version: "bundled in rocker/tidyverse"
+      role: "Statistical figures"
+    - name: "pminternal"
+      version: "from GitHub"
+      role: "Model instability analysis (Riley 2023)"
+
+  operating_system:
+    development: "Ubuntu 22.04+ / Debian Bookworm (Docker)"
+    ci: "ubuntu-latest (GitHub Actions)"
+
+  hardware:
+    gpu_required: false
+    gpu_recommended: true
+    gpu_notes: >
+      Training imputation models (SAITS, CSDI, MOMENT) benefits from GPU.
+      Classification (CatBoost) is CPU-only.
+      All results can be reproduced from DuckDB checkpoint without GPU.
+
+  lockfiles:
+    python: "uv.lock"
+    r: "renv.lock"
+    javascript: "apps/visualization/package-lock.json"
+
+  reproducibility_notes:
+    - "All random seeds are fixed and documented (data split: 42, CatBoost: 100, XGBoost: 44, foundation models: 13)"
+    - "Two-block architecture: extraction (MLflow->DuckDB) + analysis (DuckDB->figures)"
+    - "Results reproducible from DuckDB checkpoint without retraining"
+    - "Docker images provide full environment reproducibility"

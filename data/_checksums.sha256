@@ -1,0 +1,15 @@
+# SHA256 checksums for data integrity verification
+# Generated: 2026-02-08
+# Verify: cd /path/to/repo && sha256sum -c data/_checksums.sha256
+# If ANY check fails, data may have been corrupted or modified
+#
+# NOTE: data/private/ is gitignored and NOT included here.
+# NOTE: data/r_data/ contains generated visualization data (not checksummed).
+
+# Public results database (406 configs, DuckDB)
+6b21bb658ebed14ce9a43f9165414b30c05d7e064e11402dbc86209800c40738  data/public/foundation_plr_results.db
+9aed64be4b1d07188994eea2fd4e8ade57c273f2c1e860e9a8b1048ce77341af  data/public/DATA_MANIFEST.yaml
+
+# Synthetic demo data (for tests, not real patient data)
+e7bf911a98eef1ce77adfa998f7b1ec1a3c2c42a869f5fd797ff9593a4da07bf  data/synthetic/SYNTH_PLR_DEMO.db
+c2c3eea3751f606d400651d5f9926268ebfb7daf1967b9bf55cfa975402fa2a8  data/synthetic/generation_params.yaml

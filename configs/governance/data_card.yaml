@@ -1,0 +1,172 @@
+# Data Card - SERI PLR Glaucoma Dataset
+# Following Gebru et al. 2021 (Datasheets for Datasets)
+# Content sourced from manuscript methods.tex and results.tex
+# See also: docs/planning/reproducibility-and-mlsecops-improvements.md (Issue B)
+_version: "1.0.0"
+
+data_card:
+  name: "SERI PLR Glaucoma Dataset (Subset)"
+  version: "1.0.0"
+  last_updated: "2026-02-08"
+
+  # --- PROVENANCE ---
+  provenance:
+    original_study: "Najjar et al. 2023"
+    journal: "British Journal of Ophthalmology"
+    doi: "10.1136/bjophthalmol-2021-319938"
+    institution: "Singapore Eye Research Institute (SERI) / Singapore National Eye Centre (SNEC)"
+    ethics_approval: "SingHealth Centralised Institutional Review Board (protocol 2016/2912)"
+    consent: "Written informed consent from all participants"
+    declaration: "Adhered to the tenets of the Declaration of Helsinki"
+    data_collection_period: "See original publication"
+
+  # --- COMPOSITION ---
+  composition:
+    total_subjects: 507
+    classification_subset: 208
+    class_distribution:
+      control: 152
+      glaucoma: 56
+    study_prevalence: 0.269  # 56/208
+    population_prevalence: 0.0354  # Tham 2014
+    events_per_variable:
+      handcrafted: 7.0  # 56 events / 8 features
+      embeddings: 0.58  # 56 events / 96 PCA components
+      epv_threshold: 10  # Conventional minimum
+
+    signal_acquisition:
+      device: "Custom-built handheld pupillometer"
+      sampling_rate_hz: 30
+      protocol_duration_sec: 60
+      samples_per_eye: 1800  # approximate
+      dark_adaptation: false
+      stimuli:
+        blue:
+          wavelength_nm: 469
+          peak_irradiance: "14.2 log photons/cm^2/s"
+        red:
+          wavelength_nm: 640
+          peak_irradiance: "14.0 log photons/cm^2/s"
+      epoch_structure: "Alternating 8s blue/red epochs with 2s interstimulus intervals"
+
+    features_extracted:
+      handcrafted:
+        count: 8
+        description: "4 feature types x 2 stimulus colors (blue 469nm, red 640nm)"
+        types:
+          - name: "Maximum constriction"
+            description: "Peak pupil constriction amplitude during stimulus period"
+          - name: "Phasic response"
+            description: "Rapid transient component of PLR, capturing initial constriction dynamics"
+          - name: "Sustained response"
+            description: "Tonic component at stimulus offset, reflecting steady-state pupillary tone"
+          - name: "PIPR area"
+            description: "Area under post-illumination pupil response curve (melanopsin-dependent)"
+            formula: "PIPR_AUC = integral from t_off to t_off+6s of (1 - D(t)/D_baseline) dt"
+      embeddings:
+        model: "MOMENT"
+        raw_dimensions: 1024
+        pca_reduced: "<=96 (explained_variance=0.95)"
+        note: "Exploratory only due to EPV constraints"
+
+  # --- DEMOGRAPHICS ---
+  demographics:
+    population: "Southeast Asian (Singapore)"
+    ethnicity: "Predominantly Chinese, Malay, Indian"
+    recruitment: "Tertiary eye center (SNEC)"
+    age:
+      glaucoma_mean_years: 67.2
+      control_mean_years: 58.3
+      note: "Significant age difference between groups - known confounder"
+      reference: "Pupil diameter decreases approximately 0.4mm per decade in adulthood"
+    sex: "TBD - extract from original dataset for GH#49"
+    known_confounders:
+      - factor: "Age"
+        effect: "Baseline pupil diameter decreases ~0.4mm/decade"
+        reference: "Sharma et al. 2016"
+      - factor: "Iris pigmentation"
+        effect: "Affects PLR amplitude and latency parameters"
+        reference: "Ishikawa 2021"
+      - factor: "Medications"
+        effect: "Anticholinergics, sympathomimetics alter pupillary responses"
+        status: "Not controlled in dataset"
+      - factor: "Refractive error"
+        effect: "Independent predictor of PLR parameters"
+        reference: "Jendritza et al. 2024"
+
+  # --- GROUND TRUTH ---
+  ground_truth:
+    annotation_method: "Hybrid human-algorithmic (single annotator, PT)"
+    tools: "Custom R Shiny applications (available in project repository)"
+    process:
+      - "Visual inspection of each PLR recording"
+      - "Manual marking of artifact segments (blinks, tracking failures, measurement anomalies)"
+      - "MissForest imputation of marked segments (random forest multivariate)"
+      - "Iterative refinement until visual smoothness achieved"
+      - "Complete ensemble empirical mode decomposition (cEEMD) for noise removal"
+    result: >
+      Best-guess probabilistic estimate of underlying pupil diameter trend
+      rather than a definitive ground truth.
+    limitations:
+      - "Single annotator - no inter-annotator reliability assessed"
+      - "Circular validation: impute from visible segments, validate against visible segments"
+      - "Blink periods are fundamentally unobservable (eyelid occludes camera)"
+      - "Optimized for visual smoothness rather than downstream classification performance"
+      - "Amplitude-based features are preserved (hippus at 0.2-0.4 Hz is below cEEMD cutoff)"
+
+  # --- PRIVACY ---
+  privacy:
+    anonymization: "PLRxxxx codes re-anonymized to Hxxx (control) / Gxxx (glaucoma)"
+    lookup_file: "data/private/subject_lookup.yaml (gitignored)"
+    public_data: "Only Hxxx/Gxxx codes appear in any committed file"
+    enforcement:
+      - "Pre-commit hook scans for PLR\\d{4} patterns"
+      - "CISO Assistant workflow scans PRs"
+      - ".gitignore patterns for data/private/"
+      - "Subject-level JSON files are PRIVATE (excluded from git)"
+
+  # --- KNOWN BIASES ---
+  known_biases:
+    - type: "Spectrum bias"
+      severity: "HIGH"
+      description: >
+        Tertiary eye center recruitment. Definite glaucoma cases and clearly
+        healthy controls overstate discriminative ability vs population screening
+        where borderline cases predominate.
+    - type: "Geographic/ethnic bias"
+      severity: "HIGH"
+      description: >
+        Single-center Singapore cohort (Chinese, Malay, Indian).
+        Unknown generalizability to other populations, especially given
+        iris pigmentation and pupil size variation across ethnicities.
+    - type: "Device bias"
+      severity: "MEDIUM"
+      description: >
+        Custom handheld pupillometer with specific stimulus protocol.
+        Unknown generalizability to desktop pupillometers, different
+        sampling rates, or different stimulus protocols.
+    - type: "Temporal bias"
+      severity: "MEDIUM"
+      description: "Single time point per subject. No longitudinal data."
+    - type: "Prevalence mismatch"
+      severity: "HIGH"
+      description: >
+        Study prevalence 26.9% vs population 3.54% (Tham 2014).
+        PPV/NPV must be recalculated at target prevalence before
+        any deployment consideration.
+
+  # --- RECOMMENDED USES ---
+  recommended_uses:
+    - "Methodology comparison (preprocessing pipeline evaluation)"
+    - "Foundation model benchmarking for biosignal preprocessing"
+    - "Educational: clinical prediction model development"
+  not_recommended:
+    - "Clinical decision-making without external validation"
+    - "Direct deployment at population prevalence without recalibration"
+    - "Comparison of AUROC to Najjar et al. 2023 (different subset, different goal)"
+
+  # --- MAINTENANCE ---
+  maintenance:
+    status: "Frozen for publication"
+    contact: "petteri.teikari@gmail.com"
+    update_policy: "No updates planned. Dataset is fixed for reproducibility."
