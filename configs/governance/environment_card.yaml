@@ -2,6 +2,7 @@
 # Documents the compute environment for reproducibility
 # Reference: Han (2025) BMC Medical Genomics
 # See also: docs/planning/reproducibility-and-mlsecops-improvements.md (Issue K)
+_version: "1.0.0"
 
 environment_card:
   name: "Foundation PLR Experiment Environment"

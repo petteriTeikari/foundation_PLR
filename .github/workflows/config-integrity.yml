@@ -137,6 +137,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install PyYAML for config check
+        run: pip install pyyaml
+
       - name: Check for frozen config modifications
         run: |
           python3 << 'EOF'

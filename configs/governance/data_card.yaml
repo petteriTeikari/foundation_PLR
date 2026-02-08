@@ -2,6 +2,7 @@
 # Following Gebru et al. 2021 (Datasheets for Datasets)
 # Content sourced from manuscript methods.tex and results.tex
 # See also: docs/planning/reproducibility-and-mlsecops-improvements.md (Issue B)
+_version: "1.0.0"
 
 data_card:
   name: "SERI PLR Glaucoma Dataset (Subset)"

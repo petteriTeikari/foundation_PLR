@@ -2,6 +2,7 @@
 # Documents which pipeline stages use which AI/ML methods
 # Distinct from model_card.yaml (which covers the classifier)
 # See also: docs/planning/reproducibility-and-mlsecops-improvements.md (Section 8d)
+_version: "1.0.0"
 
 ai_usage_card:
   name: "Foundation PLR - AI Method Usage"

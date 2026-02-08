@@ -2,6 +2,7 @@
 # Following Mitchell et al. 2019 (Model Cards for Model Reporting)
 # Content sourced from manuscript methods.tex, results.tex, discussion.tex
 # See also: docs/planning/reproducibility-and-mlsecops-improvements.md (Issue B)
+_version: "1.0.0"
 
 model_card:
   name: "CatBoost PLR Glaucoma Screening Classifier"
