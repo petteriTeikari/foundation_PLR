@@ -1,0 +1,130 @@
+# AI Usage Card - Foundation PLR Pipeline
+# Documents which pipeline stages use which AI/ML methods
+# Distinct from model_card.yaml (which covers the classifier)
+# See also: docs/planning/reproducibility-and-mlsecops-improvements.md (Section 8d)
+
+ai_usage_card:
+  name: "Foundation PLR - AI Method Usage"
+  version: "1.0.0"
+  last_updated: "2026-02-08"
+
+  pipeline_stages:
+
+    outlier_detection:
+      description: "Identify artifact segments in PLR signals"
+      total_methods: 11  # Must match registry (configs/mlflow_registry/)
+      methods:
+        traditional:
+          - name: "LOF (Local Outlier Factor)"
+            type: "Unsupervised anomaly detection"
+            library: "scikit-learn"
+          - name: "OneClassSVM"
+            type: "Unsupervised anomaly detection"
+            library: "scikit-learn"
+          - name: "SubPCA (Subspace PCA)"
+            type: "Subspace anomaly detection"
+            library: "custom implementation"
+          - name: "PROPHET"
+            type: "Time series decomposition"
+            library: "prophet"
+        foundation_models:
+          - name: "MOMENT"
+            type: "Time series foundation model (zero-shot and fine-tuned)"
+            library: "momentfm"
+            registry_names:
+              - "MOMENT-gt-finetune"
+              - "MOMENT-gt-zeroshot"
+          - name: "UniTS"
+            type: "Unified time series model (fine-tuned)"
+            library: "custom"
+            registry_names:
+              - "UniTS-gt-finetune"
+          - name: "TimesNet"
+            type: "Temporal 2D-variation model"
+            library: "pypots"
+            registry_names:
+              - "TimesNet-gt"
+        ensemble:
+          - name: "Ensemble (all methods)"
+            registry_name: "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune"
+            combination: "LOF + MOMENT + OneClassSVM + PROPHET + SubPCA + TimesNet + UniTS"
+          - name: "Ensemble Thresholded (FM only)"
+            registry_name: "ensembleThresholded-MOMENT-TimesNet-UniTS-gt-finetune"
+            combination: "MOMENT + TimesNet + UniTS"
+        ground_truth:
+          - name: "pupil-gt"
+            description: "Human-annotated ground truth (single expert)"
+
+    imputation:
+      description: "Reconstruct missing/removed signal segments"
+      total_methods: 8  # Must match registry
+      methods:
+        deep_learning:
+          - name: "SAITS"
+            type: "Self-Attention Imputation for Time Series"
+            library: "pypots"
+          - name: "CSDI"
+            type: "Conditional Score-based Diffusion"
+            library: "pypots"
+          - name: "TimesNet"
+            type: "Temporal 2D-variation (repurposed for imputation)"
+            library: "pypots"
+        foundation_models:
+          - name: "MOMENT"
+            type: "Foundation model fine-tuned for imputation"
+            library: "momentfm"
+        traditional:
+          - name: "MissForest"
+            type: "Random forest multivariate imputation"
+            library: "missforest"
+        ground_truth:
+          - name: "pupil-gt"
+            description: "Human-curated ground truth signal"
+
+    featurization:
+      description: "Extract discriminative features from preprocessed signals"
+      methods:
+        - name: "Handcrafted physiological features"
+          type: "Domain expert features"
+          count: 8
+          features:
+            - "Maximum constriction amplitude (blue + red)"
+            - "Phasic response (blue + red)"
+            - "Sustained response (blue + red)"
+            - "PIPR area (blue + red)"
+          note: "PRIMARY - outperforms embeddings by 9pp"
+        - name: "MOMENT embeddings"
+          type: "Foundation model representations"
+          count: "1024 raw, <=96 after PCA (explained_variance=0.95)"
+          note: "EXPLORATORY - EPV too low for reliable estimation (0.58)"
+
+    classification:
+      description: "Binary glaucoma/control classification"
+      total_classifiers: 5  # Must match registry
+      methods:
+        - name: "CatBoost"
+          role: "FIXED primary classifier (research design)"
+          library: "catboost"
+          hpo: "Optuna"
+          seed: 100
+        - name: "XGBoost"
+          role: "Comparison classifier"
+          library: "xgboost"
+          hpo: "Hyperopt"
+          seed: 44
+        - name: "TabPFN v2"
+          role: "Comparison (tabular foundation model)"
+          note: "v2.5 released after study completion"
+        - name: "TabM"
+          role: "Comparison (modern tabular DL)"
+          config: "tabm-mini (d_block=32, d_embedding=8, k=8)"
+        - name: "Logistic Regression"
+          role: "Linear baseline"
+          library: "scikit-learn"
+
+  ai_development_tools:
+    experiment_tracking: "MLflow"
+    configuration: "Hydra"
+    hyperparameter_optimization: "Optuna (CatBoost), Hyperopt (XGBoost)"
+    ci_cd: "GitHub Actions (5 workflows)"
+    code_generation: "Claude Code (documented in commits via Co-Authored-By)"
