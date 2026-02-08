@@ -165,7 +165,7 @@ make analyze    # DuckDB to figures
 ```
 
 <details>
-<summary>MLflow and Prefect UIs</summary>
+<summary>MLflow UI Example</summary>
 
 <p align="center">
   <img src="docs/assets/images/mlflow_ui.png" alt="MLflow Tracking UI showing experiment runs" width="700">
