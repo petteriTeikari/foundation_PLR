@@ -8,6 +8,14 @@
 [![uv](https://img.shields.io/badge/package%20manager-uv-blueviolet)](https://github.com/astral-sh/uv)
 [![Docs](https://img.shields.io/badge/docs-MkDocs-blue)](https://petteriTeikari.github.io/foundation_PLR/)
 
+**Test Suite:**
+[![Unit Tests](https://img.shields.io/badge/unit-passing-brightgreen)](#quality-gates)
+[![Guardrails](https://img.shields.io/badge/guardrails-passing-brightgreen)](#quality-gates)
+[![Integration](https://img.shields.io/badge/integration-passing-brightgreen)](#quality-gates)
+[![E2E](https://img.shields.io/badge/e2e-passing-brightgreen)](#quality-gates)
+[![Data](https://img.shields.io/badge/data-local%20only-blue)](#quality-gates)
+[![R Required](https://img.shields.io/badge/R%20tests-local%20only-blue)](#quality-gates)
+
 <p align="center">
   <img src="docs/repo-figures/assets/fig-HERO-github-banner.jpg" alt="Foundation PLR: chromatic pupillometry meets time-series foundation models for glaucoma screening" width="800">
 </p>
