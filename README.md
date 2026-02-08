@@ -493,6 +493,7 @@ Open issues for future enhancements -- contributions welcome:
 | [#7](https://github.com/petteriTeikari/foundation_PLR/issues/7) | **Library-agnostic data**: Rename `data/r_data/` to `data/viz_data/`, document JSON schema, add loaders for all viz libraries | Medium |
 | [#43](https://github.com/petteriTeikari/foundation_PLR/issues/43) | **Docker digest pinning**: Pin base images with SHA256 digests for reproducibility (`python:3.11-slim@sha256:...`) | Medium |
 | [#45](https://github.com/petteriTeikari/foundation_PLR/issues/45) | **Docker security hardening**: Container scanning (Trivy), non-root users, multi-stage builds, SBOM generation for deployment | Low |
+| [#48](https://github.com/petteriTeikari/foundation_PLR/issues/48) | **Interactive D3.js visualizations**: Replace static PNGs with browser-based interactive figures using JSON sidecar data (`apps/visualization/`) | Low |
 | [#11](https://github.com/petteriTeikari/foundation_PLR/issues/11) | **SmoothECE**: Implement kernel-smoothed calibration error ([Blasiok & Nakkiran 2023](https://arxiv.org/abs/2309.12236)) as principled replacement for binned ECE | Low |
 
 ### Future Directions
