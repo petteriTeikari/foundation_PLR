@@ -490,10 +490,16 @@ Open issues for future enhancements -- contributions welcome:
 | Issue | Description | Priority |
 |-------|-------------|----------|
 | [#14](https://github.com/petteriTeikari/foundation_PLR/issues/14) | **Test suite DevEx**: Fast staging subset (`make test-staging` <2 min) + scheduled full suite for CI cost reduction | High |
+| [#49](https://github.com/petteriTeikari/foundation_PLR/issues/49) | **Demographic reporting**: Age/sex distributions, subgroup AUROCs, generalizability documentation ([planning doc](docs/planning/reproducibility-and-mlsecops-improvements.md)) | High |
 | [#7](https://github.com/petteriTeikari/foundation_PLR/issues/7) | **Library-agnostic data**: Rename `data/r_data/` to `data/viz_data/`, document JSON schema, add loaders for all viz libraries | Medium |
 | [#43](https://github.com/petteriTeikari/foundation_PLR/issues/43) | **Docker digest pinning**: Pin base images with SHA256 digests for reproducibility (`python:3.11-slim@sha256:...`) | Medium |
+| [#50](https://github.com/petteriTeikari/foundation_PLR/issues/50) | **ML-BOM**: CycloneDX ML Bill of Materials for Python + R + npm dependencies and model components | Medium |
+| [#51](https://github.com/petteriTeikari/foundation_PLR/issues/51) | **Extended governance cards**: Failure Notes, Use Case Card, and Saliency/XAI Card for clinical translation readiness | Medium |
 | [#45](https://github.com/petteriTeikari/foundation_PLR/issues/45) | **Docker security hardening**: Container scanning (Trivy), non-root users, multi-stage builds, SBOM generation for deployment | Low |
 | [#48](https://github.com/petteriTeikari/foundation_PLR/issues/48) | **Interactive D3.js visualizations**: Replace static PNGs with browser-based interactive figures using JSON sidecar data (`apps/visualization/`) | Low |
+| [#52](https://github.com/petteriTeikari/foundation_PLR/issues/52) | **Model artifact signing**: Sigstore/OMS v1.0 for model provenance (deferred until model distribution) | Low |
+| [#53](https://github.com/petteriTeikari/foundation_PLR/issues/53) | **Pickle safety documentation**: Annotate torch.load/pickle.load calls, document safety posture (deferred technical fixes) | Low |
+| [#54](https://github.com/petteriTeikari/foundation_PLR/issues/54) | **Runtime monitoring**: Drift detection, calibration monitoring, alert pipeline (deferred until deployment) | Low |
 | [#11](https://github.com/petteriTeikari/foundation_PLR/issues/11) | **SmoothECE**: Implement kernel-smoothed calibration error ([Blasiok & Nakkiran 2023](https://arxiv.org/abs/2309.12236)) as principled replacement for binned ECE | Low |
 
 ### Future Directions

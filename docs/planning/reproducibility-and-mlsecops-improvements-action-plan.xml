@@ -1,0 +1,994 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Reproducibility & MLSecOps Improvements - Action Plan
+  =====================================================
+  Source: docs/planning/reproducibility-and-mlsecops-improvements.md (Section 8d)
+  Scope: Trivial + Light Work items (estimated total: ~5 hours)
+  Branch: chore/final-housekeeping
+  Created: 2026-02-08
+
+  CRASH-RESISTANT: Each task contains FULL context needed for execution.
+  No external lookups required beyond the files referenced in each task.
+
+  PROGRESS KEY:
+    DONE       = Completed and verified
+    IN_PROGRESS = Currently being worked on
+    PENDING    = Not yet started
+    BLOCKED    = Waiting on dependency
+    SKIPPED    = Intentionally skipped with rationale
+
+  TDD APPROACH: Every task has <verification> with concrete pass/fail checks.
+  Run verification BEFORE marking a task DONE.
+-->
+<action-plan>
+  <metadata>
+    <title>Reproducibility and MLSecOps Improvements - Trivial + Light Work</title>
+    <created>2026-02-08</created>
+    <branch>chore/final-housekeeping</branch>
+    <planning-doc>docs/planning/reproducibility-and-mlsecops-improvements.md</planning-doc>
+    <scope>Section 8d: Trivial (&lt;30 min) + Light Work (1-2 hrs) items</scope>
+    <total-tasks>10</total-tasks>
+    <completed>1</completed>
+    <status>IN_PROGRESS</status>
+  </metadata>
+
+  <!-- ================================================================== -->
+  <!--  SECTION 1: TRIVIAL TASKS (< 30 min each)                         -->
+  <!-- ================================================================== -->
+
+  <task id="T1" status="PENDING" priority="trivial" est-minutes="15"
+        cross-ref="Issue H (Section 9)" commit-with="T2">
+    <title>Create SECURITY.md</title>
+    <output-file>SECURITY.md</output-file>
+    <description>
+      Vulnerability disclosure policy at repo root. GitHub standard template.
+      Signals security awareness to reviewers and enables responsible disclosure.
+    </description>
+    <instructions>
+      Create SECURITY.md at repo root with these sections:
+
+      1. SUPPORTED VERSIONS
+         - Current: main branch (publication freeze, v1.0.0-pub)
+         - Dependency updates: chore/final-housekeeping branch
+         - No SLA on patches (academic project)
+
+      2. REPORTING A VULNERABILITY
+         - Email: petteri.teikari@gmail.com
+         - Do NOT open public GitHub issues for security vulnerabilities
+         - Include: description, steps to reproduce, affected components, severity estimate
+
+      3. RESPONSE TIMELINE
+         - Acknowledgment: 7 days
+         - Assessment: 30 days
+         - Fix (if applicable): 90 days
+         - Standard 90-day responsible disclosure
+
+      4. SCOPE AND LIMITATIONS
+         - This is a local research pipeline, NOT a production service
+         - No web-facing components (MLflow runs locally only)
+         - No untrusted input processing (all data from Najjar et al. 2023)
+         - All model artifacts are internally generated (no 3rd party pickles)
+         - The shared reproducibility artifact is DuckDB (not pickle)
+         - Known: torch.load() calls lack weights_only=True in some files
+           (moment_io.py, units_outlier.py, tabpfn/)
+
+      5. KNOWN SECURITY POSTURE (brief)
+         - Dependabot enabled for pip + npm ecosystems
+         - Pre-commit hooks enforce: no patient IDs, computation decoupling, R hardcoding
+         - CISO Assistant workflow scans PRs for compliance
+         - Branch protection on main (restrict deletions)
+         - See: docs/planning/reproducibility-and-mlsecops-improvements.md
+
+      6. PICKLE SAFETY POSTURE
+         - All pickle/torch.load artifacts are from own MLflow training runs
+         - No external or 3rd party serialized objects are loaded
+         - DuckDB is the shared artifact format for reproducibility
+         - Technical hardening (ModelScan, weights_only) deferred until
+           threat model changes (e.g., accepting external model artifacts)
+    </instructions>
+    <verification>
+      <check id="T1-V1">File exists: SECURITY.md at repo root</check>
+      <check id="T1-V2">Contains section: "Reporting a Vulnerability"</check>
+      <check id="T1-V3">Contains email: petteri.teikari@gmail.com</check>
+      <check id="T1-V4">Contains section: "Scope and Limitations"</check>
+      <check id="T1-V5">Does NOT contain patient IDs (PLRxxxx patterns)</check>
+      <check id="T1-V6">README.md links to SECURITY.md (after T9 updates README)</check>
+    </verification>
+  </task>
+
+  <task id="T2" status="PENDING" priority="trivial" est-minutes="5"
+        cross-ref="Issue I (Section 9)" commit-with="T1">
+    <title>Create CODEOWNERS</title>
+    <output-file>.github/CODEOWNERS</output-file>
+    <description>
+      GitHub CODEOWNERS for automatic review assignment on PRs.
+      Single owner repo - assign all paths to @petteriTeikari.
+    </description>
+    <instructions>
+      Create .github/CODEOWNERS with content:
+
+      ```
+      # CODEOWNERS - Automatic review assignment
+      # See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+      # Default owner for everything
+      * @petteriTeikari
+
+      # Security-sensitive paths (explicit for audit trail)
+      SECURITY.md @petteriTeikari
+      .github/workflows/ @petteriTeikari
+      scripts/security/ @petteriTeikari
+      configs/governance/ @petteriTeikari
+      ```
+
+      NOTE: .github/ directory already exists (has workflows/).
+    </instructions>
+    <verification>
+      <check id="T2-V1">File exists: .github/CODEOWNERS</check>
+      <check id="T2-V2">Contains: * @petteriTeikari</check>
+      <check id="T2-V3">GitHub recognizes it (visible in repo Settings > Branches after push)</check>
+    </verification>
+  </task>
+
+  <task id="T3" status="DONE" priority="trivial" est-minutes="0"
+        cross-ref="Issue I (Section 9)">
+    <title>Branch protection on main</title>
+    <description>Already configured by user via GitHub Settings.</description>
+    <notes>
+      User confirmed 2026-02-08: "protect-main" ruleset active.
+      - Enforcement status: Active
+      - Target branches: Default (main)
+      - Rules: Restrict deletions enabled
+      - Bypass list: empty
+    </notes>
+    <verification>
+      <check id="T3-V1" status="PASS">Ruleset "protect-main" exists and is Active</check>
+      <check id="T3-V2" status="PASS">Restrict deletions is checked</check>
+    </verification>
+  </task>
+
+  <task id="T4" status="PENDING" priority="trivial" est-minutes="10"
+        cross-ref="Issue I (Section 9)" commit-with="T1,T2">
+    <title>Create dependabot.yml</title>
+    <output-file>.github/dependabot.yml</output-file>
+    <description>
+      Configure Dependabot for automated weekly security scans of pip and npm ecosystems.
+      Currently Dependabot alerts exist (75 tracked in dependabot-fix-plan.md) but no
+      dependabot.yml configuration file exists for automated PR creation.
+    </description>
+    <instructions>
+      Create .github/dependabot.yml:
+
+      ```yaml
+      version: 2
+      updates:
+        # Python dependencies (uv/pip ecosystem)
+        - package-ecosystem: "pip"
+          directory: "/"
+          schedule:
+            interval: "weekly"
+            day: "monday"
+          open-pull-requests-limit: 5
+          labels:
+            - "dependencies"
+            - "security"
+          # Group minor/patch updates to reduce PR noise
+          groups:
+            minor-and-patch:
+              update-types:
+                - "minor"
+                - "patch"
+
+        # npm dependencies (apps/visualization/)
+        - package-ecosystem: "npm"
+          directory: "/apps/visualization"
+          schedule:
+            interval: "weekly"
+            day: "monday"
+          open-pull-requests-limit: 3
+          labels:
+            - "dependencies"
+            - "javascript"
+
+        # GitHub Actions
+        - package-ecosystem: "github-actions"
+          directory: "/"
+          schedule:
+            interval: "weekly"
+            day: "monday"
+          open-pull-requests-limit: 3
+          labels:
+            - "dependencies"
+            - "ci"
+      ```
+
+      NOTE: This configures automated PR creation. Security alerts are already
+      enabled separately via GitHub's default Dependabot Alerts feature.
+    </instructions>
+    <verification>
+      <check id="T4-V1">File exists: .github/dependabot.yml</check>
+      <check id="T4-V2">YAML is valid (no syntax errors)</check>
+      <check id="T4-V3">Contains pip ecosystem for "/" directory</check>
+      <check id="T4-V4">Contains npm ecosystem for "/apps/visualization"</check>
+      <check id="T4-V5">Contains github-actions ecosystem</check>
+      <check id="T4-V6">After push: GitHub Settings > Code security shows Dependabot version updates enabled</check>
+    </verification>
+  </task>
+
+  <task id="T5" status="PENDING" priority="trivial" est-minutes="30"
+        cross-ref="Issue K (Section 9)">
+    <title>Create Environment Card</title>
+    <output-file>configs/governance/environment_card.yaml</output-file>
+    <description>
+      Formal record of the compute environment used for all experiments.
+      Han (2025) identifies hardware/software environment differences as a key source
+      of irreproducibility. This card documents the exact versions.
+    </description>
+    <instructions>
+      Create configs/governance/ directory if needed, then create environment_card.yaml:
+
+      ```yaml
+      # Environment Card - Foundation PLR
+      # Documents the compute environment for reproducibility
+      # Reference: Han (2025) BMC Medical Genomics
+
+      environment_card:
+        name: "Foundation PLR Experiment Environment"
+        version: "1.0.0"
+        last_updated: "2026-02-08"
+
+        languages:
+          python:
+            version: "3.11"
+            constraint: ">=3.11"
+            source: "pyproject.toml line 6"
+          r:
+            version: "4.5.2"
+            source: "renv.lock, rocker/tidyverse:4.5.2"
+          nodejs:
+            version: "20 LTS"
+            source: "Dockerfile (nodesource setup_20.x)"
+
+        package_managers:
+          python: "uv 0.9"
+          r: "renv 1.1.6"
+          javascript: "npm (Node.js 20 LTS bundled)"
+
+        docker_base_images:
+          python_builder:
+            image: "python:3.11-slim-bookworm"
+            # TODO: Add SHA256 digest pin (see GH#43)
+          r_analysis:
+            image: "rocker/tidyverse:4.5.2"
+            # TODO: Add SHA256 digest pin (see GH#43)
+          r_shiny:
+            image: "rocker/shiny:4.5.2"
+            # TODO: Add SHA256 digest pin (see GH#43)
+          uv:
+            image: "ghcr.io/astral-sh/uv:0.9"
+            # TODO: Add SHA256 digest pin (see GH#43)
+
+        key_dependencies:
+          # Pinned exactly (compatibility constraint)
+          - name: "numpy"
+            version: "1.25.2"
+            pin: "exact"
+            reason: "Compatibility constraint with ML packages"
+
+          # Core ML stack
+          - name: "catboost"
+            version: ">=1.2.7"
+            role: "Primary classifier (fixed per research design)"
+          - name: "scikit-learn"
+            version: ">=1.5.2"
+            role: "ML utilities, metrics, preprocessing"
+          - name: "xgboost"
+            version: ">=2.1.2"
+            role: "Comparison classifier"
+
+          # Time series / imputation
+          - name: "pypots"
+            version: ">=0.8.1"
+            role: "SAITS, CSDI, TimesNet imputation"
+          - name: "momentfm"
+            version: ">=0.1.1"
+            role: "MOMENT foundation model"
+
+          # Data / tracking
+          - name: "duckdb"
+            version: ">=1.1.2"
+            role: "Results database, two-block architecture"
+          - name: "mlflow"
+            version: ">=2.22.4"
+            role: "Experiment tracking"
+          - name: "polars"
+            version: ">=1.12.0"
+            role: "DataFrame operations"
+          - name: "pandas"
+            version: ">=2.1.0"
+            role: "DataFrame operations (legacy)"
+
+          # R packages (from renv.lock)
+          - name: "ggplot2"
+            version: "bundled in rocker/tidyverse"
+            role: "Statistical figures"
+          - name: "pminternal"
+            version: "from GitHub"
+            role: "Model instability analysis (Riley 2023)"
+
+        operating_system:
+          development: "Ubuntu 22.04+ / Debian Bookworm (Docker)"
+          ci: "ubuntu-latest (GitHub Actions)"
+
+        hardware:
+          gpu_required: false
+          gpu_recommended: true
+          gpu_notes: "Training imputation models (SAITS, CSDI, MOMENT) benefits from GPU. Classification (CatBoost) is CPU-only. All results can be reproduced from DuckDB checkpoint without GPU."
+
+        lockfiles:
+          python: "uv.lock"
+          r: "renv.lock"
+          javascript: "apps/visualization/package-lock.json"
+
+        reproducibility_notes:
+          - "All random seeds are fixed and documented (data split: 42, CatBoost: 100, XGBoost: 44, foundation models: 13)"
+          - "Two-block architecture: extraction (MLflow->DuckDB) + analysis (DuckDB->figures)"
+          - "Results reproducible from DuckDB checkpoint without retraining"
+          - "Docker images provide full environment reproducibility"
+      ```
+
+      Ensure configs/governance/ directory exists (may need to create it).
+    </instructions>
+    <verification>
+      <check id="T5-V1">File exists: configs/governance/environment_card.yaml</check>
+      <check id="T5-V2">YAML is valid: python -c "import yaml; yaml.safe_load(open('configs/governance/environment_card.yaml'))"</check>
+      <check id="T5-V3">Contains Python version 3.11</check>
+      <check id="T5-V4">Contains R version 4.5.2</check>
+      <check id="T5-V5">Contains numpy pin 1.25.2</check>
+      <check id="T5-V6">Contains all 4 Docker base images</check>
+      <check id="T5-V7">Contains lockfile references (uv.lock, renv.lock)</check>
+    </verification>
+  </task>
+
+  <!-- ================================================================== -->
+  <!--  SECTION 2: LIGHT WORK (1-2 hours each)                           -->
+  <!-- ================================================================== -->
+
+  <task id="T6" status="PENDING" priority="light" est-minutes="45"
+        cross-ref="Issue A (Section 9)">
+    <title>Create Reproducibility Checklist</title>
+    <output-file>REPRODUCIBILITY.md</output-file>
+    <description>
+      NeurIPS-style reproducibility checklist linking to existing evidence.
+      Semmelrock et al. (2025, AI Magazine) identify poor documentation as a primary
+      reproducibility barrier. Most evidence already exists - this task is linking, not creating.
+      Desai et al. (2025) taxonomy: our level = Dependent Reproducibility.
+    </description>
+    <instructions>
+      Create REPRODUCIBILITY.md at repo root. Structure:
+
+      ## Reproducibility Checklist
+
+      ### Code Availability
+      - [x] Source code: GitHub public repo, MIT license
+      - [x] Version control: git with locked dependencies (uv.lock, renv.lock)
+      - [x] Entry points: `make reproduce` (full) / `make reproduce-from-checkpoint` (analysis only)
+
+      ### Data Availability
+      - [x] Original dataset: Najjar et al. 2023, Br J Ophthalmol (DOI: 10.1136/bjophthalmol-2021-319938)
+      - [x] Demo data: `data/demo/` with 8 stratified subjects (configs/demo_subjects.yaml)
+      - [x] Results database: `data/public/foundation_plr_results.db` (DuckDB, 406 configs)
+      - [ ] Full raw data: Available upon request (privacy-protected, requires IRB approval)
+
+      ### Computing Infrastructure
+      - [x] Docker images: Dockerfile, Dockerfile.r, Dockerfile.shiny, Dockerfile.test
+      - [x] Python: 3.11 (uv 0.9, uv.lock)
+      - [x] R: 4.5.2 (renv 1.1.6, renv.lock)
+      - [x] CI: GitHub Actions (5 workflows)
+      - [ ] GPU: Optional for training (NVIDIA, any CUDA-capable). Not required for analysis.
+
+      ### Statistical Methodology
+      - [x] Bootstrap: 1000 iterations, 95% CI, stratified resampling
+      - [x] Random seeds: data split=42, CatBoost=100, XGBoost=44, foundation models=13
+      - [x] Train/test split: 70/30, patient-level stratified, fixed across all configs
+      - [x] STRATOS compliance: All 5 domains (Van Calster et al. 2024)
+      - [x] No post-hoc recalibration (preserves diagnostic signal)
+
+      ### Experiment Tracking
+      - [x] MLflow: All 542 runs tracked with full hyperparameters
+      - [x] DuckDB checkpoint: Extracted metrics for 406 valid configurations
+      - [x] Frozen configs: Hydra configuration in configs/
+
+      ### Reproducibility Level (Desai et al. 2025 taxonomy)
+      - **Repeatability**: Same code + same data + same environment = same results (Docker)
+      - **Dependent reproducibility**: Same code + same data + different environment = expected to match within bootstrap CI
+      - **Independent reproducibility**: Different code + same data = not yet tested
+      - **Replicability**: Different data + similar methodology = requires external validation
+
+      ### Known Limitations
+      - Single-center data (SNEC, Singapore)
+      - Single annotator for ground truth (no inter-annotator reliability)
+      - Sample size (N=208 classify, N=507 preprocess) limits subgroup analyses
+      - numpy==1.25.2 hard-pinned for compatibility
+
+      ### Verification Commands
+      ```bash
+      make reproduce-from-checkpoint  # Reproduce analysis from DuckDB
+      make test                       # Run full test suite (2042 tests)
+      make test-staging               # Fast smoke tests
+      ```
+
+      Link from README.md after creation.
+    </instructions>
+    <verification>
+      <check id="T6-V1">File exists: REPRODUCIBILITY.md at repo root</check>
+      <check id="T6-V2">Contains all sections: Code, Data, Computing, Statistical, Tracking, Level, Limitations</check>
+      <check id="T6-V3">Contains random seed values (42, 100, 44, 13)</check>
+      <check id="T6-V4">Contains bootstrap parameters (1000 iterations, 95% CI)</check>
+      <check id="T6-V5">Contains Desai et al. 2025 taxonomy reference</check>
+      <check id="T6-V6">Contains verification commands</check>
+      <check id="T6-V7">Does NOT contain patient IDs (PLRxxxx patterns)</check>
+    </verification>
+  </task>
+
+  <task id="T7" status="PENDING" priority="light" est-minutes="60"
+        cross-ref="Issue B (Section 9)" commit-with="T8">
+    <title>Create Data Card</title>
+    <output-file>configs/governance/data_card.yaml</output-file>
+    <description>
+      Formal dataset documentation following Gebru et al. 2021 (Datasheets for Datasets).
+      ~80% of content extractable from manuscript methods.tex and results.tex.
+      Privacy-conscious: only anonymized codes (Hxxx/Gxxx), never PLRxxxx.
+    </description>
+    <instructions>
+      Create configs/governance/data_card.yaml with content extracted from manuscript:
+
+      ```yaml
+      # Data Card - SERI PLR Glaucoma Dataset
+      # Following Gebru et al. 2021 (Datasheets for Datasets)
+      # Content sourced from manuscript methods.tex and results.tex
+
+      data_card:
+        name: "SERI PLR Glaucoma Dataset (Subset)"
+        version: "1.0.0"
+        last_updated: "2026-02-08"
+
+        # --- PROVENANCE ---
+        provenance:
+          original_study: "Najjar et al. 2023"
+          journal: "British Journal of Ophthalmology"
+          doi: "10.1136/bjophthalmol-2021-319938"
+          institution: "Singapore Eye Research Institute (SERI) / SNEC"
+          ethics_approval: "SingHealth Centralised Institutional Review Board (protocol 2016/2912)"
+          consent: "Written informed consent from all participants"
+          declaration: "Adhered to the tenets of the Declaration of Helsinki"
+          data_collection_period: "See original publication"
+
+        # --- COMPOSITION ---
+        composition:
+          total_subjects: 507
+          classification_subset: 208
+          class_distribution:
+            control: 152
+            glaucoma: 56
+          study_prevalence: 0.269  # 56/208
+          population_prevalence: 0.0354  # Tham 2014
+
+          signal_acquisition:
+            device: "Custom-built handheld pupillometer"
+            sampling_rate_hz: 30
+            protocol_duration_sec: 60
+            samples_per_eye: ~1800
+            stimuli:
+              blue:
+                wavelength_nm: 469
+                peak_irradiance: "14.2 log photons/cm^2/s"
+              red:
+                wavelength_nm: 640
+                peak_irradiance: "14.0 log photons/cm^2/s"
+            epoch_structure: "Alternating 8s blue/red epochs with 2s ISI"
+
+          features_extracted:
+            handcrafted:
+              count: 8
+              description: "4 feature types x 2 stimulus colors (blue, red)"
+              types:
+                - "Maximum constriction amplitude"
+                - "Phasic response (rapid transient component)"
+                - "Sustained response (tonic component at offset)"
+                - "PIPR area (post-illumination pupil response AUC)"
+            embeddings:
+              model: "MOMENT"
+              raw_dimensions: 1024
+              pca_reduced: "<=96 (explained_variance=0.95)"
+
+        # --- DEMOGRAPHICS ---
+        demographics:
+          population: "Southeast Asian (Singapore)"
+          ethnicity: "Predominantly Chinese, Malay, Indian"
+          age:
+            glaucoma_mean: 67.2
+            control_mean: 58.3
+            note: "Significant age difference between groups - known confounder"
+          sex: "TBD - extract from original dataset"
+          known_confounders:
+            - "Age: pupil diameter decreases ~0.4mm/decade"
+            - "Iris pigmentation affects PLR parameters"
+            - "Medications (anticholinergics, sympathomimetics) not controlled"
+
+        # --- GROUND TRUTH ---
+        ground_truth:
+          annotation_method: "Hybrid human-algorithmic (single annotator, PT)"
+          tools: "Custom R Shiny applications"
+          process:
+            - "Visual inspection of each PLR recording"
+            - "Manual marking of artifact segments (blinks, tracking failures)"
+            - "MissForest imputation of marked segments"
+            - "Iterative refinement until visual smoothness"
+            - "cEEMD for high-frequency noise removal"
+          limitations:
+            - "Single annotator - no inter-annotator reliability assessed"
+            - "Circular validation: impute from visible segments, validate against visible segments"
+            - "Blink periods are fundamentally unobservable (eyelid occludes camera)"
+            - "Optimized for visual smoothness, not downstream classification"
+
+        # --- PRIVACY ---
+        privacy:
+          anonymization: "PLRxxxx codes re-anonymized to Hxxx (control) / Gxxx (glaucoma)"
+          lookup_file: "data/private/subject_lookup.yaml (gitignored)"
+          public_data: "Only Hxxx/Gxxx codes in any committed file"
+          enforcement:
+            - "Pre-commit hook scans for PLR\\d{4} patterns"
+            - "CISO Assistant workflow on PRs"
+            - ".gitignore patterns for data/private/"
+          subject_level_json: "PRIVATE (excluded from git, not in public data)"
+
+        # --- KNOWN BIASES ---
+        known_biases:
+          - type: "Spectrum bias"
+            description: "Tertiary eye center recruitment. Definite glaucoma + clearly healthy controls. Overestimates discrimination vs population screening (borderline cases)."
+          - type: "Geographic bias"
+            description: "Single-center Singapore cohort. Unknown generalizability to other populations."
+          - type: "Device bias"
+            description: "Custom handheld pupillometer. Unknown generalizability to other devices."
+          - type: "Temporal bias"
+            description: "Single time point per subject. No longitudinal data."
+          - type: "Prevalence mismatch"
+            description: "Study prevalence 26.9% vs population 3.54%. PPV/NPV must be recalculated at target prevalence."
+
+        # --- RECOMMENDED USES ---
+        recommended_uses:
+          - "Methodology comparison (preprocessing pipeline evaluation)"
+          - "Foundation model benchmarking for biosignal preprocessing"
+          - "Educational: clinical prediction model development"
+        not_recommended:
+          - "Clinical decision-making without external validation"
+          - "Direct deployment at population prevalence without recalibration"
+          - "Comparison of AUROC to Najjar et al. 2023 (different subset, different goal)"
+
+        # --- MAINTENANCE ---
+        maintenance:
+          status: "Frozen for publication"
+          contact: "petteri.teikari@gmail.com"
+          update_policy: "No updates planned. Dataset is fixed for reproducibility."
+      ```
+    </instructions>
+    <verification>
+      <check id="T7-V1">File exists: configs/governance/data_card.yaml</check>
+      <check id="T7-V2">YAML is valid: python -c "import yaml; yaml.safe_load(open('configs/governance/data_card.yaml'))"</check>
+      <check id="T7-V3">Contains provenance with DOI and ethics approval</check>
+      <check id="T7-V4">Contains composition with N=507 and N=208</check>
+      <check id="T7-V5">Contains demographics section</check>
+      <check id="T7-V6">Contains ground truth limitations (single annotator, circular validation)</check>
+      <check id="T7-V7">Contains known biases (spectrum, geographic, device, temporal, prevalence)</check>
+      <check id="T7-V8">Does NOT contain PLRxxxx identifiers</check>
+      <check id="T7-V9">Privacy section documents anonymization scheme</check>
+    </verification>
+  </task>
+
+  <task id="T8" status="PENDING" priority="light" est-minutes="90"
+        cross-ref="Issue B (Section 9)" commit-with="T7">
+    <title>Create Model Card</title>
+    <output-file>configs/governance/model_card.yaml</output-file>
+    <description>
+      Formal model documentation following Mitchell et al. 2019 (Model Cards).
+      ~70% of content extractable from manuscript. Must include clinical fields
+      (failure modes, prevalence adjustment, intended use) per clinical reviewer.
+    </description>
+    <instructions>
+      Create configs/governance/model_card.yaml:
+
+      ```yaml
+      # Model Card - CatBoost Glaucoma Screening Classifier
+      # Following Mitchell et al. 2019 (Model Cards for Model Reporting)
+      # Content sourced from manuscript methods.tex, results.tex, discussion.tex
+
+      model_card:
+        name: "CatBoost PLR Glaucoma Screening Classifier"
+        version: "1.0.0"
+        last_updated: "2026-02-08"
+
+        # --- MODEL DETAILS ---
+        model_details:
+          architecture: "CatBoost (gradient boosting with ordered boosting)"
+          framework: "catboost>=1.2.7 (Python)"
+          task: "Binary classification (control vs glaucoma)"
+          input: "8 handcrafted PLR features (4 types x 2 stimulus colors)"
+          output: "Probability of glaucoma [0, 1]"
+          hyperparameter_optimization: "Optuna"
+          random_seed: 100
+          note: "This is the FIXED classifier per research design. The research question varies preprocessing, not classifiers."
+
+          other_classifiers_evaluated:
+            - name: "XGBoost"
+              seed: 44
+              hpo: "Hyperopt"
+            - name: "TabPFN v2"
+              hpo: "Default (in-context learning)"
+              note: "v2.5 released after study completion"
+            - name: "TabM"
+              config: "tabm-mini (d_block=32, d_embedding=8, k=8)"
+
+        # --- INTENDED USE ---
+        intended_use:
+          primary: "Methodology comparison - evaluating how preprocessing choices affect downstream classification"
+          population: "Adults undergoing chromatic pupillometry for glaucoma screening"
+          not_intended_for:
+            - "Clinical decision-making (no external validation)"
+            - "Standalone diagnostic tool"
+            - "Populations outside Southeast Asia without validation"
+            - "Other eye conditions or neurological disorders affecting PLR"
+          regulatory_status: "Research use only. Not a medical device. Not FDA-cleared, not CE-marked."
+
+        # --- TRAINING DATA ---
+        training_data:
+          split: "70% train / 30% test, stratified, patient-level"
+          split_seed: 42
+          train_n: ~146
+          test_n: ~62
+          bootstrap: "B=1000, 50% subsampling per iteration, stratified"
+          class_balancing: "None (inverse feature variance weighting only)"
+          note: "Study prevalence 26.9% is enriched vs population 3.54%"
+
+        # --- EVALUATION METRICS (STRATOS Compliant) ---
+        evaluation:
+          discrimination:
+            auroc:
+              best_config: 0.913
+              ci_95: [0.904, 0.919]
+              config: "Ensemble outlier + CSDI imputation + CatBoost"
+            top_10_mean_auroc: 0.911
+            note: "All top-10 configs used CatBoost + handcrafted features"
+
+          calibration:
+            note: "All slopes substantially below 1.0 - expected small-sample overfitting"
+            ground_truth:
+              slope: 0.52
+              oe_ratio: 0.82
+              brier: 0.135
+            best_single_fm:
+              slope: 0.65
+              config: "MOMENT outlier + SAITS imputation"
+            traditional:
+              slope: 0.07
+              oe_ratio: 1.34
+              note: "Most severe miscalibration"
+            best_ensemble:
+              slope: 0.30
+
+          clinical_utility:
+            dca_threshold_range: "5% - 30%"
+            net_benefit_at_10pct:
+              ground_truth: 0.189
+              best_ensemble: 0.189
+              foundation_model: 0.189
+              traditional: 0.182
+            note: "Net benefit convergence reflects enriched prevalence close to decision thresholds"
+
+          overall:
+            preprocessing_effect: "eta-squared = 0.15 (ANOVA)"
+            handcrafted_vs_embeddings: "0.830 vs 0.740 (9pp gap)"
+            total_configs_evaluated: 407
+            auroc_range: [0.71, 0.913]
+            auroc_median: 0.83
+            auroc_iqr: [0.78, 0.86]
+
+        # --- SAMPLE SIZE ADEQUACY ---
+        sample_size:
+          events: 56
+          features_handcrafted: 8
+          epv_handcrafted: 7.0
+          epv_threshold: 10
+          features_embeddings: 96
+          epv_embeddings: 0.58
+          note: "EPV 7.0 for handcrafted is below conventional threshold of 10. Reliable calibration requires 1000-2000 samples; N=208 makes calibration metrics descriptive, not definitive."
+          reference: "Riley et al. 2021 (pmsampsize)"
+
+        # --- KNOWN FAILURE MODES ---
+        failure_modes:
+          - mode: "Poor signal quality"
+            description: "Excessive blinks, tracking failures, or poor pupil detection lead to unreliable features"
+            mitigation: "Quality gating in preprocessing pipeline"
+          - mode: "Medications affecting PLR"
+            description: "Anticholinergics, sympathomimetics, opioids alter pupillary responses"
+            mitigation: "Not controlled in current dataset - document as limitation"
+          - mode: "Non-glaucomatous pupil abnormalities"
+            description: "Horner syndrome, Adie pupil, RAPD from non-glaucoma causes"
+            mitigation: "Clinical examination to rule out alternative diagnoses"
+          - mode: "Prevalence mismatch"
+            description: "Model trained at 26.9% prevalence. PPV at 3.54% population prevalence will be much lower."
+            mitigation: "Recalibration required before any deployment at population prevalence"
+          - mode: "Age confounding"
+            description: "Significant age difference (67.2 vs 58.3 yrs). Pupil diameter decreases ~0.4mm/decade."
+            mitigation: "Age-adjusted analyses required for clinical translation"
+          - mode: "Calibration instability"
+            description: "All slopes below 1.0. Small sample overfitting expected."
+            mitigation: "Do not use predicted probabilities for risk communication without recalibration"
+
+        # --- LIMITATIONS ---
+        limitations:
+          - "Single-center (SNEC, Singapore) - unknown generalizability"
+          - "Single annotator ground truth - no inter-annotator reliability"
+          - "Small sample size (N=208, 56 events) - wide confidence intervals"
+          - "No external validation cohort"
+          - "No longitudinal follow-up"
+          - "Device-specific (custom handheld pupillometer)"
+          - "No post-hoc recalibration (preserves diagnostic signal but means raw probabilities are not well-calibrated)"
+          - "Circular validation for ground truth preprocessing"
+          - "Foundation model embeddings exploratory only (EPV=0.58)"
+
+        # --- ETHICAL CONSIDERATIONS ---
+        ethical_considerations:
+          - "NOT for clinical use without external validation across diverse populations"
+          - "Demographic reporting limited by original dataset (single-center, primarily Chinese/Malay/Indian)"
+          - "Glaucoma is an irreversible cause of blindness - false negatives have high consequences"
+          - "Population screening requires recalibration to population prevalence (3.54%)"
+
+        # --- SOFTWARE & REPRODUCIBILITY ---
+        software:
+          training: "Python 3.11, CatBoost, Optuna"
+          evaluation: "scikit-learn, bootstrap (B=1000)"
+          experiment_tracking: "MLflow"
+          results_db: "DuckDB (data/public/foundation_plr_results.db)"
+          visualization: "R 4.5.2, ggplot2"
+          source_code: "https://github.com/petteriTeikari/foundation_PLR"
+          reference: "methods.tex lines 114-117"
+
+        # --- TRIPOD+AI CROSS-REFERENCES ---
+        tripod_ai:
+          item_5_objectives: "Evaluate preprocessing effect on classification (STRATOS compliant)"
+          item_13_sample_size: "N=208 (56 events, EPV=7.0 for handcrafted)"
+          item_14_predictors: "8 handcrafted PLR features + MOMENT embeddings"
+          item_17_performance: "AUROC, calibration slope/intercept/O:E, Brier/IPA, Net Benefit, DCA"
+          item_20_demographics: "See data_card.yaml"
+          item_22_ethics: "SingHealth CIRB 2016/2912, Declaration of Helsinki"
+
+        # --- MAINTENANCE ---
+        maintenance:
+          status: "Frozen for publication"
+          contact: "petteri.teikari@gmail.com"
+          update_policy: "No updates planned"
+      ```
+    </instructions>
+    <verification>
+      <check id="T8-V1">File exists: configs/governance/model_card.yaml</check>
+      <check id="T8-V2">YAML is valid: python -c "import yaml; yaml.safe_load(open('configs/governance/model_card.yaml'))"</check>
+      <check id="T8-V3">Contains AUROC 0.913 with CI [0.904, 0.919]</check>
+      <check id="T8-V4">Contains calibration slopes (0.52, 0.65, 0.07, 0.30)</check>
+      <check id="T8-V5">Contains intended_use.regulatory_status = "Research use only"</check>
+      <check id="T8-V6">Contains failure_modes section (>= 5 modes)</check>
+      <check id="T8-V7">Contains sample_size.epv_handcrafted = 7.0</check>
+      <check id="T8-V8">Contains TRIPOD+AI cross-references</check>
+      <check id="T8-V9">Does NOT claim clinical readiness</check>
+    </verification>
+  </task>
+
+  <task id="T9" status="PENDING" priority="light" est-minutes="30"
+        cross-ref="Issue F (Section 9)">
+    <title>Create Data Integrity Checksums</title>
+    <output-file>data/_checksums.sha256</output-file>
+    <description>
+      SHA256 checksums for all public data files to verify integrity.
+      Lightweight alternative to DVC for a frozen dataset.
+      Code versioning without data integrity verification leaves a reproducibility gap.
+    </description>
+    <instructions>
+      1. Generate checksums for public data:
+         ```bash
+         cd data/public/
+         sha256sum *.db > ../_checksums.sha256
+         ```
+
+      2. Also include demo data:
+         ```bash
+         cd data/demo/
+         sha256sum * >> ../_checksums.sha256
+         ```
+         (Adjust paths based on what files exist in data/)
+
+      3. Add a header comment to the file:
+         ```
+         # SHA256 checksums for data integrity verification
+         # Generated: 2026-02-08
+         # Verify: sha256sum -c data/_checksums.sha256
+         # If ANY check fails, data may have been corrupted or modified
+         ```
+
+      4. Add Makefile target:
+         ```makefile
+         verify-data:
+             @echo "Verifying data integrity..."
+             sha256sum -c data/_checksums.sha256
+             @echo "All checksums OK"
+         ```
+
+      5. Add CI step in .github/workflows/ci.yml (optional, defer if complex):
+         - Only if data files are present in the CI environment
+
+      NOTE: data/private/ is gitignored - do NOT include private data checksums.
+    </instructions>
+    <verification>
+      <check id="T9-V1">File exists: data/_checksums.sha256</check>
+      <check id="T9-V2">Contains SHA256 hashes (64 hex char pattern)</check>
+      <check id="T9-V3">sha256sum -c data/_checksums.sha256 passes locally</check>
+      <check id="T9-V4">Does NOT include data/private/ files</check>
+      <check id="T9-V5">Makefile has verify-data target (if Makefile exists)</check>
+    </verification>
+  </task>
+
+  <task id="T10" status="PENDING" priority="light" est-minutes="30"
+        cross-ref="Section 8d Light Work">
+    <title>Create AI Usage Card</title>
+    <output-file>configs/governance/ai_usage_card.yaml</output-file>
+    <description>
+      Document which pipeline stages use which AI/ML methods.
+      This is distinct from the model card (which covers the classifier).
+      Maps the full preprocessing pipeline methods to their roles.
+    </description>
+    <instructions>
+      Create configs/governance/ai_usage_card.yaml:
+
+      ```yaml
+      # AI Usage Card - Foundation PLR Pipeline
+      # Documents which stages use which AI/ML methods
+      # Distinct from model_card.yaml (which covers the classifier)
+
+      ai_usage_card:
+        name: "Foundation PLR - AI Method Usage"
+        version: "1.0.0"
+        last_updated: "2026-02-08"
+
+        pipeline_stages:
+
+          outlier_detection:
+            description: "Identify artifact segments in PLR signals"
+            methods:
+              traditional:
+                - name: "LOF (Local Outlier Factor)"
+                  type: "Unsupervised anomaly detection"
+                  library: "scikit-learn"
+                - name: "OneClassSVM"
+                  type: "Unsupervised anomaly detection"
+                  library: "scikit-learn"
+                - name: "SubPCA (Subspace PCA)"
+                  type: "Subspace anomaly detection"
+                  library: "custom implementation"
+                - name: "PROPHET"
+                  type: "Time series decomposition"
+                  library: "prophet"
+              foundation_models:
+                - name: "MOMENT"
+                  type: "Time series foundation model (zero-shot and fine-tuned)"
+                  library: "momentfm"
+                  variants: ["MOMENT-gt-finetune", "MOMENT-gt-zeroshot"]
+                - name: "UniTS"
+                  type: "Unified time series model (fine-tuned)"
+                  library: "custom"
+                  variants: ["UniTS-gt-finetune"]
+                - name: "TimesNet"
+                  type: "Temporal 2D-variation model"
+                  library: "pypots"
+                  variants: ["TimesNet-gt"]
+              ensemble:
+                - name: "Ensemble (all methods)"
+                  combination: "LOF + MOMENT + OneClassSVM + PROPHET + SubPCA + TimesNet + UniTS"
+                - name: "Ensemble Thresholded (FM only)"
+                  combination: "MOMENT + TimesNet + UniTS"
+              ground_truth:
+                - name: "pupil-gt"
+                  description: "Human-annotated ground truth (single expert)"
+
+          imputation:
+            description: "Reconstruct missing/removed signal segments"
+            methods:
+              deep_learning:
+                - name: "SAITS"
+                  type: "Self-Attention Imputation for Time Series"
+                  library: "pypots"
+                - name: "CSDI"
+                  type: "Conditional Score-based Diffusion"
+                  library: "pypots"
+                - name: "TimesNet"
+                  type: "Temporal 2D-variation (repurposed for imputation)"
+                  library: "pypots"
+              foundation_models:
+                - name: "MOMENT"
+                  type: "Foundation model fine-tuned for imputation"
+                  library: "momentfm"
+              traditional:
+                - name: "MissForest"
+                  type: "Random forest multivariate imputation"
+                  library: "missforest"
+              ground_truth:
+                - name: "pupil-gt"
+                  description: "Human-curated ground truth signal"
+
+          featurization:
+            description: "Extract discriminative features from preprocessed signals"
+            methods:
+              - name: "Handcrafted physiological features"
+                type: "Domain expert features"
+                count: 8
+                note: "PRIMARY - outperforms embeddings by 9pp"
+              - name: "MOMENT embeddings"
+                type: "Foundation model representations"
+                count: "1024 raw, <=96 after PCA"
+                note: "EXPLORATORY - EPV too low for reliable estimation"
+
+          classification:
+            description: "Binary glaucoma/control classification"
+            methods:
+              - name: "CatBoost"
+                role: "FIXED primary classifier (research design)"
+                library: "catboost"
+              - name: "XGBoost"
+                role: "Comparison classifier"
+                library: "xgboost"
+              - name: "TabPFN v2"
+                role: "Comparison (tabular foundation model)"
+              - name: "TabM"
+                role: "Comparison (modern tabular DL)"
+
+        ai_development_tools:
+          experiment_tracking: "MLflow"
+          configuration: "Hydra"
+          hyperparameter_optimization: "Optuna (CatBoost), Hyperopt (XGBoost)"
+          ci_cd: "GitHub Actions (5 workflows)"
+          code_generation: "Claude Code (documented in commits via Co-Authored-By)"
+      ```
+    </instructions>
+    <verification>
+      <check id="T10-V1">File exists: configs/governance/ai_usage_card.yaml</check>
+      <check id="T10-V2">YAML is valid</check>
+      <check id="T10-V3">Contains all 4 pipeline stages (outlier, imputation, featurization, classification)</check>
+      <check id="T10-V4">Contains exactly 11 outlier methods (matching registry)</check>
+      <check id="T10-V5">CatBoost marked as FIXED primary classifier</check>
+      <check id="T10-V6">Handcrafted features marked as PRIMARY</check>
+    </verification>
+  </task>
+
+  <!-- ================================================================== -->
+  <!--  EXECUTION ORDER                                                   -->
+  <!-- ================================================================== -->
+  <!--
+    Recommended commit grouping:
+
+    Commit 1: T1 + T2 + T4 (Repo security files)
+      "docs(security): Add SECURITY.md, CODEOWNERS, and dependabot.yml"
+
+    Commit 2: T5 + T10 (Environment + AI Usage cards)
+      "docs(governance): Add environment card and AI usage card"
+
+    Commit 3: T7 + T8 (Data Card + Model Card)
+      "docs(governance): Add model card and data card with manuscript content"
+
+    Commit 4: T6 (Reproducibility checklist)
+      "docs(reproducibility): Add NeurIPS-style reproducibility checklist"
+
+    Commit 5: T9 (Data integrity checksums)
+      "chore(data): Add SHA256 checksums for data integrity verification"
+
+    Final: Update README.md to link new files (separate commit or with T6)
+  -->
+
+</action-plan>
