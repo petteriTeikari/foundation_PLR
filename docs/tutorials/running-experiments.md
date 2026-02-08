@@ -53,6 +53,12 @@ mlflow ui --port 5000
 
 Watch the experiment at [http://localhost:5000](http://localhost:5000).
 
+The MLflow Tracking UI shows all experiment runs with their parameters and metrics:
+
+![MLflow Tracking UI showing experiment runs](../assets/images/mlflow_ui.png)
+
+*MLflow Tracking UI at localhost:5000 — compare preprocessing configurations side-by-side.*
+
 ## Step 4: Compare Results
 
 ### View Metrics
@@ -62,6 +68,12 @@ In MLflow UI:
 1. Select experiments to compare
 2. Click "Compare"
 3. View STRATOS metrics side-by-side
+
+Each run stores its artifacts (model files, predictions, configuration) in the MLflow Artifact Store:
+
+![MLflow artifact store showing experiment outputs](../assets/images/mlflow_artifacts.png)
+
+*MLflow Artifact Store — each run preserves the full experiment context for reproducibility.*
 
 ### Export Results
 

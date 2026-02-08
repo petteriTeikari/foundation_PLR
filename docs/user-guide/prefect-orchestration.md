@@ -26,6 +26,39 @@ flowchart LR
 | **Extraction** | MLflow → DuckDB | Yes |
 | **Analysis** | DuckDB → Figures | Yes (from checkpoint) |
 
+### Prefect UI: Flow Execution
+
+![Prefect flow execution showing 6 subflows](../assets/images/prefect_flow.png)
+
+*The Prefect dashboard showing a completed pipeline run with all 6 subflows.*
+
+## Experiment Pipeline: 6 Subflows
+
+The experiment pipeline (distinct from the post-experiment extraction/analysis blocks above) consists of 6 Prefect subflows. Each subflow uses **"MLflow as contract"** — reading inputs from and writing outputs to MLflow — which enables team members with different expertise to work independently on their component.
+
+| # | Subflow | Entry Point | Professional Persona |
+|---|---------|-------------|---------------------|
+| 1 | **Data Import** | `src/data_io/flow_data.py` | Data Engineer |
+| 2 | **Outlier Detection** | `src/anomaly_detection/flow_anomaly_detection.py` | Signal Processing Expert |
+| 3 | **Imputation** | `src/imputation/flow_imputation.py` | Signal Processing Expert |
+| 4 | **Featurization** | `src/featurization/flow_featurization.py` | Domain Expert |
+| 5 | **Classification** | `src/classification/flow_classification.py` | Biostatistician |
+| 6 | **Deployment** | `src/deploy/flow_deployment.py` | MLOps Engineer |
+
+### Why This Decoupling Matters
+
+Each subflow reads from and writes to MLflow, creating a clean contract boundary:
+
+- A **domain expert** can modify featurization (time bins, latency features) without touching classification code
+- A **signal processing expert** can swap outlier detection algorithms (LOF → MOMENT) without understanding the classifier
+- A **biostatistician** can adjust evaluation metrics without knowing how imputation works
+- An **MLOps engineer** can deploy models without understanding the signal processing pipeline
+
+This is separate from the 2-block extraction/analysis architecture documented above, which handles post-experiment processing.
+
+!!! info "Detailed Architecture Diagram"
+    See [fig-repo-10: Prefect Experiment Pipeline](../repo-figures/assets/fig-repo-10-prefect-orchestration.jpg) for a detailed visual of the 6-subflow architecture with data flow.
+
 ## Running Flows
 
 ### Quick Start
