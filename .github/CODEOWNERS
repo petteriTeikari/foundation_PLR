@@ -1,0 +1,11 @@
+# CODEOWNERS - Automatic review assignment
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @petteriTeikari
+
+# Security-sensitive paths (explicit for audit trail)
+SECURITY.md @petteriTeikari
+.github/workflows/ @petteriTeikari
+scripts/security/ @petteriTeikari
+configs/governance/ @petteriTeikari
