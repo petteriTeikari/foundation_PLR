@@ -362,8 +362,8 @@ And the original data source:
 ### Our Manuscript
 
 <!-- TODO: Update when preprint is published -->
-- **Teikari P, et al.** "Foundation models for pupillary light reflex preprocessing: a sensitivity analysis." *(In preparation)*
-- Background theory: [Literature Review PDF](https://github.com/petteriTeikari/foundation_PLR/blob/main/docs/literature-theory.pdf) <!-- TODO: update link when available -->
+- **Teikari P, et al.** "Time Series Foundation Models for Ophthalmic Biosignal Preprocessing: Evidence from Chromatic Pupillometry." *(In preparation, target: TVST)*
+- Background theory: [Literature Review PDF](https://www.dropbox.com/scl/fi/rxubdh293l5dnn9q9fvn5/00-overview.pdf?rlkey=gai4w6ivlscs4bqq8p9kke0ct&dl=0) *(AI-assisted review, to be deposited on Figshare with DOI)*
 
 ### Key Papers
 
