@@ -1,0 +1,213 @@
+# Model Card - CatBoost Glaucoma Screening Classifier
+# Following Mitchell et al. 2019 (Model Cards for Model Reporting)
+# Content sourced from manuscript methods.tex, results.tex, discussion.tex
+# See also: docs/planning/reproducibility-and-mlsecops-improvements.md (Issue B)
+
+model_card:
+  name: "CatBoost PLR Glaucoma Screening Classifier"
+  version: "1.0.0"
+  last_updated: "2026-02-08"
+
+  # --- MODEL DETAILS ---
+  model_details:
+    architecture: "CatBoost (gradient boosting with ordered boosting and native categorical feature handling)"
+    framework: "catboost>=1.2.7 (Python)"
+    task: "Binary classification (control vs glaucoma)"
+    input: "8 handcrafted PLR features (4 types x 2 stimulus colors)"
+    output: "Probability of glaucoma [0, 1]"
+    hyperparameter_optimization: "Optuna"
+    random_seed: 100
+    research_design_note: >
+      This is the FIXED classifier per research design. The research question
+      varies preprocessing (outlier detection x imputation), not classifiers.
+      CatBoost was selected as the best-performing classifier and held constant.
+
+    other_classifiers_evaluated:
+      - name: "XGBoost"
+        seed: 44
+        hpo: "Hyperopt"
+      - name: "TabPFN v2"
+        hpo: "Default (in-context learning)"
+        note: "v2.5 released after study completion, not evaluated"
+      - name: "TabM"
+        config: "tabm-mini (d_block=32, d_embedding=8, k=8)"
+      - name: "Logistic Regression"
+        role: "Linear baseline"
+
+  # --- INTENDED USE ---
+  intended_use:
+    primary: "Methodology comparison - evaluating how preprocessing choices affect downstream classification"
+    population: "Adults undergoing chromatic pupillometry for glaucoma screening"
+    not_intended_for:
+      - "Clinical decision-making (no external validation)"
+      - "Standalone diagnostic tool"
+      - "Populations outside Southeast Asia without validation"
+      - "Other eye conditions or neurological disorders affecting PLR"
+      - "Children or adolescents (not represented in training data)"
+    regulatory_status: "Research use only. Not a medical device. Not FDA-cleared, not CE-marked."
+
+  # --- TRAINING DATA ---
+  training_data:
+    dataset: "SERI PLR Glaucoma Dataset (see data_card.yaml)"
+    split_method: "Stratified, patient-level (no data leakage)"
+    split_ratio: "70% train / 30% test"
+    split_seed: 42
+    train_n: 146  # approximate
+    test_n: 62  # approximate
+    bootstrap:
+      iterations: 1000
+      method: "50% subsampling per iteration, stratified"
+      rationale: "Conservative variance estimates appropriate for small sample size"
+    class_balancing: "None applied"
+    weighting: "Inverse feature variance (downweight high-uncertainty observations)"
+    note: "Study prevalence 26.9% is enriched vs population prevalence 3.54%"
+
+  # --- EVALUATION METRICS (STRATOS Compliant, Van Calster 2024) ---
+  evaluation:
+    framework: "STRATOS Initiative Topic Group 6 (Van Calster et al. 2024)"
+    test_set: "Fixed 30% holdout, same across all 407 configurations"
+
+    discrimination:
+      auroc:
+        best_config: 0.913
+        ci_95: [0.904, 0.919]
+        config: "Ensemble outlier detection + CSDI imputation + CatBoost"
+      top_10_mean_auroc: 0.911
+      note: "All top-10 configs used CatBoost + handcrafted features"
+      total_configs: 407
+      auroc_range: [0.71, 0.913]
+      auroc_median: 0.83
+      auroc_iqr: [0.78, 0.86]
+
+    calibration:
+      note: >
+        All slopes substantially below 1.0 -- expected small-sample overfitting
+        pattern rather than method-specific deficiency. Reliable calibration
+        estimation requires 1000-2000 samples; N=208 makes these descriptive.
+      ground_truth:
+        slope: 0.52
+        oe_ratio: 0.82
+        brier: 0.135
+      best_single_fm:
+        slope: 0.65
+        config: "MOMENT outlier detection + SAITS imputation"
+      traditional:
+        slope: 0.07
+        oe_ratio: 1.34
+        note: "Most severe miscalibration"
+      best_ensemble:
+        slope: 0.30
+      recalibration: "Not performed (preserves diagnostic signal of overfitting)"
+
+    clinical_utility:
+      method: "Decision Curve Analysis (DCA)"
+      threshold_range: "5% - 30%"
+      reference_threshold: "10% (UK virtual glaucoma clinic referral criteria)"
+      net_benefit_at_10pct:
+        ground_truth: 0.189
+        best_ensemble: 0.189
+        foundation_model: 0.189
+        traditional: 0.182
+      note: >
+        Net benefit convergence across configurations with disparate AUROC
+        (0.827-0.913) reflects enriched study prevalence close to decision
+        thresholds, where moderate discrimination improvements translate
+        to minimal net benefit differences.
+
+    overall:
+      preprocessing_effect_eta_squared: 0.15
+      handcrafted_vs_embeddings_auroc: "0.830 vs 0.740 (9pp gap)"
+      key_finding: >
+        Foundation models competitive for preprocessing (outlier detection,
+        imputation) but embeddings underperform handcrafted features due to
+        EPV constraints. Fix the classifier, vary the preprocessing.
+
+  # --- SAMPLE SIZE ADEQUACY ---
+  sample_size:
+    total_classify: 208
+    events: 56
+    features_handcrafted: 8
+    epv_handcrafted: 7.0
+    epv_threshold: 10
+    features_embeddings: 96
+    epv_embeddings: 0.58
+    calibration_note: >
+      Reliable calibration estimation requires 1000-2000 samples.
+      N=208 is an order of magnitude smaller, making calibration
+      metrics descriptive rather than definitive.
+    reference: "Riley et al. 2021 (pmsampsize), Legha et al. 2026 JCE"
+
+  # --- KNOWN FAILURE MODES ---
+  failure_modes:
+    - mode: "Poor signal quality"
+      description: "Excessive blinks, tracking failures, or poor pupil detection lead to unreliable features"
+      mitigation: "Quality gating in preprocessing pipeline"
+      severity: "MEDIUM"
+    - mode: "Medications affecting PLR"
+      description: "Anticholinergics, sympathomimetics, opioids alter pupillary responses"
+      mitigation: "Not controlled in current dataset -- document as limitation"
+      severity: "MEDIUM"
+    - mode: "Non-glaucomatous pupil abnormalities"
+      description: "Horner syndrome, Adie pupil, RAPD from non-glaucoma causes"
+      mitigation: "Clinical examination to rule out alternative diagnoses"
+      severity: "MEDIUM"
+    - mode: "Prevalence mismatch"
+      description: "Model trained at 26.9% prevalence. PPV at 3.54% population prevalence will be much lower."
+      mitigation: "Recalibration required before any deployment at population prevalence"
+      severity: "HIGH"
+    - mode: "Age confounding"
+      description: "Significant age difference (67.2 vs 58.3 yrs). Pupil diameter decreases ~0.4mm/decade."
+      mitigation: "Age-adjusted analyses required for clinical translation"
+      severity: "HIGH"
+    - mode: "Calibration instability"
+      description: "All calibration slopes below 1.0. Small sample overfitting expected."
+      mitigation: "Do not use predicted probabilities for risk communication without recalibration"
+      severity: "HIGH"
+    - mode: "Population mismatch"
+      description: "Unknown performance on non-Asian or non-Singaporean populations"
+      mitigation: "External validation across diverse populations required"
+      severity: "HIGH"
+
+  # --- LIMITATIONS ---
+  limitations:
+    - "Single-center (SNEC, Singapore) -- unknown generalizability"
+    - "Single annotator ground truth -- no inter-annotator reliability"
+    - "Small sample size (N=208, 56 events) -- wide confidence intervals"
+    - "No external validation cohort"
+    - "No longitudinal follow-up"
+    - "Device-specific (custom handheld pupillometer)"
+    - "No post-hoc recalibration (preserves diagnostic signal)"
+    - "Circular validation for ground truth preprocessing"
+    - "Foundation model embeddings exploratory only (EPV=0.58)"
+
+  # --- ETHICAL CONSIDERATIONS ---
+  ethical_considerations:
+    - "NOT for clinical use without external validation across diverse populations"
+    - "Demographic reporting limited by original dataset (single-center)"
+    - "Glaucoma is irreversible -- false negatives have high consequences"
+    - "Population screening requires recalibration to 3.54% prevalence"
+    - "Age confounding not adjusted (study focus is preprocessing, not diagnostic validation)"
+
+  # --- TRIPOD+AI CROSS-REFERENCES (Collins et al. 2024) ---
+  tripod_ai:
+    item_5_objectives: "Evaluate preprocessing effect on classification (STRATOS compliant)"
+    item_13_sample_size: "N=208 (56 events, EPV=7.0 for handcrafted)"
+    item_14_predictors: "8 handcrafted PLR features + MOMENT embeddings (exploratory)"
+    item_17_performance: "AUROC, calibration slope/intercept/O:E, Brier/IPA, Net Benefit, DCA"
+    item_20_demographics: "See data_card.yaml (GH#49 for subgroup analyses)"
+    item_22_ethics: "SingHealth CIRB 2016/2912, Declaration of Helsinki"
+
+  # --- SOFTWARE & REPRODUCIBILITY ---
+  software:
+    training: "Python 3.11, CatBoost, Optuna"
+    evaluation: "scikit-learn, bootstrap (B=1000)"
+    experiment_tracking: "MLflow"
+    results_db: "DuckDB (data/public/foundation_plr_results.db)"
+    visualization: "R 4.5.2, ggplot2"
+    source_code: "https://github.com/petteriTeikari/foundation_PLR"
+
+  # --- MAINTENANCE ---
+  maintenance:
+    status: "Frozen for publication"
+    contact: "petteri.teikari@gmail.com"
+    update_policy: "No updates planned"
