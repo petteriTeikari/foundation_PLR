@@ -9,9 +9,6 @@ from src.ensemble.ensemble_utils import get_best_imputation_col_name
 from src.imputation.imputation_log_artifacts import save_and_log_imputer_artifacts
 from src.imputation.missforest_main import missforest_main
 from src.imputation.momentfm.moment_imputation_main import moment_imputation_main
-
-# NOTE: nuwats archived - see archived/nuwats/ (not used in final paper)
-# from src.imputation.nuwats.nuwats_main import nuwats_imputation_main
 from src.imputation.pypots.pypots_wrapper import pypots_wrapper
 from src.log_helpers.log_utils import define_run_name, update_run_name
 from src.log_helpers.mlflow_utils import (
@@ -142,8 +139,6 @@ def imputation_model_selector(
     - Foundation models: MOMENT
     - Traditional: MissForest
 
-    Note: NuwaTS was archived (see archived/nuwats/) - not used in final paper.
-
     Parameters
     ----------
     source_data : dict
@@ -211,15 +206,6 @@ def imputation_model_selector(
             model_name=model_name,
             run_name=run_name,
         )
-    # NOTE: NuwaTS archived - see archived/nuwats/ (not used in final paper)
-    # elif model_name == "NuwaTS":
-    #     model, model_artifacts = nuwats_imputation_main(
-    #         data_dict=source_data,
-    #         model_cfg=cfg["MODELS"][model_name],
-    #         cfg=cfg,
-    #         model_name=model_name,
-    #         run_name=run_name,
-    #     )
     else:
         logger.error("Model {} not implemented! Typo?".format(model_name))
         raise NotImplementedError("Model {} not implemented!".format(model_name))
@@ -234,7 +220,6 @@ def imputation_model_selector(
 
         # with PyPOTS, you only do this here, harmonize later this!
         # Moment computes the metrics already inside the Moment code for example
-        # NOTE: NuwaTS archived - special handling removed
         imputation_artifacts["model_artifacts"]["metrics"] = compute_metrics_by_model(
             model_name, imputation_artifacts, cfg
         )
@@ -246,7 +231,6 @@ def imputation_model_selector(
         return model, imputation_artifacts
     else:
         # This is None, when you hit like all-NaNs in your predictions and you abort the training
-        # e.g. with NuwaTS you might end up here with NaNs in preds
         mlflow.end_run()
         return None, None
 

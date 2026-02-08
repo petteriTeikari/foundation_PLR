@@ -1688,7 +1688,7 @@ def fill_na_in_array_before_windowing(
     trim_to_size : int
         Target window size after trimming.
     model_name : str
-        Name of the model ("TimesNet", "UniTS", "NuwaTS", etc.).
+        Name of the model ("TimesNet", "UniTS", etc.).
 
     Returns
     -------
@@ -1737,20 +1737,6 @@ def fill_na_in_array_before_windowing(
                         array_subj=array[subj_idx, :],
                         fill_na=fill_na,
                         model_name=model_name,
-                    )
-            elif model_name == "NuwaTS":
-                no_subjects = array.shape[0]
-                # TODO! make this automagic later, these are the indices
-                #  that you get the median from, not the Nan Indices per se
-                start_idxs = (17, 20)
-                end_idxs = (1994, 1997)
-                for subj_idx in range(no_subjects):
-                    array[subj_idx, :] = fill_na_per_subject(
-                        array_subj=array[subj_idx, :],
-                        fill_na="median",  # fill_na,
-                        model_name=model_name,
-                        start_idxs=start_idxs,
-                        end_idxs=end_idxs,
                     )
             else:
                 # e.g. Moment is okay with NaNs in the data as you can use the input_mask to mask out invalid
