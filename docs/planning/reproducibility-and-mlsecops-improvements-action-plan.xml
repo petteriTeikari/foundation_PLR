@@ -28,15 +28,15 @@
     <planning-doc>docs/planning/reproducibility-and-mlsecops-improvements.md</planning-doc>
     <scope>Section 8d: Trivial (&lt;30 min) + Light Work (1-2 hrs) items</scope>
     <total-tasks>10</total-tasks>
-    <completed>1</completed>
-    <status>IN_PROGRESS</status>
+    <completed>10</completed>
+    <status>DONE</status>
   </metadata>
 
   <!-- ================================================================== -->
   <!--  SECTION 1: TRIVIAL TASKS (< 30 min each)                         -->
   <!-- ================================================================== -->
 
-  <task id="T1" status="PENDING" priority="trivial" est-minutes="15"
+  <task id="T1" status="DONE" priority="trivial" est-minutes="15"
         cross-ref="Issue H (Section 9)" commit-with="T2">
     <title>Create SECURITY.md</title>
     <output-file>SECURITY.md</output-file>
@@ -96,7 +96,7 @@
     </verification>
   </task>
 
-  <task id="T2" status="PENDING" priority="trivial" est-minutes="5"
+  <task id="T2" status="DONE" priority="trivial" est-minutes="5"
         cross-ref="Issue I (Section 9)" commit-with="T1">
     <title>Create CODEOWNERS</title>
     <output-file>.github/CODEOWNERS</output-file>
@@ -147,7 +147,7 @@
     </verification>
   </task>
 
-  <task id="T4" status="PENDING" priority="trivial" est-minutes="10"
+  <task id="T4" status="DONE" priority="trivial" est-minutes="10"
         cross-ref="Issue I (Section 9)" commit-with="T1,T2">
     <title>Create dependabot.yml</title>
     <output-file>.github/dependabot.yml</output-file>
@@ -215,7 +215,7 @@
     </verification>
   </task>
 
-  <task id="T5" status="PENDING" priority="trivial" est-minutes="30"
+  <task id="T5" status="DONE" priority="trivial" est-minutes="30"
         cross-ref="Issue K (Section 9)">
     <title>Create Environment Card</title>
     <output-file>configs/governance/environment_card.yaml</output-file>
@@ -354,7 +354,7 @@
   <!--  SECTION 2: LIGHT WORK (1-2 hours each)                           -->
   <!-- ================================================================== -->
 
-  <task id="T6" status="PENDING" priority="light" est-minutes="45"
+  <task id="T6" status="DONE" priority="light" est-minutes="45"
         cross-ref="Issue A (Section 9)">
     <title>Create Reproducibility Checklist</title>
     <output-file>REPRODUCIBILITY.md</output-file>
@@ -431,7 +431,7 @@
     </verification>
   </task>
 
-  <task id="T7" status="PENDING" priority="light" est-minutes="60"
+  <task id="T7" status="DONE" priority="light" est-minutes="60"
         cross-ref="Issue B (Section 9)" commit-with="T8">
     <title>Create Data Card</title>
     <output-file>configs/governance/data_card.yaml</output-file>
@@ -586,7 +586,7 @@
     </verification>
   </task>
 
-  <task id="T8" status="PENDING" priority="light" est-minutes="90"
+  <task id="T8" status="DONE" priority="light" est-minutes="90"
         cross-ref="Issue B (Section 9)" commit-with="T7">
     <title>Create Model Card</title>
     <output-file>configs/governance/model_card.yaml</output-file>
@@ -783,7 +783,7 @@
     </verification>
   </task>
 
-  <task id="T9" status="PENDING" priority="light" est-minutes="30"
+  <task id="T9" status="DONE" priority="light" est-minutes="30"
         cross-ref="Issue F (Section 9)">
     <title>Create Data Integrity Checksums</title>
     <output-file>data/_checksums.sha256</output-file>
@@ -836,7 +836,7 @@
     </verification>
   </task>
 
-  <task id="T10" status="PENDING" priority="light" est-minutes="30"
+  <task id="T10" status="DONE" priority="light" est-minutes="30"
         cross-ref="Section 8d Light Work">
     <title>Create AI Usage Card</title>
     <output-file>configs/governance/ai_usage_card.yaml</output-file>
