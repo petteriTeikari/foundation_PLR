@@ -163,6 +163,7 @@ nav:
     - Imputation: user-guide/imputation.md
     - Featurization: user-guide/featurization.md
     - Classification: user-guide/classification.md
+    - Prefect Orchestration: user-guide/prefect-orchestration.md
 
   - API Reference:
     - api-reference/index.md

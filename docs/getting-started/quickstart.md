@@ -38,6 +38,8 @@ mlflow ui --port 5000
 
 Open [http://localhost:5000](http://localhost:5000) to view experiment results.
 
+![MLflow UI showing experiment results](../assets/images/mlflow_ui.png)
+
 ## Configuration
 
 Override defaults with Hydra:
