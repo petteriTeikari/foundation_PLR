@@ -65,6 +65,14 @@ scripts/*.duckdb
 # Figure generation checkpoints (local tracking)
 .figure_generation_checkpoints.log
 
+# Notebooks: Quarto-only policy (no .ipynb committed)
+notebooks/*.ipynb
+notebooks/**/*.ipynb
+notebooks/_output/
+# Keep _freeze/ for reproducible CI (frozen execution cache)
+!notebooks/_freeze/
+!notebooks/_freeze/**
+
 # Node.js
 **/node_modules
 

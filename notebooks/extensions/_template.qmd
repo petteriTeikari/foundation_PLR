@@ -1,0 +1,94 @@
+---
+title: "Your Analysis Title"
+subtitle: "Brief description of what this analysis adds"
+author: "Your Name"
+date: today
+format:
+  html:
+    code-fold: true
+    code-summary: "Show code"
+    toc: true
+jupyter: python3
+execute:
+  echo: true
+  warning: false
+  error: true
+params:
+  db_path: "../data/public/foundation_plr_results.db"
+---
+
+<!--
+CONTRIBUTION TEMPLATE
+=====================
+Use this template to create new analysis notebooks.
+
+Rules:
+1. This file MUST be a .qmd (Quarto) file -- no .ipynb allowed
+2. Heavy logic MUST live in src/ modules with unit tests
+3. Data access MUST go through DuckDB (read-only)
+4. No hardcoded hex colors, paths, or method names
+5. `quarto render` must pass in CI
+
+Workflow:
+1. Copy this template to notebooks/extensions/your_analysis.qmd
+2. Write your analysis function in src/stats/ or src/viz/
+3. Write unit tests in tests/unit/
+4. Import and use your function in this notebook
+5. Run: quarto render your_analysis.qmd
+6. Submit a PR
+-->
+
+## Background
+
+<!-- Explain the motivation for this analysis. What question does it answer? -->
+
+## Setup
+
+```{python}
+#| label: setup
+import duckdb
+import pandas as pd
+import numpy as np
+from pathlib import Path
+
+# Connect to results database (read-only)
+DB_PATH = Path(params["db_path"])
+assert DB_PATH.exists(), f"Database not found at {DB_PATH}"
+con = duckdb.connect(str(DB_PATH), read_only=True)
+
+print(f"Connected to {DB_PATH.name}")
+print(f"Tables: {[t[0] for t in con.execute('SHOW TABLES').fetchall()]}")
+```
+
+## Analysis
+
+<!-- Import your function from src/ -- do NOT define heavy logic inline -->
+
+```{python}
+#| label: run-analysis
+
+# Example: Import your analysis function
+# from src.stats.your_module import your_function
+
+# Example: Query data from DuckDB
+df = con.execute("""
+    SELECT outlier_method, imputation_method, auroc, calibration_slope
+    FROM essential_metrics
+    WHERE classifier = 'CatBoost'
+    ORDER BY auroc DESC
+    LIMIT 10
+""").fetchdf()
+
+df
+```
+
+## Results
+
+<!-- Interpret your findings in the context of the research question -->
+
+## Cleanup
+
+```{python}
+#| label: cleanup
+con.close()
+```

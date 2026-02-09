@@ -93,3 +93,14 @@ repos:
       stages: [pre-commit]
       # Run when viz code, figures, or isolation config changes
       files: (src/viz/|figures/|configs/data_isolation\.yaml)
+
+    # NOTEBOOK FORMAT CHECK - Quarto-only policy
+    # Prevents .ipynb files, validates .qmd YAML headers and banned patterns
+    # See: docs/planning/jupyter-notebook-submission-ready.md
+    - id: notebook-format-check
+      name: Notebook Format Check (Quarto-only policy)
+      entry: uv run python scripts/validation/check_notebook_format.py
+      language: system
+      pass_filenames: false
+      stages: [pre-commit]
+      files: (notebooks/)

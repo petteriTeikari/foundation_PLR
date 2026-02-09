@@ -1,0 +1,86 @@
+name: Notebook Tests
+
+# Smoke test: render all Quarto notebooks to catch broken imports,
+# stale DB queries, and execution errors.
+# See: docs/planning/jupyter-notebook-submission-ready.md
+
+on:
+  pull_request:
+    paths:
+      - 'notebooks/**'
+      - 'src/**'
+      - '.github/workflows/notebook-tests.yml'
+
+jobs:
+  render-notebooks:
+    runs-on: ubuntu-latest
+    name: Render Quarto Notebooks
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Verify notebook format (no .ipynb allowed)
+        run: uv run python scripts/validation/check_notebook_format.py
+
+      - name: Render Quarto notebooks
+        env:
+          QUARTO_PYTHON: .venv/bin/python
+        run: |
+          cd notebooks
+          quarto render --to html
+
+      - name: Upload rendered output
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rendered-notebooks
+          path: notebooks/_output/
+          retention-days: 7
+
+  check-notebook-format:
+    runs-on: ubuntu-latest
+    name: Notebook Format Policy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check no .ipynb files committed
+        run: |
+          python3 -c "
+          from pathlib import Path
+          ipynbs = list(Path('notebooks').rglob('*.ipynb'))
+          # Exclude _output and _freeze dirs
+          ipynbs = [f for f in ipynbs if '_output' not in f.parts and '_freeze' not in f.parts]
+          if ipynbs:
+              print('ERROR: .ipynb files found in notebooks/ (Quarto-only policy):')
+              for f in ipynbs:
+                  print(f'  - {f}')
+              print()
+              print('Convert to .qmd: quarto convert <file>.ipynb')
+              exit(1)
+          print('No .ipynb files found. Quarto-only policy OK.')
+          "

@@ -1,14 +1,27 @@
 # Notebooks (`notebooks/`)
 
-Jupyter notebooks for tutorials and interactive exploration.
+Quarto tutorial notebooks for researchers wanting to understand and extend the Foundation PLR pipeline.
+
+## Quarto-Only Policy
+
+This project uses **Quarto (`.qmd`) exclusively** for notebooks. Jupyter (`.ipynb`) and marimo files are not accepted.
+
+| Rule | Enforcement |
+|------|-------------|
+| `.qmd` format only | Pre-commit hook + `.gitignore` + CI |
+| No heavy logic in cells | Import from `src/` modules |
+| Data via DuckDB read-only | Pre-commit bans `sklearn.metrics` |
+| No hardcoded colors/paths | Pre-commit pattern check |
+| Must render in CI | `quarto render` in GitHub Actions |
+
+**Why Quarto?** Plain-text Markdown with clean git diffs, built-in Mermaid diagrams, `freeze` caching for CI, and native support for both Python and R.
 
 ## Available Notebooks
 
-| Notebook | Purpose |
-|----------|---------|
-| `comprehensive_guide.ipynb` | Complete guide to the Foundation PLR pipeline |
-| `data_access_tutorial.ipynb` | How to access and work with PLR data |
-| `reproducibility_tutorial.ipynb` | Reproducing experiment results |
+| Notebook | Audience | What You Learn |
+|----------|----------|----------------|
+| `01-pipeline-walkthrough.qmd` | New researchers, PIs | Research question, pipeline architecture, DuckDB exploration, STRATOS metrics |
+| `02-reproduce-and-extend.qmd` | Researchers reproducing results, data scientists | Running the analysis flow, custom analyses, contribution workflow |
 
 ## Quick Start
 
@@ -16,94 +29,38 @@ Jupyter notebooks for tutorials and interactive exploration.
 # Activate environment
 source .venv/bin/activate
 
-# Start Jupyter
-jupyter lab notebooks/
+# Preview notebooks interactively (opens browser)
+cd notebooks
+quarto preview
+
+# Or render to HTML
+quarto render
+# Output in notebooks/_output/
 ```
 
-## Notebook Descriptions
-
-### 1. `comprehensive_guide.ipynb`
-
-**Audience**: New users, researchers
-
-**Contents**:
-- Project overview and research question
-- Pipeline walkthrough (outlier → imputation → features → classification)
-- STRATOS metrics explanation
-- Example analysis workflow
-
-### 2. `data_access_tutorial.ipynb`
-
-**Audience**: Data scientists, developers
-
-**Contents**:
-- Connecting to DuckDB database
-- Loading PLR signals
-- Understanding data schema
-- Working with ground truth masks
-- Subject counts and stratification
-
-### 3. `reproducibility_tutorial.ipynb`
-
-**Audience**: Researchers wanting to reproduce results
-
-**Contents**:
-- Environment setup
-- Loading MLflow experiments
-- Recreating figures
-- Statistical analysis reproduction
-- Comparison with published results
-
-## Running Notebooks
-
-### Prerequisites
+## Prerequisites
 
 ```bash
-# Install Jupyter (if not already)
-uv pip install jupyterlab
+# Quarto CLI (>= 1.6)
+# See: https://quarto.org/docs/get-started/
 
-# Activate environment
-source .venv/bin/activate
+# Python environment (from project root)
+uv sync --dev
+
+# Set Quarto to use project Python
+export QUARTO_PYTHON=.venv/bin/python
 ```
 
-### Launch
+## Contributing New Notebooks
+
+See `extensions/README.md` for the contribution guide and template.
 
 ```bash
-# JupyterLab (recommended)
-jupyter lab notebooks/
-
-# Classic Jupyter
-jupyter notebook notebooks/
+cp extensions/_template.qmd extensions/my_analysis.qmd
+# Edit, then render:
+quarto render extensions/my_analysis.qmd
 ```
 
-## Data Access in Notebooks
+## Rendering in CI
 
-```python
-import duckdb
-
-# Connect to database
-conn = duckdb.connect('../SERI_PLR_GLAUCOMA.db', read_only=True)
-
-# Query subjects
-df = conn.execute("SELECT * FROM train LIMIT 10").fetchdf()
-```
-
-## Best Practices
-
-1. **Don't commit output cells** - Clear outputs before committing
-2. **Use relative paths** - For portability
-3. **Document prerequisites** - List required packages at top
-4. **Include expected outputs** - Show what results should look like
-
-## Converting to Python Scripts
-
-```bash
-jupyter nbconvert --to script notebooks/data_access_tutorial.ipynb
-```
-
-## Adding New Notebooks
-
-1. Create notebook in `notebooks/`
-2. Add description to this README
-3. Test with clean kernel restart
-4. Clear outputs before committing
+The `.github/workflows/notebook-tests.yml` workflow renders all notebooks on PRs that touch `notebooks/` or `src/`. This catches stale imports, broken DB queries, and execution errors.
