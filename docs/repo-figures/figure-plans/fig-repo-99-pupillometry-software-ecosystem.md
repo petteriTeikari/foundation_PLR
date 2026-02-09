@@ -16,6 +16,8 @@
 
 Map the open-source pupillometry ecosystem as a three-layer library hierarchy: experiment design (top), signal analysis (middle), and preprocessing (bottom). Reveals that (1) all existing analysis tools use traditional signal processing, (2) no TSFM-based preprocessing exists, and (3) our repository fills the preprocessing layer gap so that cognitive neuroscientists, chronobiologists, and psychologists can design experiments without worrying about TSFM intricacies.
 
+**Note (2026-02-09):** Two additional libraries discovered post-figure generation: PupillometryR (R, CRAN, Forbes 2020 JOSS) and PUPILS (MATLAB, Relaño-Iborra & Bækgaard 2020). Both belong in Layer 2 (signal analysis, device-agnostic). To be included in next figure regeneration.
+
 ## Key Message
 
 "The pupillometry ecosystem has mature experiment design tools (PsychoPy, PySilSub) and multiple signal analysis libraries — but ALL use traditional preprocessing (threshold + interpolation). foundation_PLR introduces TSFM-based preprocessing as a drop-in upgrade."
@@ -57,13 +59,18 @@ Three-tier horizontal hierarchy with tool cards positioned by layer and hardware
 │  ║  └──────────────┘ └───────────┘  │ data.frame│ │10-stage│ │ baseline │   ║  │
 │  ║                                   └──────────┘ │pipeline│ │ correct. │   ║  │
 │  ║  ┌──────────────────┐  ┌─────────────────┐    └────────┘ └───────────┘   ║  │
-│  ║  │🐍 PupilMetrics   │  │ MATLAB PuPl     │                               ║  │
-│  ║  │ GPLv3  ★1        │  │ CC-NC   ★11     │    ┌──────────────┐           ║  │
-│  ║  │ NeuroLight /     │  │ GUI pipeliner   │    │🐍 PupilSense │           ║  │
-│  ║  │ Diagnosys        │  │ SMI / BIDS      │    │ MIT    ★66   │           ║  │
-│  ║  │ Nature pub.      │  │ Octave compat.  │    │ Smartphone   │           ║  │
-│  ║  └──────────────────┘  └─────────────────┘    │ DL segm.     │           ║  │
-│  ║                                                └──────────────┘           ║  │
+│  ║  │🐍 PupilMetrics   │  │ MATLAB PuPl     │    ┌────────────────┐         ║  │
+│  ║  │ GPLv3  ★1        │  │ CC-NC   ★11     │    │R PupillometryR │         ║  │
+│  ║  │ NeuroLight /     │  │ GUI pipeliner   │    │CRAN  JOSS 2020 │         ║  │
+│  ║  │ Diagnosys        │  │ SMI / BIDS      │    │GAMs + FDA      │         ║  │
+│  ║  │ Nature pub.      │  │ Octave compat.  │    └────────────────┘         ║  │
+│  ║  └──────────────────┘  └─────────────────┘    ┌──────────────┐           ║  │
+│  ║  ┌──────────────────┐                         │MATLAB PUPILS │           ║  │
+│  ║  │🐍 PupilSense     │                         │60-500 Hz     │           ║  │
+│  ║  │ MIT    ★66       │                         │Blink+saccade │           ║  │
+│  ║  │ Smartphone       │                         │Duchowski alg.│           ║  │
+│  ║  │ DL segm.         │                         └──────────────┘           ║  │
+│  ║  └──────────────────┘                                                    ║  │
 │  ║  ⚠ ALL tools use TRADITIONAL preprocessing:                              ║  │
 │  ║    threshold blink detection, linear interpolation, Butterworth filter    ║  │
 │  ╚══════════════════════════════════════════════════════════════════════════════╝  │
@@ -103,7 +110,7 @@ spatial_anchors:
   analysis_layer:
     x: 0.5
     y: 0.50
-    content: "9 existing tools positioned by hardware coupling"
+    content: "11 existing tools positioned by hardware coupling"
   hardware_coupled_zone:
     x: 0.25
     y: 0.45
@@ -140,6 +147,8 @@ spatial_anchors:
 | eyeris | `secondary_pathway` | R, MIT, 5 stars. CRAN v3.0.1. 10-stage pipeline (deblink→detransient→interpolate→filter→downsample→bin→detrend→z-score). DuckDB/BIDS |
 | PuPl | `secondary_pathway` | MATLAB/Octave, CC-BY-NC, 11 stars. GUI pipeliner. SMI/BIDS. Reproducible pipeline export |
 | PupEyes | `secondary_pathway` | Python, GPL-3, 8 stars. EyeLink+Tobii. Plotly Dash interactive viz. Blink detection comparison tools |
+| PupillometryR | `secondary_pathway` | R, CRAN, JOSS 2020. Start-to-finish pipeline: filtering, baselining, GAMs (mgcv), FDA (fda). Raincloud plots. Multi-brand |
+| PUPILS | `secondary_pathway` | MATLAB, arXiv 2020. Modular toolbox: blink detection, Duchowski saccade detection, interpolation, smoothing. 60-500 Hz. DTU |
 | PupilSense | `secondary_pathway` | Python, MIT, 66 stars. Smartphone camera pupillometry. Detectron2 DL segmentation. Depression screening |
 | foundation_PLR | `highlight_accent` | Python, TSFM-based, device-agnostic. 11 outlier + 8 imputation methods. STRATOS evaluation. THE GAP |
 | Layer arrows | `primary_pathway` | Vertical flow: experiment design → signal analysis → preprocessing |
@@ -176,13 +185,15 @@ spatial_anchors:
 - Label 7: eyeris (R, CRAN, 10-stage)
 - Label 8: PuPl (MATLAB, GUI)
 - Label 9: PupEyes (Python, Dash)
-- Label 10: PupilSense (Smartphone)
-- Label 11: foundation_PLR (TSFM)
-- Label 12: Traditional Preprocessing
-- Label 13: TSFM Preprocessing (NEW)
+- Label 10: PupillometryR (R, CRAN, GAMs)
+- Label 11: PUPILS (MATLAB, DTU)
+- Label 12: PupilSense (Smartphone)
+- Label 13: foundation_PLR (TSFM)
+- Label 14: Traditional Preprocessing
+- Label 15: TSFM Preprocessing (NEW)
 
 ### Caption (for embedding)
-The pupillometry software ecosystem as a three-layer hierarchy: experiment design (PsychoPy, PySilSub), signal analysis (9 tools spanning Python/R/MATLAB/C++), and preprocessing. All existing tools use traditional signal processing. foundation_PLR introduces TSFM-based preprocessing as a device-agnostic drop-in layer.
+The pupillometry software ecosystem as a three-layer hierarchy: experiment design (PsychoPy, PySilSub), signal analysis (11 tools spanning Python/R/MATLAB/C++), and preprocessing. All existing tools use traditional signal processing. foundation_PLR introduces TSFM-based preprocessing as a device-agnostic drop-in layer.
 
 ## Prompts for Nano Banana Pro
 
@@ -386,6 +397,30 @@ BOTTOM STRIP — License legend with three colored shields: Green = MIT (commerc
         "publication": "Zhang & Jonides (2025) OSF Preprint"
       },
       {
+        "name": "PupillometryR",
+        "language": "R",
+        "license": "GPL-3",
+        "license_commercial": "copyleft",
+        "stars": null,
+        "layer": "signal_analysis",
+        "hardware_coupling": "device-agnostic (most eye-tracker brands)",
+        "capabilities": ["start-to-finish preprocessing pipeline", "raincloud plots (ggplot2)", "GAMs (mgcv)", "Functional Data Analysis (fda)", "time-window analysis"],
+        "last_active": "2023",
+        "publication": "Forbes (2020) Journal of Open Source Software, DOI: 10.21105/joss.02285"
+      },
+      {
+        "name": "PUPILS",
+        "language": "MATLAB",
+        "license": "unknown",
+        "license_commercial": "unknown",
+        "stars": null,
+        "layer": "signal_analysis",
+        "hardware_coupling": "device-agnostic (any tracker, 60-500 Hz)",
+        "capabilities": ["blink detection (3-sigma)", "Duchowski saccade detection", "linear interpolation", "low-pass filtering", "modular pipeline design"],
+        "last_active": "2020",
+        "publication": "Relaño-Iborra & Bækgaard (2020) arXiv:2011.05684"
+      },
+      {
         "name": "PupilSense",
         "language": "Python",
         "license": "MIT",
@@ -404,7 +439,7 @@ BOTTOM STRIP — License legend with three colored shields: Green = MIT (commerc
 
 ## Alt Text
 
-Three-layer hierarchy of the pupillometry software ecosystem. Top layer: experiment design tools (PsychoPy with 1900 stars, PySilSub for silent substitution). Middle layer: 9 signal analysis tools spanning Python, R, MATLAB, and C++, split between hardware-coupled (PupilEXT/Basler, PyPlr/Pupil Core, PupilMetrics/NeuroLight) and device-agnostic (GazeR, eyeris, PupEyes, PuPl, PupilSense). All use traditional preprocessing. Bottom layer: foundation_PLR fills the gap as the first TSFM-based preprocessing tool. License badges show MIT (green), GPL-3 (yellow), and non-commercial (red).
+Three-layer hierarchy of the pupillometry software ecosystem. Top layer: experiment design tools (PsychoPy with 1900 stars, PySilSub for silent substitution). Middle layer: 11 signal analysis tools spanning Python, R, MATLAB, and C++, split between hardware-coupled (PupilEXT/Basler, PyPlr/Pupil Core, PupilMetrics/NeuroLight) and device-agnostic (GazeR, eyeris, PupEyes, PuPl, PupillometryR, PUPILS, PupilSense). All use traditional preprocessing. Bottom layer: foundation_PLR fills the gap as the first TSFM-based preprocessing tool. License badges show MIT (green), GPL-3 (yellow), and non-commercial (red).
 
 ## Research Source
 
@@ -413,7 +448,7 @@ Full literature review with verified facts: `docs/planning/plr-repo-research.md`
 ## Status
 
 - [x] Draft created
-- [x] Literature review completed (10 repos)
+- [x] Literature review completed (12 repos: original 10 + PupillometryR + PUPILS)
 - [x] Factual review passed (reviewer agent)
 - [ ] Generated
 - [ ] Placed in README/docs
