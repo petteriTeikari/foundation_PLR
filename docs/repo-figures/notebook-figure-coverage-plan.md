@@ -296,7 +296,8 @@ All notebook-related figures use prefix `fig-nb-`:
 | fig-nb-03 | Our Quarto Architecture | L2 | P1 |
 | fig-nb-04 | Quarto Freeze -- Your CI Time Machine | L1 | P2 |
 | fig-nb-05 | Notebook Testing Landscape | L3 | P2 |
-| fig-nb-06 | MLSecOps for Notebooks | L3 | P2 |
+| fig-nb-06 | MLSecOps for Notebooks (Jupyter-focused) | L3 | P2 |
+| fig-nb-06b | Quarto Security: What Changed, What Didn't | L3 | P2 |
 | fig-nb-07 | From Notebook to Production | L2 | P1 |
 | fig-nb-08 | Building Libraries from Notebooks | L2 | P3 |
 
@@ -315,6 +316,11 @@ All notebook-related figures use prefix `fig-nb-`:
 | Netflix Tech Blog | Notebook Innovation (Papermill/Maestro) | fig-nb-07 |
 | arXiv:2502.04184 (2025) | "Non-executable" notebooks restorable | fig-nb-02 |
 | OWASP ML Security Top 10 | ML06 Supply Chain, ML10 Poisoning | fig-nb-06 |
+| CVE-2024-38526 | Polyfill.io supply chain via Quarto MathJax | fig-nb-06b |
+| CVE-2023-35936/38745 | Pandoc arbitrary file write | fig-nb-06b |
+| CVE-2025-51591 | Pandoc SSRF via iframe src | fig-nb-06b |
+| CVE-2023-32700 | LuaTeX shell escape bypass | fig-nb-06b |
+| Jiang et al. 2025 | Jupyter CVE trends (arXiv:2507.18833) | fig-nb-06b |
 | Yang et al. 2023 | Data Leakage in Notebooks (static analysis) | fig-nb-05 |
 | Quaranta et al. 2022 | Notebook quality assessment | fig-nb-07 |
 
