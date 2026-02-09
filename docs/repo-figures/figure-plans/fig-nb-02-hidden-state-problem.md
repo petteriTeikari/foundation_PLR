@@ -117,7 +117,7 @@ Visualize the core mechanism behind Jupyter notebook irreproducibility: out-of-o
 ## Content Elements
 
 1. **Two-panel "Spot the Difference" layout**: Left (during development) vs Right (re-run from top)
-2. **Execution counter visualization**: [1][5][3][7][2] vs [1][2][3][4][5] showing order mismatch
+2. **Execution counter visualization**: `[1][5][3][7][2]` vs `[1][2][3][4][5]` showing order mismatch
 3. **Cell-by-cell walkthrough**: 5 cells showing which work and which crash
 4. **Deleted cell ghost**: The invisible variable that persists in kernel memory
 5. **NameError cascade**: One missing variable causes 4 of 5 cells to fail
@@ -140,7 +140,7 @@ Visualize the core mechanism behind Jupyter notebook irreproducibility: out-of-o
 "Why 96% of Notebooks Fail: The Hidden State Problem"
 
 ### Caption
-The core mechanism behind notebook irreproducibility: out-of-order cell execution creates hidden state. Left panel shows a notebook during development -- cells executed as [1][5][3][7][2] with a deleted cell's variable (df) still alive in kernel memory. Everything appears to work. Right panel shows what happens when the same notebook is re-run top-to-bottom: 4 of 5 cells crash with NameError because the hidden dependencies are gone. 76.88% of notebooks exhibit non-linear execution order (Pimentel et al. 2021). Quarto prevents this by always rendering top-to-bottom with a fresh process. Marimo prevents this by enforcing a dependency DAG that makes out-of-order execution structurally impossible.
+The core mechanism behind notebook irreproducibility: out-of-order cell execution creates hidden state. Left panel shows a notebook during development -- cells executed as `[1][5][3][7][2]` with a deleted cell's variable (df) still alive in kernel memory. Everything appears to work. Right panel shows what happens when the same notebook is re-run top-to-bottom: 4 of 5 cells crash with NameError because the hidden dependencies are gone. 76.88% of notebooks exhibit non-linear execution order (Pimentel et al. 2021). Quarto prevents this by always rendering top-to-bottom with a fresh process. Marimo prevents this by enforcing a dependency DAG that makes out-of-order execution structurally impossible.
 
 ## Prompts for Nano Banana Pro
 
@@ -151,13 +151,13 @@ Split-panel "Spot the Difference" infographic on off-white background. Left pane
 Create a "Hidden State Problem" two-panel infographic:
 
 **LEFT PANEL - "During Development"**:
-- Five code cells with out-of-order execution counters [1][5][3][7][2]
+- Five code cells with out-of-order execution counters `[1][5][3][7][2]`
 - All cells appear to run successfully
 - Annotation showing a DELETED cell's variable still in memory
 - Green status indicator: "All good!"
 
 **RIGHT PANEL - "Re-run Top-to-Bottom"**:
-- Same five cells with sequential counters [1][2][3][4][5]
+- Same five cells with sequential counters `[1][2][3][4][5]`
 - Cell 2 crashes with NameError (depends on deleted cell)
 - Cascade: cells 3, 4, 5 also fail
 - Red status indicator: "4 of 5 cells FAIL"
@@ -169,7 +169,7 @@ Create a "Hidden State Problem" two-panel infographic:
 
 ## Alt Text
 
-Two-panel Spot the Difference infographic showing the Jupyter hidden state problem. Left panel: during development, five cells with execution counters [1][5][3][7][2] all run successfully because a deleted cell's variable persists in kernel memory. Right panel: when re-run top-to-bottom with counters [1][2][3][4][5], cell 2 crashes with NameError because the deleted cell's variable no longer exists, causing 4 of 5 cells to fail in cascade. Bottom section explains 76.88% of notebooks have non-linear execution order and shows how Quarto (top-to-bottom rendering) and Marimo (DAG enforcement) prevent this problem.
+Two-panel Spot the Difference infographic showing the Jupyter hidden state problem. Left panel: during development, five cells with execution counters `[1][5][3][7][2]` all run successfully because a deleted cell's variable persists in kernel memory. Right panel: when re-run top-to-bottom with counters `[1][2][3][4][5]`, cell 2 crashes with NameError because the deleted cell's variable no longer exists, causing 4 of 5 cells to fail in cascade. Bottom section explains 76.88% of notebooks have non-linear execution order and shows how Quarto (top-to-bottom rendering) and Marimo (DAG enforcement) prevent this problem.
 
 ## Related Figures
 
