@@ -198,25 +198,70 @@ The pupillometry software ecosystem as a three-layer hierarchy: experiment desig
 ## Prompts for Nano Banana Pro
 
 ### Style Prompt
-Scientific American infographic, clean flat design, off-white background, soft shadows, three horizontal shelves stacked vertically, each shelf a different pastel color. Readable text labels on every card. Editorial data-visualization style. Subtle iris/pupil watermark in background.
+**Render Engine:** High-fidelity Vector Art / 2.5D Architectural Diagram
+**Style:** Scientific American Infographic, Clean UI Layout, "Economist" Aesthetic
+**Background:** #FBF9F3 (Off-white matte)
 
 ### Content Prompt
-A wall-mounted shelf display with three shelves showing software library cards for pupillometry research.
+**Subject:** A three-tier vertical software hierarchy diagram consisting of distinct horizontal panels containing rectangular "cards."
 
-Top shelf labeled "EXPERIMENT DESIGN" in gold. Two name cards sitting on it: one large card reading "PsychoPy" with a Python snake icon, and one smaller card reading "PySilSub" with a Python snake icon.
+**VISUAL STRUCTURE (Top to Bottom):**
 
-Middle shelf labeled "SIGNAL ANALYSIS" in gray. Eleven name cards arranged in two rows. Back row: "PupilEXT" with C++ icon, "PyPlr" with Python icon, "PupilMetrics" with Python icon. Front row: "GazeR" with R icon, "eyeris" with R icon, "PupillometryR" with R icon, "PuPl" with MATLAB icon, "PUPILS" with MATLAB icon, "PupEyes" with Python icon, "PupilSense" with Python icon. A red ribbon across this shelf reads "All Traditional Preprocessing".
+**1. TOP ZONE (Experiment Design):**
+   - **Location:** Upper 15% of image.
+   - **Container:** A wide, soft cream-colored panel (#F5F3EF) with a subtle gold border (#D4A03C).
+   - **Content:** Two rounded rectangular cards side-by-side.
+     - **Card A (Left, larger):** "PsychoPy" placeholder. Gold accent color (#D4A03C). Python snake icon.
+     - **Card B (Right, smaller):** "PySilSub" placeholder. Gray accent (#666666). Python snake icon.
+   - **Detail:** A bidirectional arrow connecting these two cards.
 
-Bottom shelf labeled "TSFM PREPROCESSING" in gold with a star. One large gold-bordered card reading "foundation_PLR" with a Python icon and the subtitle "11 outlier + 8 imputation methods".
+**2. MIDDLE ZONE (Signal Analysis):**
+   - **Location:** Center 55% of image.
+   - **Container:** A wide, light gray panel (#E0E0E0).
+   - **Layout:** Grid of 11 smaller cards in two sub-groups with visible gap between them.
+   - **Left Sub-Group (3 cards, "Hardware-Coupled"):** Muted blue-gray accent borders. Cards for PupilEXT (C++ icon), PyPlr (Python icon), PupilMetrics (Python icon).
+   - **Right Sub-Group (8 cards, "Device-Agnostic"):** Slightly brighter blue accent borders. Cards for GazeR (R icon), eyeris (R icon), PupillometryR (R icon), PuPl (MATLAB diamond), PUPILS (MATLAB diamond), PupEyes (Python icon), PupilSense (Python icon). Arrange in 2 rows of 4.
+   - **Critical Element:** A bright RED (#C44536) horizontal warning strip running across the entire bottom of this middle zone. Text placeholder: "ALL TRADITIONAL PREPROCESSING".
 
-Downward arrows connect the shelves. A small legend at the bottom shows three colored dots: green = MIT, yellow = GPL, red = non-commercial.
+**3. BOTTOM ZONE (TSFM Preprocessing — The Gap):**
+   - **Location:** Bottom 25% of image.
+   - **Container:** A wide, prominent GOLD panel (#D4A03C) with a "hero" aesthetic.
+   - **Content:** A single, large central card with "foundation_PLR" text and a star icon.
+   - **Detail:** Subtitle placeholder: "11 outlier + 8 imputation methods · STRATOS evaluation".
 
-### Refinement Notes
-- This figure is a SOFTWARE LIBRARY SHOWCASE — every card must display its real library name as readable text
-- The 13 library names that MUST appear verbatim: PsychoPy, PySilSub, PupilEXT, PyPlr, PupilMetrics, GazeR, eyeris, PupillometryR, PuPl, PUPILS, PupEyes, PupilSense, foundation_PLR
-- Do NOT replace any name with generic text like "Tool A", "Plugin", "Module", or "Processing Pipeline"
-- foundation_PLR card should be gold-highlighted and visually prominent as the key contribution
-- Programming language icons (Python snake, R logo, MATLAB diamond, C++ brackets) on each card
+**ARROWS & FLOW:**
+   - Clean, straight vertical arrows pointing down: Top Zone → Middle Zone, Middle Zone → Bottom Zone.
+   - NO curved pipes or organic tubes. Clean diagrammatic arrows only.
+
+**TEXT PLACEHOLDERS:**
+   - Render clean rectangular label areas inside every card for text overlay.
+   - Each card MUST have a visible header area (for library name) and a body area (for description).
+   - "foundation_PLR" in the bottom zone should be rendered as legible text.
+
+**LICENSE LEGEND (bottom strip):**
+   - Three small colored dots: Green (#4CAF50) = MIT, Yellow (#FFC107) = GPL-3, Red (#C44536) = Non-commercial.
+
+### Negative Prompt
+tubes, pipes, cylinders, 3D biological vessels, organic shapes, blobs, interconnected nodes, complex machinery, dark background, neon glow, sci-fi, cyberpunk, garbled text, generic labels, conveyor belt, factory, molecular structure
+
+### Post-Processing Text Overlay
+After scaffolding generation, overlay these exact labels on each card:
+
+| Zone | Card Position | Header Text | Subtitle | Icon |
+|------|--------------|-------------|----------|------|
+| Top | Left (large) | PsychoPy | Stimulus timing, ★1900 | Python |
+| Top | Right (small) | PySilSub | Silent substitution, ★13 | Python |
+| Middle-Left | Row 1, Col 1 | PupilEXT | C++, Basler cameras, ★135 | C++ |
+| Middle-Left | Row 1, Col 2 | PyPlr | Pupil Core, ★14 | Python |
+| Middle-Left | Row 1, Col 3 | PupilMetrics | NeuroLight clinical, ★1 | Python |
+| Middle-Right | Row 1, Col 1 | GazeR | R, EyeLink+Tobii, ★52 | R |
+| Middle-Right | Row 1, Col 2 | eyeris | R, CRAN, 10-stage, ★5 | R |
+| Middle-Right | Row 1, Col 3 | PupillometryR | R, CRAN, GAMs+FDA | R |
+| Middle-Right | Row 1, Col 4 | PuPl | MATLAB, GUI, ★11 | MATLAB |
+| Middle-Right | Row 2, Col 1 | PUPILS | MATLAB, 60-500 Hz | MATLAB |
+| Middle-Right | Row 2, Col 2 | PupEyes | Python, Dash viz, ★8 | Python |
+| Middle-Right | Row 2, Col 3 | PupilSense | Smartphone DL, ★66 | Python |
+| Bottom | Center (hero) | foundation_PLR | 11 outlier + 8 imputation | Python |
 
 ## JSON Export Block (for Gemini)
 
