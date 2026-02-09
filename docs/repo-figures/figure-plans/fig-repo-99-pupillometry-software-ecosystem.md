@@ -201,52 +201,46 @@ The pupillometry software ecosystem as a three-layer hierarchy: experiment desig
 Medical illustration quality, ray-traced ambient occlusion, soft volumetric lighting, Economist off-white background (#FBF9F3), elegant scientific illustration, clean editorial layout, professional data visualization, hairline vector callout lines, Scientific American infographic style. Subtle eye anatomy background elements (iris, pupil) as watermark-level decoration.
 
 ### Content Prompt
-Create a three-layer vertical hierarchy infographic showing the pupillometry software ecosystem:
+Three-layer vertical hierarchy infographic. Each library MUST appear as a labeled card with its REAL name — no generic placeholders.
 
-TOP LAYER ("Experiment Design") — Warm cream background panel with gold accent border. Two tool cards:
-- PsychoPy: Large card with Python snake icon, green MIT license shield, "1900 stars" badge. Features: "Stimulus timing, LMS colors, Hardware sync". Prominent because it's the ecosystem anchor (40K+ users).
-- PySilSub: Smaller card with Python icon, green MIT shield, "13 stars". Features: "Silent substitution, Cone-isolating stimuli". Connected to PsychoPy with a bidirectional arrow labeled "Stimulus computation ↔ Delivery".
-A subtle dashed line connects PySilSub to PyPlr below (same research group).
-Caption strip: "Cognitive neuroscientists, chronobiologists, psychologists design experiments here."
+**TOP LAYER** "Experiment Design" — cream panel, gold border. Two cards:
+1. **PsychoPy** (Python, MIT, ★1900) — largest card. "Stimulus timing, LMS colors, hardware sync"
+2. **PySilSub** (Python, MIT, ★13) — "Silent substitution, cone-isolating stimuli"
+Bidirectional arrow between them: "Stimulus ↔ Delivery". Caption: "Neuroscientists design experiments here."
 
-MIDDLE LAYER ("Signal Analysis") — Larger panel, light gray background. Nine tool cards arranged in two groups:
+**MIDDLE LAYER** "Signal Analysis" — gray panel, 11 cards in two columns:
 
-Left group (hardware-coupled, slightly faded):
-- PupilEXT: C++ brackets icon, red non-commercial shield, "135 stars". "6 detection algorithms, Basler cameras"
-- PyPlr: Python icon, green MIT shield, "14 stars". "Pupil Core, STLAB, Inactive 2022"
-- PupilMetrics: Python icon, yellow GPL-3 shield, "1 star". "NeuroLight/Diagnosys, Nature pub."
+Left column "Hardware-coupled" (slightly faded):
+3. **PupilEXT** (C++, GPLv3+NC, ★135) — "6 detection algorithms, Basler cameras"
+4. **PyPlr** (Python, MIT, ★14) — "Pupil Core + STLAB"
+5. **PupilMetrics** (Python, GPLv3, ★1) — "NeuroLight/Diagnosys clinical"
 
-Right group (multi-device / device-agnostic, slightly brighter):
-- GazeR: R logo, yellow GPL-3 shield, "52 stars". "EyeLink+Tobii+Neon, Hershman blink detection"
-- eyeris: R logo, green MIT shield, "5 stars". "CRAN, 10-stage pipeline, DuckDB/BIDS"
-- PuPl: MATLAB diamond, red non-commercial shield, "11 stars". "GUI pipeliner, SMI/BIDS"
-- PupEyes: Python icon, yellow GPL-3 shield, "8 stars". "EyeLink+Tobii, Plotly Dash interactive viz"
-- PupilSense: Python icon, green MIT shield, "66 stars". "Smartphone camera, DL segmentation"
+Right column "Device-agnostic" (brighter):
+6. **GazeR** (R, GPL-3, ★52) — "EyeLink+Tobii+Neon, Hershman blink"
+7. **eyeris** (R, MIT, ★5) — "CRAN, 10-stage pipeline, DuckDB"
+8. **PupillometryR** (R, GPL-3, CRAN) — "GAMs, FDA, raincloud plots"
+9. **PuPl** (MATLAB, CC-NC, ★11) — "GUI pipeliner, SMI/BIDS"
+10. **PUPILS** (MATLAB, DTU) — "Blink+saccade detection, 60-500 Hz"
+11. **PupEyes** (Python, GPL-3, ★8) — "Plotly Dash interactive viz"
+12. **PupilSense** (Python, MIT, ★66) — "Smartphone camera, DL segmentation"
 
-A prominent warning banner stretches across the bottom of this layer in muted red: "ALL tools use TRADITIONAL preprocessing: threshold detection + linear interpolation + Butterworth filter"
+Red warning banner across bottom: "ALL tools use TRADITIONAL preprocessing: threshold + interpolation + filter"
 
-BOTTOM LAYER ("TSFM Preprocessing — THE GAP") — Gold-accented panel, highlighted as the key contribution. Single large card for foundation_PLR with gold border and star icon:
-- "11 outlier detection methods (MOMENT, UniTS, LOF, Ensembles)"
-- "8 imputation methods (SAITS, CSDI, MOMENT zero-shot)"
-- "STRATOS evaluation (5 metric domains)"
-- "Device-agnostic: any 30 Hz pupil signal"
-A callout reads: "Researchers design experiments above without worrying about TSFM intricacies."
+**BOTTOM LAYER** "TSFM Preprocessing — THE GAP" — gold panel, single large card:
+13. **foundation_PLR** (Python, gold border, star icon) — "11 outlier methods (MOMENT, UniTS, LOF, Ensembles) · 8 imputation methods (SAITS, CSDI) · STRATOS evaluation · Device-agnostic"
 
-Vertical downward arrows connect the three layers with labels: "Delivers stimulus → Records response" (top→middle) and "Raw signal → Needs robust preprocessing" (middle→bottom).
+Vertical arrows: top→middle "Delivers stimulus → Records response", middle→bottom "Raw signal → Needs preprocessing".
+License legend: Green=MIT, Yellow=GPL-3, Red=Non-commercial.
 
-BOTTOM STRIP — License legend with three colored shields: Green = MIT (commercial OK), Yellow = GPL-3 (copyleft), Red = Non-commercial.
-
-### Refinement Notes
-- The three-layer hierarchy should be the dominant visual structure
-- PsychoPy should be visually prominent (largest experiment-layer card) given its 40K+ user base
-- Hardware-coupled tools should feel slightly "constrained" vs device-agnostic tools
-- The "ALL TRADITIONAL" warning should be visually striking but not garish
-- foundation_PLR in the bottom layer should have gold highlighting as the ecosystem contribution
-- Language icons (Python snake, R logo, MATLAB diamond, C++ brackets) should be recognizable at small scale
-- License shields should be small but color-coded and readable
-- Star counts as small GitHub-style badges
-- The vertical flow should feel natural: design → analyze → preprocess
-- Include subtle eye anatomy elements (iris, pupil) as background watermark
+### Refinement Notes (CRITICAL)
+- **EVERY card must show the real library name** (PsychoPy, GazeR, eyeris, etc.) as readable text. DO NOT use generic names like "Plugin A", "Module 1", or "Tool X".
+- All 13 numbered items above are MANDATORY — omit none.
+- Three-layer vertical hierarchy is the dominant structure.
+- PsychoPy = largest experiment-layer card (40K+ users).
+- Language icons: Python snake, R logo, MATLAB diamond, C++ brackets — recognizable at small scale.
+- License shields: small color-coded badges. Star counts as GitHub-style badges.
+- foundation_PLR gold-highlighted as the ecosystem contribution.
+- Subtle eye anatomy (iris, pupil) as background watermark.
 
 ## JSON Export Block (for Gemini)
 
@@ -278,6 +272,8 @@ BOTTOM STRIP — License legend with three colored shields: Green = MIT (commerc
       {"name": "eyeris", "role": "secondary_pathway", "is_highlighted": false, "labels": ["R", "MIT", "5 stars", "CRAN, 10-stage pipeline"]},
       {"name": "PuPl", "role": "secondary_pathway", "is_highlighted": false, "labels": ["MATLAB", "CC-BY-NC", "11 stars", "GUI pipeliner"]},
       {"name": "PupEyes", "role": "secondary_pathway", "is_highlighted": false, "labels": ["Python", "GPL-3", "8 stars", "Plotly Dash viz"]},
+      {"name": "PupillometryR", "role": "secondary_pathway", "is_highlighted": false, "labels": ["R", "GPL-3", "CRAN", "GAMs + FDA"]},
+      {"name": "PUPILS", "role": "secondary_pathway", "is_highlighted": false, "labels": ["MATLAB", "DTU", "Blink+saccade", "60-500 Hz"]},
       {"name": "PupilSense", "role": "secondary_pathway", "is_highlighted": false, "labels": ["Python", "MIT", "66 stars", "Smartphone DL"]},
       {"name": "foundation_PLR", "role": "highlight_accent", "is_highlighted": true, "labels": ["Python", "TSFM", "Device-agnostic", "11 outlier + 8 imputation"]}
     ],
