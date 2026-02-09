@@ -16,7 +16,7 @@
 
 Map the open-source pupillometry ecosystem as a three-layer library hierarchy: experiment design (top), signal analysis (middle), and preprocessing (bottom). Reveals that (1) all existing analysis tools use traditional signal processing, (2) no TSFM-based preprocessing exists, and (3) our repository fills the preprocessing layer gap so that cognitive neuroscientists, chronobiologists, and psychologists can design experiments without worrying about TSFM intricacies.
 
-**Note (2026-02-09):** Two additional libraries discovered post-figure generation: PupillometryR (R, CRAN, Forbes 2020 JOSS) and PUPILS (MATLAB, Relaño-Iborra & Bækgaard 2020). Both belong in Layer 2 (signal analysis, device-agnostic). To be included in next figure regeneration.
+**Note (2026-02-09):** Two additional libraries discovered post-figure generation: PupillometryR (R, CRAN, Forbes 2020 JOSS) and PUPILS (MATLAB, Relaño-Iborra & Bækgaard 2020). Both belong in Layer 2 (signal analysis, device-agnostic). **Not shown in figure** — Nano Banana Pro could not regenerate the figure with correct library names (renders generic concepts instead). The original 10-library figure is used; README caption notes the omission. See `sci-llm-writer/.claude/docs/meta-learnings/nano-banana-scaffolding-workflow-2026-02-09.md`.
 
 ## Key Message
 
@@ -467,5 +467,5 @@ Full literature review with verified facts: `docs/planning/plr-repo-research.md`
 - [x] Draft created
 - [x] Literature review completed (12 repos: original 10 + PupillometryR + PUPILS)
 - [x] Factual review passed (reviewer agent)
-- [ ] Generated
-- [ ] Placed in README/docs
+- [x] Generated (original 10-library version; regeneration with 12 libraries abandoned — AI renders generic concepts)
+- [x] Placed in README/docs (with caption noting PupillometryR + PUPILS not shown in figure)

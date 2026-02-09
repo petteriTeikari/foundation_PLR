@@ -464,7 +464,7 @@ Raw pupil diameter signals require substantial preprocessing (blink removal, int
   <img src="docs/repo-figures/assets/fig-repo-99-pupillometry-software-ecosystem.jpg" alt="Three-layer pupillometry ecosystem: experiment design (PsychoPy, PySilSub), signal analysis (9 tools in Python/R/MATLAB/C++), and TSFM preprocessing (foundation_PLR fills the gap)">
 </p>
 
-*The pupillometry ecosystem as a three-layer hierarchy. All existing analysis tools use traditional preprocessing (threshold + interpolation). foundation_PLR introduces TSFM-based preprocessing as a device-agnostic drop-in layer.*
+*The pupillometry ecosystem as a three-layer hierarchy. All existing analysis tools use traditional preprocessing (threshold + interpolation). foundation_PLR introduces TSFM-based preprocessing as a device-agnostic drop-in layer. PupillometryR and PUPILS (added after figure generation) are not shown.*
 
 ### Open-Source Pupillometry Libraries
 
