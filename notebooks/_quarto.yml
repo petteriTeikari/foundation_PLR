@@ -1,0 +1,29 @@
+# Quarto project config for Foundation PLR tutorial notebooks
+# Renders .qmd files to HTML with frozen execution caching
+
+project:
+  type: default
+  output-dir: _output
+
+execute:
+  freeze: auto       # Re-execute only when source .qmd changes
+  echo: true         # Show code by default (pedagogical)
+  warning: false     # Suppress warnings in rendered output
+  error: false       # Default: halt rendering on errors (error:true would CONTINUE)
+
+format:
+  html:
+    theme: cosmo
+    code-fold: true
+    code-summary: "Show code"
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    fig-width: 10
+    fig-height: 6
+    fig-dpi: 150
+    mermaid:
+      theme: neutral
+
+# Use the project's venv Python (set via QUARTO_PYTHON env var or auto-detected)
+jupyter: python3

@@ -1,0 +1,583 @@
+---
+title: "Foundation PLR: Pipeline Walkthrough"
+subtitle: "Understanding the end-to-end analysis pipeline"
+author: "Foundation PLR Team"
+date: today
+---
+
+# Research Question {#sec-research-question}
+
+This project investigates a focused question:
+
+> **How do preprocessing choices (outlier detection followed by imputation) affect
+> ALL STRATOS-compliant downstream metrics when using handcrafted physiological
+> features for glaucoma screening?**
+
+The key design decision is to **fix the classifier** (CatBoost) and **vary the
+preprocessing pipeline**. We measure the downstream effect on discrimination,
+calibration, and clinical utility -- not just AUROC.
+
+**What this study is NOT about:**
+
+- Comparing classifiers (CatBoost vs. XGBoost) -- irrelevant to the research question
+- Maximizing AUROC -- not the goal
+- Generic ML benchmarking -- misses the point
+
+The pipeline has four stages, where stages 3 and 4 are held constant:
+
+```{mermaid}
+%%| label: fig-pipeline
+%%| fig-cap: "Four-stage preprocessing-to-classification pipeline."
+flowchart LR
+    A["1. Outlier Detection\n(11 methods)"] --> B["2. Imputation\n(8 methods)"]
+    B --> C["3. Featurization\n(FIXED: handcrafted)"]
+    C --> D["4. Classification\n(FIXED: CatBoost)"]
+    D --> E["STRATOS Metrics\nAUROC, Calibration,\nNet Benefit, DCA, Brier"]
+
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#f9f,stroke:#333,stroke-width:2px
+    style C fill:#bbf,stroke:#333,stroke-width:1px
+    style D fill:#bbf,stroke:#333,stroke-width:1px
+    style E fill:#bfb,stroke:#333,stroke-width:1px
+```
+
+Errors at each preprocessing stage propagate downstream. A poor outlier detector
+corrupts the signal, which degrades imputation quality, which distorts extracted
+features, which ultimately biases classification metrics. This cascading effect
+is the core phenomenon we quantify.
+
+
+# The Data: Chromatic Pupillometry {#sec-data}
+
+## What is the Pupillary Light Reflex?
+
+The **pupillary light reflex (PLR)** is the involuntary constriction and
+subsequent dilation of the pupil in response to light. Think of it as the eye's
+"auto-brightness" mechanism. When a bright light hits your eye, the pupil
+shrinks to protect the retina; when the light goes away, the pupil slowly
+returns to its resting size.
+
+In **chromatic pupillometry**, we use precisely controlled colored lights to
+probe different retinal pathways:
+
+- **Blue light (469 nm)** stimulates melanopsin-containing retinal ganglion
+  cells (ipRGCs). These cells are part of the non-image-forming visual system
+  and drive the **sustained** post-illumination pupil response (PIPR).
+- **Red light (640 nm)** primarily stimulates rods and cones and produces a
+  **transient** (phasic) response that recovers quickly.
+
+In glaucoma, the retinal ganglion cells degenerate. Since ipRGCs are a subtype
+of ganglion cells, the melanopsin-driven sustained response to blue light is
+preferentially affected. This makes chromatic pupillometry a promising
+non-invasive screening tool.
+
+## Stimulus Protocol
+
+The recording protocol lasts approximately 60 seconds with alternating stimulus
+epochs:
+
+```{mermaid}
+%%| label: fig-stimulus-protocol
+%%| fig-cap: "Chromatic pupillometry stimulus protocol."
+sequenceDiagram
+    participant R as Recorder
+    participant E as Eye
+    participant L as Light Source
+
+    R->>E: Baseline (10s, darkness)
+    Note over E: Pupil at resting diameter
+
+    L->>E: Blue Light ON (469nm, 1s)
+    Note over E: Rapid constriction
+    L-->>E: Light OFF
+    Note over E: Sustained response (PIPR)
+    R->>E: Recovery period (20s)
+
+    L->>E: Red Light ON (640nm, 1s)
+    Note over E: Rapid constriction
+    L-->>E: Light OFF
+    Note over E: Quick recovery (no PIPR)
+    R->>E: Recovery period (20s)
+```
+
+## Handcrafted Features
+
+From each PLR recording, we extract **8 physiological features** that capture
+the key dynamics of the pupil response:
+
+| Feature | Description | Clinical Relevance |
+|---------|-------------|--------------------|
+| Max constriction (blue) | Peak pupil narrowing after blue light | Overall pupillary reactivity |
+| Max constriction (red) | Peak pupil narrowing after red light | Cone/rod pathway integrity |
+| Phasic response (blue) | Rapid initial constriction amplitude | Inner retinal function |
+| Phasic response (red) | Rapid initial constriction amplitude | Photoreceptor function |
+| Sustained response (blue) | Late-phase constriction level | Melanopsin (ipRGC) function |
+| Sustained response (red) | Late-phase constriction level | Baseline comparison |
+| PIPR area (blue) | Post-illumination pupil response area | Key glaucoma biomarker |
+| PIPR area (red) | Post-illumination pupil response area | Non-melanopsin baseline |
+
+## Subject Counts
+
+| Task | N | Breakdown |
+|------|---|-----------|
+| Outlier Detection | **507** | All subjects with ground truth outlier masks |
+| Imputation | **507** | All subjects with ground truth denoised signals |
+| Classification | **208** | 152 control + 56 glaucoma (labeled subset) |
+
+299 subjects have preprocessing ground truth but no classification labels.
+
+**Data provenance:** Najjar et al. 2023, *British Journal of Ophthalmology*
+(DOI: [10.1136/bjophthalmol-2021-319938](https://doi.org/10.1136/bjophthalmol-2021-319938)).
+The original Singapore dataset (SNEC) contained 322 subjects with AUROC = 0.94.
+Our classification subset uses 208 subjects, so direct AUROC comparison with the
+original paper is not appropriate.
+
+
+# Exploring Results in DuckDB {#sec-duckdb}
+
+All experiment results are stored in a DuckDB database. This is the **single
+source of truth** for all figures and analyses: visualization code reads from
+DuckDB and never recomputes metrics.
+
+## Connecting to the Database
+
+```{python}
+#| label: db-connect
+import duckdb
+import pandas as pd
+
+conn = duckdb.connect("../data/public/foundation_plr_results.db", read_only=True)
+
+# List all available tables
+tables = conn.execute("SHOW TABLES").fetchdf()
+print("Available tables:")
+# Table names from SHOW TABLES are trusted internal values (not user input)
+for name in tables["name"]:
+    row_count = conn.execute(f"SELECT COUNT(*) FROM \"{name}\"").fetchone()[0]
+    print(f"  {name}: {row_count:,} rows")
+```
+
+## Top Configurations by AUROC
+
+```{python}
+#| label: top-configs
+top5 = conn.execute("""
+    SELECT outlier_method, imputation_method,
+           ROUND(auroc, 4) AS auroc,
+           ROUND(calibration_slope, 3) AS cal_slope,
+           ROUND(brier, 4) AS brier
+    FROM essential_metrics
+    WHERE classifier = 'CatBoost'
+      AND featurization NOT LIKE '%embedding%'
+    ORDER BY auroc DESC
+    LIMIT 5
+""").fetchdf()
+
+top5
+```
+
+## AUROC Distribution Across All Configurations
+
+```{python}
+#| label: auroc-summary-stats
+summary = conn.execute("""
+    SELECT
+        COUNT(*) AS n_configs,
+        ROUND(MIN(auroc), 4) AS min_auroc,
+        ROUND(MAX(auroc), 4) AS max_auroc,
+        ROUND(AVG(auroc), 4) AS mean_auroc,
+        ROUND(MEDIAN(auroc), 4) AS median_auroc,
+        ROUND(STDDEV(auroc), 4) AS std_auroc
+    FROM essential_metrics
+""").fetchdf()
+
+summary
+```
+
+## Method Counts Per Stage
+
+```{python}
+#| label: method-counts
+# Column names below are hardcoded constants (not user input)
+for col_name, label in [
+    ("outlier_method", "Outlier methods"),
+    ("imputation_method", "Imputation methods"),
+    ("classifier", "Classifiers"),
+    ("featurization", "Featurization types"),
+]:
+    n = conn.execute(
+        f"SELECT COUNT(DISTINCT \"{col_name}\") FROM essential_metrics"
+    ).fetchone()[0]
+    print(f"  {label}: {n}")
+```
+
+## AUROC Histogram
+
+```{python}
+#| label: fig-auroc-histogram
+#| fig-cap: "Distribution of AUROC across all 406 preprocessing configurations."
+import sys
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+sys.path.insert(0, str(Path("..").resolve()))
+from src.viz.plot_config import setup_style, COLORS
+
+setup_style()
+
+auroc_values = conn.execute(
+    "SELECT auroc FROM essential_metrics"
+).fetchdf()
+
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.hist(auroc_values["auroc"], bins=30, edgecolor=COLORS["grid"], linewidth=0.5)
+ax.set_xlabel("AUROC")
+ax.set_ylabel("Number of Configurations")
+ax.set_title("AUROC Distribution Across All Pipeline Configurations")
+ax.axvline(
+    auroc_values["auroc"].median(),
+    color=COLORS["neutral"], linestyle="--", linewidth=1,
+    label=f'Median = {auroc_values["auroc"].median():.3f}',
+)
+ax.legend()
+plt.tight_layout()
+plt.show()
+```
+
+
+# Key Findings {#sec-findings}
+
+## Best Performing Configurations
+
+```{python}
+#| label: key-findings
+# Best overall (any classifier)
+best_overall = conn.execute("""
+    SELECT outlier_method, imputation_method, classifier,
+           ROUND(auroc, 4) AS auroc
+    FROM essential_metrics
+    ORDER BY auroc DESC
+    LIMIT 1
+""").fetchone()
+
+# Ground truth baseline (CatBoost with ground truth preprocessing)
+gt_baseline = conn.execute("""
+    SELECT ROUND(auroc, 4) AS auroc
+    FROM essential_metrics
+    WHERE outlier_method = 'pupil-gt'
+      AND imputation_method = 'pupil-gt'
+      AND classifier = 'CatBoost'
+      AND featurization NOT LIKE '%embedding%'
+    LIMIT 1
+""").fetchone()
+
+# Handcrafted vs embedding comparison
+feat_comparison = conn.execute("""
+    SELECT featurization,
+           ROUND(AVG(auroc), 4) AS mean_auroc,
+           COUNT(*) AS n_configs
+    FROM essential_metrics
+    WHERE classifier = 'CatBoost'
+    GROUP BY featurization
+    ORDER BY mean_auroc DESC
+""").fetchdf()
+
+print(f"Best overall config: {best_overall[0]} + {best_overall[1]} "
+      f"({best_overall[2]}), AUROC = {best_overall[3]}")
+print(f"Ground truth baseline (CatBoost): AUROC = {gt_baseline[0]}")
+print(f"\nMean AUROC by featurization type:")
+print(feat_comparison.to_string(index=False))
+```
+
+## Summary of Key Results
+
+| Finding | Value | Interpretation |
+|---------|-------|----------------|
+| Best AUROC | ~0.913 | Ensemble outlier + CSDI imputation + CatBoost |
+| Ground truth baseline | ~0.911 | Preprocessing ceiling (nearly matched by best pipeline) |
+| Preprocessing effect | eta-squared ~ 0.15 | Moderate effect -- preprocessing matters |
+| Handcrafted vs. Embeddings | ~9pp gap | Handcrafted features win due to EPV constraints |
+
+The fact that the best automated pipeline (AUROC ~ 0.913) slightly exceeds the
+ground truth baseline (AUROC ~ 0.911) is not paradoxical: ensemble methods can
+average out annotation noise that affects even human ground truth labels.
+
+Foundation models are competitive for **preprocessing** (outlier detection and
+imputation) but their **embeddings** underperform handcrafted features by
+approximately 9 percentage points. This is likely due to the small sample size
+(N=208 for classification) and the events-per-variable (EPV) constraint: with
+only 56 glaucoma cases, high-dimensional embeddings overfit while 8 handcrafted
+features remain stable.
+
+
+# STRATOS Metrics: Beyond AUROC {#sec-stratos}
+
+The STRATOS initiative (Van Calster et al. 2024) recommends evaluating
+prediction models across **five domains**, not just discrimination:
+
+```{mermaid}
+%%| label: fig-stratos-domains
+%%| fig-cap: "Five STRATOS evaluation domains."
+flowchart TB
+    S["STRATOS-Compliant\nModel Evaluation"] --> D["Discrimination\nAUROC + CI"]
+    S --> C["Calibration\nSlope, Intercept, O:E"]
+    S --> O["Overall\nBrier Score,\nScaled Brier (IPA)"]
+    S --> U["Clinical Utility\nNet Benefit, DCA"]
+    S --> P["Distributions\nPredicted probability\nby outcome"]
+
+    style S fill:#ffe,stroke:#333,stroke-width:2px
+    style D fill:#ddf,stroke:#333
+    style C fill:#ddf,stroke:#333
+    style O fill:#ddf,stroke:#333
+    style U fill:#ddf,stroke:#333
+    style P fill:#ddf,stroke:#333
+```
+
+## Why AUROC Alone Is Insufficient
+
+AUROC measures **discrimination** -- the ability to rank patients by risk. But a
+model can have excellent discrimination while being **poorly calibrated**: it
+ranks patients correctly but assigns wrong absolute probabilities. In clinical
+decision-making, absolute probabilities matter because they determine treatment
+thresholds.
+
+For example, a model might correctly identify that Patient A has higher risk than
+Patient B, but if it says "60% risk" when the true risk is 10%, a clinician
+would recommend unnecessary treatment. Calibration metrics (slope, intercept,
+O:E ratio) catch this.
+
+**Net Benefit** and **Decision Curve Analysis (DCA)** go further: they quantify
+whether using the model leads to better clinical decisions than the alternatives
+(treat-all or treat-none) across a range of clinically reasonable thresholds.
+
+## All STRATOS Metrics for the Best Configuration
+
+```{python}
+#| label: stratos-best-config
+best_stratos = conn.execute("""
+    SELECT
+        outlier_method,
+        imputation_method,
+        ROUND(auroc, 4) AS auroc,
+        ROUND(auroc_ci_lower, 4) AS auroc_ci_lower,
+        ROUND(auroc_ci_upper, 4) AS auroc_ci_upper,
+        ROUND(calibration_slope, 3) AS cal_slope,
+        ROUND(calibration_intercept, 3) AS cal_intercept,
+        ROUND(o_e_ratio, 3) AS o_e_ratio,
+        ROUND(brier, 4) AS brier,
+        ROUND(net_benefit_5pct, 4) AS nb_5pct,
+        ROUND(net_benefit_10pct, 4) AS nb_10pct,
+        ROUND(net_benefit_15pct, 4) AS nb_15pct,
+        ROUND(net_benefit_20pct, 4) AS nb_20pct
+    FROM essential_metrics
+    WHERE classifier = 'CatBoost'
+      AND featurization NOT LIKE '%embedding%'
+    ORDER BY auroc DESC
+    LIMIT 1
+""").fetchdf()
+
+# Transpose for readability
+print("Best CatBoost configuration (all STRATOS metrics):")
+print(best_stratos.T.to_string(header=False))
+```
+
+## Miscalibrated Configurations
+
+A high AUROC does not guarantee good calibration. Let us find configurations
+where discrimination is reasonable but calibration slope falls outside the
+acceptable range (ideal = 1.0):
+
+```{python}
+#| label: miscalibrated-configs
+miscalibrated = conn.execute("""
+    SELECT
+        outlier_method,
+        imputation_method,
+        classifier,
+        ROUND(auroc, 4) AS auroc,
+        ROUND(calibration_slope, 3) AS cal_slope,
+        ROUND(calibration_intercept, 3) AS cal_intercept
+    FROM essential_metrics
+    WHERE auroc > 0.80
+      AND (calibration_slope > 2.0 OR calibration_slope < 0.5)
+    ORDER BY auroc DESC
+    LIMIT 10
+""").fetchdf()
+
+if len(miscalibrated) > 0:
+    print(f"Found {len(miscalibrated)} configs with AUROC > 0.80 "
+          "but poor calibration (slope > 2.0 or < 0.5):")
+    print(miscalibrated.to_string(index=False))
+else:
+    print("No configurations found with high AUROC but extreme "
+          "miscalibration -- a reassuring finding.")
+```
+
+**Reference:** Van Calster B, Collins GS, Vickers AJ, et al. (2024).
+"Performance evaluation of predictive AI models to support medical decisions."
+*STRATOS Initiative Topic Group 6.*
+
+
+# Pipeline Architecture {#sec-architecture}
+
+The analysis pipeline follows a strict **two-block architecture** that separates
+computation from visualization:
+
+```{mermaid}
+%%| label: fig-two-block
+%%| fig-cap: "Two-block pipeline separating extraction from analysis."
+flowchart LR
+    subgraph Block1["Block 1: Extraction"]
+        direction TB
+        ML["MLflow\n(542 experiments)"] --> EX["Extraction Scripts"]
+        EX --> DB["DuckDB\n(406 configs)"]
+    end
+
+    subgraph Block2["Block 2: Analysis"]
+        direction TB
+        DB2["DuckDB\n(read-only)"] --> FIG["Figures\n(R + Python)"]
+        DB2 --> STAT["Statistical\nAnalysis"]
+        DB2 --> TEX["LaTeX\nTables"]
+    end
+
+    DB --> DB2
+
+    style Block1 fill:#ffe8e8,stroke:#c00,stroke-width:2px
+    style Block2 fill:#e8ffe8,stroke:#0a0,stroke-width:2px
+```
+
+**Block 1 (Extraction)** requires access to raw MLflow data at
+`/home/petteri/mlruns/`. This block reads experiment results, computes all
+STRATOS metrics, and stores them in DuckDB. This only needs to run once (or when
+new experiments are added).
+
+**Block 2 (Analysis)** reads from DuckDB only. It generates all figures,
+statistical summaries, and LaTeX tables. This block is fully portable: any
+researcher with the DuckDB file can reproduce all downstream outputs without
+needing MLflow or raw data access.
+
+This separation is enforced architecturally: visualization code in `src/viz/` is
+**banned** from importing `sklearn.metrics` or any computation module. All
+metrics come pre-computed from DuckDB.
+
+## Commands
+
+| Command | What it does |
+|---------|-------------|
+| `make reproduce` | Full pipeline (Block 1 + Block 2) |
+| `make extract` | Block 1 only (MLflow to DuckDB) |
+| `make analyze` | Block 2 only (DuckDB to figures/stats) |
+| `make reproduce-from-checkpoint` | Block 2 only (alias) |
+
+
+# Generating Publication Figures {#sec-figures}
+
+All publication figures are generated from DuckDB data using either **Python
+matplotlib** or **R ggplot2**, depending on the figure type.
+
+## Figure Generation System
+
+The figure system follows strict rules:
+
+1. **Load combos from YAML** -- never hardcode method names or colors
+2. **Maximum 4 curves** in main figures (configurable for supplementary)
+3. **Ground truth required** in every comparison figure
+4. **JSON data saved** alongside every figure for reproducibility
+
+## Available Figure Commands
+
+| Command | Purpose |
+|---------|---------|
+| `make figures` | Generate all Python figures |
+| `make r-figures-all` | Generate all R figures |
+| `python src/viz/generate_all_figures.py --list` | List available figure IDs |
+| `python src/viz/generate_all_figures.py --figure R7` | Generate a specific figure |
+
+## Figure Data Source
+
+Every figure reads exclusively from DuckDB. For example, a ROC curve figure
+queries the `predictions` table to get `y_true` and `y_prob` per configuration,
+while a calibration plot reads from the `calibration_curves` table.
+
+```{python}
+#| label: figure-data-example
+# Example: data available for calibration plots
+cal_data = conn.execute("""
+    SELECT
+        e.outlier_method,
+        e.imputation_method,
+        COUNT(*) AS n_bins
+    FROM calibration_curves c
+    JOIN essential_metrics e ON c.config_id = e.config_id
+    GROUP BY e.outlier_method, e.imputation_method
+    ORDER BY n_bins DESC
+    LIMIT 5
+""").fetchdf()
+
+print("Calibration curve data available for top configs:")
+print(cal_data.to_string(index=False))
+```
+
+## Computation Decoupling
+
+A critical architectural principle: **visualization code never computes
+metrics**. The following imports are banned in `src/viz/`:
+
+```python
+# BANNED in visualization code:
+from sklearn.metrics import roc_auc_score      # Use DuckDB auroc column
+from sklearn.metrics import brier_score_loss    # Use DuckDB brier column
+from src.stats.calibration_extended import ...  # Use DuckDB cal columns
+
+# CORRECT in visualization code:
+df = conn.execute("SELECT auroc, calibration_slope FROM essential_metrics").fetchdf()
+```
+
+This ensures that figures always reflect the exact same numbers as statistical
+analyses and LaTeX tables.
+
+
+# Next Steps {#sec-next-steps}
+
+## For Reproducers
+
+If you want to reproduce the published results:
+
+1. **Clone the repository** and install dependencies with `uv sync`
+2. **Run Block 2**: `make analyze` (requires only the DuckDB file)
+3. All figures, tables, and statistics will be regenerated in `outputs/`
+
+If you have access to the raw MLflow data and want to verify from scratch:
+
+1. Run `make reproduce` (full pipeline, Block 1 + Block 2)
+
+## For Extenders
+
+To add a new preprocessing method to the pipeline:
+
+1. Register the method in `configs/mlflow_registry/parameters/classification.yaml`
+2. Run experiments and log results to MLflow
+3. Re-run extraction: `make extract`
+4. All downstream figures and analyses will automatically include the new method
+
+## Related Resources
+
+| Resource | Location |
+|----------|----------|
+| Project README | `README.md` in repository root |
+| Architecture overview | `ARCHITECTURE.md` in repository root |
+| API documentation | `docs/` (build with `make docs`) |
+| Manuscript | Sister repository (see `CLAUDE.md`) |
+
+## Citation
+
+If you use this pipeline or data in your research, please cite:
+
+> Najjar RP, et al. (2023). Pupillary light reflex as a diagnostic aid for
+> glaucoma: a Bayesian approach. *British Journal of Ophthalmology.*
+> DOI: [10.1136/bjophthalmol-2021-319938](https://doi.org/10.1136/bjophthalmol-2021-319938)
+
+```{python}
+#| label: cleanup
+conn.close()
+```

@@ -17,13 +17,13 @@
 [![R Required](https://img.shields.io/badge/R%20tests-local%20only-blue)](#quality-gates)
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-HERO-github-banner.jpg" alt="Foundation PLR: chromatic pupillometry meets time-series foundation models for glaucoma screening" width="800">
+  <img src="docs/repo-figures/assets/fig-HERO-github-banner.jpg" alt="Foundation PLR: chromatic pupillometry meets time-series foundation models for glaucoma screening">
 </p>
 
 > **Can foundation models improve biosignal preprocessing for glaucoma screening?**
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-01-what-this-repo-does.jpg" alt="Overview of the foundation_PLR preprocessing pipeline: raw PLR signals are cleaned and classified to screen for glaucoma" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-01-what-this-repo-does.jpg" alt="Overview of the foundation_PLR preprocessing pipeline: raw PLR signals are cleaned and classified to screen for glaucoma">
 </p>
 
 This repository evaluates whether **time-series foundation models** (MOMENT, UniTS) can replace traditional methods (LOF, SVM, linear interpolation) for **pupillary light reflex (PLR) biosignal preprocessing** in glaucoma screening. TimesNet is included as a non-TSFM baseline (trains from scratch per task). We fix the classifier (CatBoost), vary the preprocessing, and measure effects across **all** [STRATOS](http://arxiv.org/abs/2412.10288)-compliant metrics.
@@ -44,7 +44,7 @@ This repository evaluates whether **time-series foundation models** (MOMENT, Uni
 ## The Pipeline
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-02-preprocessing-pipeline.jpg" alt="Five-stage pipeline: outlier detection (11 methods) to imputation (8 methods) to featurization to classification to STRATOS metrics" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-02-preprocessing-pipeline.jpg" alt="Five-stage pipeline: outlier detection (11 methods) to imputation (8 methods) to featurization to classification to STRATOS metrics">
 </p>
 
 We **fix** the classifier and **vary** the preprocessing. This is NOT about comparing classifiers.
@@ -60,7 +60,7 @@ We **fix** the classifier and **vary** the preprocessing. This is NOT about comp
 <summary>Why foundation models for preprocessing?</summary>
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-03-foundation-models-why.jpg" alt="Traditional rule-based methods vs foundation models that learn temporal patterns from pretraining" width="700">
+  <img src="docs/repo-figures/assets/fig-repo-03-foundation-models-why.jpg" alt="Traditional rule-based methods vs foundation models that learn temporal patterns from pretraining">
 </p>
 
 Traditional methods rely on hand-tuned rules. Foundation models learn temporal patterns from large pretraining corpora and transfer them to PLR artifact removal.
@@ -72,7 +72,7 @@ Traditional methods rely on hand-tuned rules. Foundation models learn temporal p
 ## Architecture
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-18-two-block-architecture.jpg" alt="Two-block architecture: extraction (MLflow to DuckDB) and analysis (DuckDB to figures)" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-18-two-block-architecture.jpg" alt="Two-block architecture: extraction (MLflow to DuckDB) and analysis (DuckDB to figures)">
 </p>
 
 The project uses a **two-block architecture** that cleanly separates computation from visualization:
@@ -88,7 +88,7 @@ All metric computation happens in extraction. Visualization code reads DuckDB on
 <summary>Experiment pipeline: 6 Prefect subflows</summary>
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-10-prefect-orchestration.jpg" alt="6 Prefect subflows with role-based ownership from data import to deployment" width="700">
+  <img src="docs/repo-figures/assets/fig-repo-10-prefect-orchestration.jpg" alt="6 Prefect subflows with role-based ownership from data import to deployment">
 </p>
 
 Each subflow uses **"MLflow as contract"** -- reading inputs from and writing outputs to MLflow -- enabling independent development by different team members.
@@ -109,7 +109,7 @@ Each subflow uses **"MLflow as contract"** -- reading inputs from and writing ou
 ## STRATOS-Compliant Evaluation
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-11-stratos-metrics.jpg" alt="STRATOS compliance: discrimination (AUROC), calibration (slope, intercept, O:E), clinical utility (Net Benefit, DCA)" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-11-stratos-metrics.jpg" alt="STRATOS compliance: discrimination (AUROC), calibration (slope, intercept, O:E), clinical utility (Net Benefit, DCA)">
 </p>
 
 Every comparison reports **all five metric domains** -- not just AUROC:
@@ -168,7 +168,7 @@ make analyze    # DuckDB to figures
 <summary>MLflow UI Example</summary>
 
 <p align="center">
-  <img src="docs/assets/images/mlflow_ui.png" alt="MLflow Tracking UI showing experiment runs" width="700">
+  <img src="docs/assets/images/mlflow_ui.png" alt="MLflow Tracking UI showing experiment runs">
 </p>
 
 ```bash
@@ -183,7 +183,7 @@ mlflow ui --port 5000          # http://localhost:5000
 ## Configuration
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-05-hydra-config-system.jpg" alt="Hydra composes YAML configs hierarchically -- change experiments by editing config files, not source code" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-05-hydra-config-system.jpg" alt="Hydra composes YAML configs hierarchically -- change experiments by editing config files, not source code">
 </p>
 
 All configuration via [Hydra](https://hydra.cc/) -- change experiments by editing YAML, not source code:
@@ -201,7 +201,7 @@ See [configs/README.md](configs/README.md) for details.
 ## Standard Comparisons
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-22-standard-combos.jpg" alt="4 standard preprocessing combinations: ground truth, best ensemble, best foundation model, traditional" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-22-standard-combos.jpg" alt="4 standard preprocessing combinations: ground truth, best ensemble, best foundation model, traditional">
 </p>
 
 All figures compare the same 4 preprocessing pipelines (loaded from YAML, never hardcoded):
@@ -218,7 +218,7 @@ All figures compare the same 4 preprocessing pipelines (loaded from YAML, never 
 ## Error Propagation
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-20-error-propagation.jpg" alt="Error cascade through the 4-stage pipeline: errors at each stage propagate downstream" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-20-error-propagation.jpg" alt="Error cascade through the 4-stage pipeline: errors at each stage propagate downstream">
 </p>
 
 Errors at each preprocessing stage propagate downstream. This is why preprocessing choices matter -- even when the classifier is fixed.
@@ -252,7 +252,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation.
 ## Extending the Pipeline
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-06-add-new-classifier.jpg" alt="How to add a new classifier in 4 steps: wrapper, model config, HPO space, tests" width="700">
+  <img src="docs/repo-figures/assets/fig-repo-06-add-new-classifier.jpg" alt="How to add a new classifier in 4 steps: wrapper, model config, HPO space, tests">
 </p>
 
 Adding a new method requires 4 files: wrapper, model config, HPO space, and tests. The [mlflow_registry](configs/mlflow_registry/) is updated post-hoc after experiments complete. See the [tutorials](https://petteriTeikari.github.io/foundation_PLR/tutorials/adding-new-methods/) for step-by-step guides.
@@ -262,7 +262,7 @@ Adding a new method requires 4 files: wrapper, model config, HPO space, and test
 ## Quality Gates
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-08-precommit-quality-gates.jpg" alt="Pre-commit hooks catch hardcoded values, banned imports, and registry violations" width="700">
+  <img src="docs/repo-figures/assets/fig-repo-08-precommit-quality-gates.jpg" alt="Pre-commit hooks catch hardcoded values, banned imports, and registry violations">
 </p>
 
 Pre-commit hooks enforce:
@@ -307,7 +307,7 @@ Synthetic data is isolated from production via a [4-gate architecture](https://p
 **Source**: Najjar RP, et al. "Handheld chromatic pupillometry can accurately and rapidly reveal functional loss in glaucoma." *Br J Ophthalmol* 2023;107:663-670. [DOI: 10.1136/bjophthalmol-2021-319938](https://doi.org/10.1136/bjophthalmol-2021-319938)
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-19-subject-stratification.jpg" alt="Subject counts: 507 for preprocessing (all with ground truth masks), 208 for classification (152 control + 56 glaucoma)" width="700">
+  <img src="docs/repo-figures/assets/fig-repo-19-subject-stratification.jpg" alt="Subject counts: 507 for preprocessing (all with ground truth masks), 208 for classification (152 control + 56 glaucoma)">
 </p>
 
 | Dataset | N | Notes |
@@ -363,7 +363,8 @@ And the original data source:
 
 <!-- TODO: Update when preprint is published -->
 - **Teikari P, et al.** "Time Series Foundation Models for Ophthalmic Biosignal Preprocessing: Evidence from Chromatic Pupillometry." *(In preparation, target: TVST)*
-- Background theory: [Literature Review PDF](https://www.dropbox.com/scl/fi/rxubdh293l5dnn9q9fvn5/00-overview.pdf?rlkey=gai4w6ivlscs4bqq8p9kke0ct&dl=0) *(AI-assisted review, to be deposited on Figshare with DOI)*
+- Background theory: [PLR Signal Processing: From Physiology to Foundation Models](https://www.dropbox.com/scl/fi/pddylk5qz9smzsgi7uujd/plr-signal-processing.pdf?rlkey=c3jqjh7wbjjvbyodre0kkvcef&st=oj85i1ei&dl=0) -- Supplementary literature review covering PLR physiology, preprocessing methods, and foundation model applications *(AI-assisted, to be deposited on Figshare with DOI)*
+- Methodology: [Beyond AUROC: Evaluation, Statistics, and Reproducibility for Clinical Prediction Models](https://www.dropbox.com/scl/fi/bp34xzpjtaqmebcywj2ki/clinical-evaluation-reproducibility.pdf?rlkey=3i30tor5p5mdati5auh1adxxw&st=irqbuid5&dl=0) -- Supplementary literature review covering STRATOS-compliant evaluation, calibration, clinical utility, and reproducibility practices with ophthalmic time series applications *(AI-assisted, to be deposited on Figshare with DOI)*
 
 ### Key Papers
 
@@ -396,20 +397,27 @@ Our pipeline evaluates TSFMs for preprocessing tasks (outlier detection, imputat
 ##### Towards medical biosignal TSFMs
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-100-medical-tsfm-revolution.jpg" alt="Convergence diagram: modality-specific biosignal foundation models (EEG, ECG, PPG) flowing toward a hypothetical universal medical TSFM, with MIRA as a partial step (forecasting-only)" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-100-medical-tsfm-revolution.jpg" alt="Convergence diagram: modality-specific biosignal foundation models (EEG, ECG, PPG) flowing toward a hypothetical universal medical TSFM, with MIRA as a partial step (forecasting-only)">
 </p>
 
 *Medical biosignal foundation models are proliferating by modality (EEG, ECG, PPG), but no universal medical TSFM yet supports the full preprocessing task stack. MIRA provides medical pretraining but forecasting only -- the frontier is a full-stack medical TSFM.*
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-101-plr-as-tsfm-proving-ground.jpg" alt="Complexity ladder from PLR (simplest, this repo) through ERG and VOG to ORG (most complex), with multimodal fusion diagram showing frozen encoders feeding an MLP head" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-101-plr-as-tsfm-proving-ground.jpg" alt="Complexity ladder from PLR (simplest, this repo) through ERG and VOG to ORG (most complex), with multimodal fusion diagram showing frozen encoders feeding an MLP head">
 </p>
 
 *PLR is the simplest ophthalmic time series -- the ideal TSFM proving ground. If zero-shot preprocessing works here, the approach transfers to more complex ophthalmic signals (ERG, VOG, ORG) and ultimately to multimodal ophthalmic foundation models.*
 
-MIRA demonstrates that domain-specific medical TSFMs are emerging, but its forecasting-only capability leaves a gap: no medical TSFM yet supports the full preprocessing task stack (outlier detection, imputation, classification) needed for pipelines like ours. We anticipate post-MIRA development of MOMENT-like universal TSFMs pretrained on dense medical time series. The most active modalities driving this development are **EEG**, **ECG**, and **PPG** -- the three dominant biosignal types with large-scale public datasets:
+MIRA demonstrates that domain-specific medical TSFMs are emerging, but its forecasting-only capability leaves a gap: no medical TSFM yet supports the full preprocessing task stack (outlier detection, imputation, classification) needed for pipelines like ours. We anticipate post-MIRA development of MOMENT-like universal TSFMs pretrained on dense medical time series. The most active modalities driving this development are **ECG**, **EEG**, **PPG**, and **EMG** -- the four dominant biosignal types with large-scale public datasets. PLR remains the conspicuous gap:
+
+<p align="center">
+  <img src="docs/repo-figures/assets/fig-repo-102-biosignal-fm-landscape.jpg" alt="Biosignal foundation model landscape: ECG (10+ FMs), EEG (10+ FMs), PPG (5+ FMs), EMG (2-3 FMs), PLR (zero FMs) -- PPG architectures most transferable to PLR">
+</p>
+
+*Foundation models exist for ECG, EEG, PPG, and EMG -- but not for PLR. PPG architectures (GPT-PPG) are the most transferable to pupillometry due to shared 1D waveform structure.*
 
 **Reviews and benchmarks:**
+- **Gu X, et al.** (2025). Foundation models for biosignals: A survey. [TechRxiv: 175606236](https://doi.org/10.36227/techrxiv.175606236.62808131/v1) -- Comprehensive survey covering EEG, ECG, EMG, EOG, and PPG foundation models across unimodal and multimodal settings, identifying three converging directions: training from scratch on large biosignal datasets, adapting general time-series models to biomedical domains, and leveraging multimodal LLMs for biosignal analysis.
 - **Kuruppu G, et al.** (2025). EEG foundation models: A critical review of current progress and future directions. [arXiv: 2507.11783](https://doi.org/10.48550/arXiv.2507.11783) -- Surveys ten early EEG foundation models across three pillars (input representation, self-supervised modeling, evaluation), finding that most adopt transformer backbones with masked temporal reconstruction but evaluations remain heterogeneous, making off-the-shelf clinical utility hard to assess.
 - **Han Y, et al.** (2025). A systematic review on foundation models for electrocardiogram analysis: Initial strides and expansive horizons. [arXiv: 2410.19877](https://doi.org/10.48550/arXiv.2410.19877) -- First comprehensive systematic review of ECG foundation models, providing a structured taxonomy of architectures, pretraining strategies, and adaptation techniques across tasks including arrhythmia detection, risk stratification, and sleep staging.
 - **Kataria S, et al.** (2025). Generalist vs specialist time series foundation models: Investigating potential emergent behaviors in assessing human health using PPG signals. [arXiv: 2510.14254](https://doi.org/10.48550/arXiv.2510.14254) -- Benchmarks generalist TSFMs (e.g., MOMENT) against domain-specific biosignal models across 51 PPG health assessment tasks, finding that specialist models achieve a 27% higher win score than generalists in full-tuning, suggesting domain-specific pretraining provides substantial advantage for biosignal analysis.
@@ -428,11 +436,15 @@ MIRA demonstrates that domain-specific medical TSFMs are emerging, but its forec
 - **Saha M, et al.** (2025). Pulse-PPG: An open-source field-trained PPG foundation model for wearable applications across lab and field settings. [arXiv: 2502.01108](https://doi.org/10.48550/arXiv.2502.01108) -- First PPG foundation model pretrained on uncurated field data (120 participants, 100 days) rather than clinical recordings, demonstrating that exposure to real-world motion artifacts and noise yields representations that generalize better to both lab and wearable settings.
 - **Ni J, et al.** (2025). PPG-Distill: Efficient photoplethysmography signals analysis via foundation model distillation. [arXiv: 2509.19215](https://doi.org/10.48550/arXiv.2509.19215) -- Knowledge distillation framework compressing large PPG foundation models into lightweight versions (7x faster inference, 19x reduced memory) suitable for wearable deployment, using morphology and rhythm distillation to preserve both local waveform patterns and inter-beat temporal structure.
 
+**EMG foundation models:**
+- **Chmura J, et al.** (2025). TinyMyo: A tiny foundation model for flexible EMG signal processing at the edge. [arXiv: 2512.15729](https://doi.org/10.48550/arXiv.2512.15729) -- Lightweight transformer encoder (3.6M parameters) pretrained via masked reconstruction on heterogeneous surface EMG datasets, designed for ultra-low-power edge deployment. Generalizes across subjects, recording systems, and acquisition protocols for gesture recognition, neuromuscular assessment, and prosthetic control.
+- **Kurbis AG, et al.** (2025). An EMG foundation model for neural decoding. [bioRxiv: 2025.12.17.694831](https://doi.org/10.64898/2025.12.17.694831) -- EMGNet foundation model trained on 197+ hours of EMG recordings from 1,667 individuals, targeting neural decoding tasks for brain-computer interfaces and prosthetic control.
+
 **Multimodal sleep:**
 - **Thapa R, et al.** (2026). A multimodal sleep foundation model for disease prediction. *Nature Medicine*, Jan 6, 1-11. [DOI: 10.1038/s41591-025-04133-4](https://doi.org/10.1038/s41591-025-04133-4) -- Foundation model combining EEG, EOG, EMG, and cardiorespiratory signals from polysomnography for disease prediction, published in Nature Medicine -- demonstrating that multimodal biosignal pretraining can capture clinically meaningful patterns beyond what any single modality provides.
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-98-pupil-preprocessing-challenges.jpg" alt="Three-column diagram: diverse acquisition devices (handheld pupillometer, eye tracker, smartphone) converge on shared artifacts (blinks, tracking failures, baseline drift) feeding into a common preprocessing pipeline" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-98-pupil-preprocessing-challenges.jpg" alt="Three-column diagram: diverse acquisition devices (handheld pupillometer, eye tracker, smartphone) converge on shared artifacts (blinks, tracking failures, baseline drift) feeding into a common preprocessing pipeline">
 </p>
 
 *Preprocessing challenges are device-agnostic: blinks, tracking failures, and baseline drift affect all pupillometry hardware equally. Metrological artifacts are targets for TSFM-based preprocessing; physiological artifacts (hippus) require experimental control.*
@@ -449,7 +461,7 @@ Raw pupil diameter signals require substantial preprocessing (blink removal, int
 - **Landes J, et al.** (2025). Impact of preprocessing on classification results of eye-tracking-data. *Datenbank-Spektrum*, 25(3), 153-166. [DOI: 10.1007/s13222-025-00518-4](https://doi.org/10.1007/s13222-025-00518-4) -- Directly parallels our research question by showing that preprocessing choices significantly affect downstream classification accuracy on eye-tracking data, validating the sensitivity analysis approach taken in this repository.
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-99-pupillometry-software-ecosystem.jpg" alt="Three-layer pupillometry ecosystem: experiment design (PsychoPy, PySilSub), signal analysis (9 tools in Python/R/MATLAB/C++), and TSFM preprocessing (foundation_PLR fills the gap)" width="800">
+  <img src="docs/repo-figures/assets/fig-repo-99-pupillometry-software-ecosystem.jpg" alt="Three-layer pupillometry ecosystem: experiment design (PsychoPy, PySilSub), signal analysis (9 tools in Python/R/MATLAB/C++), and TSFM preprocessing (foundation_PLR fills the gap)">
 </p>
 
 *The pupillometry ecosystem as a three-layer hierarchy. All existing analysis tools use traditional preprocessing (threshold + interpolation). foundation_PLR introduces TSFM-based preprocessing as a device-agnostic drop-in layer.*
@@ -505,7 +517,7 @@ Open issues for future enhancements -- contributions welcome:
 ### Future Directions
 
 <p align="center">
-  <img src="docs/repo-figures/assets/fig-repo-12-future-experiments.jpg" alt="Roadmap: new foundation models, embedding dimensions, signal decomposition approaches" width="700">
+  <img src="docs/repo-figures/assets/fig-repo-12-future-experiments.jpg" alt="Roadmap: new foundation models, embedding dimensions, signal decomposition approaches">
 </p>
 
 - New foundation models as they emerge (e.g., Chronos, TimesFM)

@@ -1,0 +1,772 @@
+---
+title: "Foundation PLR: Reproduce and Extend"
+subtitle: "Reproduction guide and data scientist contribution workflow"
+author: "Foundation PLR Team"
+date: today
+---
+
+# Reproduction Overview
+
+This notebook is a pedagogical tutorial for two audiences:
+
+1. **Researchers** wanting to reproduce the published results from the Foundation PLR
+   paper (Pupillary Light Reflex preprocessing with foundation models).
+2. **Data scientists** wanting to contribute new analyses, metrics, or visualizations
+   to the project.
+
+The key architectural insight is that the project uses a **two-block pipeline**
+that separates _extraction_ (which requires access to the original MLflow experiment
+data) from _analysis_ (which works entirely from a portable DuckDB database).
+
+## Two-Block Architecture
+
+```{mermaid}
+%%| label: fig-architecture
+%%| fig-cap: "Two-block pipeline separating extraction from analysis."
+flowchart LR
+    subgraph Block1["Block 1: Extraction"]
+        direction TB
+        ML["/home/petteri/mlruns\n(542 pickles)"]
+        ML --> EXT["extraction_flow()"]
+        EXT --> DB[("DuckDB\nfoundation_plr_results.db")]
+    end
+
+    subgraph Block2["Block 2: Analysis"]
+        direction TB
+        DB2[("DuckDB\n406 configs")] --> FIG["Figures"]
+        DB2 --> STAT["Statistics"]
+        DB2 --> TEX["LaTeX artifacts\nnumbers.tex"]
+    end
+
+    DB --> DB2
+
+    style Block1 fill:#f9f0ff,stroke:#7B68EE
+    style Block2 fill:#f0fff4,stroke:#45B29D
+```
+
+## What Each Block Produces
+
+| Block | Input | Output | Who Needs It |
+|-------|-------|--------|-------------|
+| **Block 1: Extraction** | Raw MLflow runs (`/home/petteri/mlruns/`) | `data/public/foundation_plr_results.db` | Only the original authors |
+| **Block 2: Analysis** | DuckDB database (portable) | Figures, stats, LaTeX | **Everyone** (external researchers start here) |
+
+::: {.callout-tip}
+## External researchers: you only need Block 2
+
+The public DuckDB file contains all 406 pipeline configurations with predictions,
+metrics, calibration curves, and DCA curves. You do **not** need access to the
+original MLflow experiments.
+:::
+
+
+# Running the Analysis Pipeline
+
+## The Simple Command
+
+The entire analysis pipeline runs with a single command from the project root:
+
+```bash
+make analyze
+```
+
+## What Happens Under the Hood
+
+The `make analyze` target calls `scripts/reproduce_all_results.py --analyze-only`,
+which orchestrates a Prefect flow with these sequential steps:
+
+```{mermaid}
+%%| label: fig-analysis-flow
+%%| fig-cap: "Sequence of steps in the analysis flow."
+sequenceDiagram
+    participant M as make analyze
+    participant S as reproduce_all_results.py
+    participant F as analysis_flow()
+    participant DB as DuckDB
+
+    M->>S: --analyze-only
+    S->>F: analysis_flow(db_path)
+    F->>DB: check_public_data()
+    DB-->>F: 406 configs, tables OK
+    F->>F: generate_all_figures()
+    F->>F: compute_statistics()
+    F->>F: generate_latex_artifacts()
+    F->>F: generate_report()
+    F-->>S: analysis_report.json
+```
+
+## The Subprocess Call
+
+```{python}
+#| label: run-analysis
+#| eval: false
+
+# This cell is eval: false -- it shows the command but does not
+# execute the full pipeline inside this notebook.  Run it from
+# the terminal instead:  make analyze
+import subprocess
+
+result = subprocess.run(
+    ["make", "analyze"],
+    capture_output=True, text=True,
+    cwd="..",
+)
+print(result.stdout[-2000:])
+```
+
+::: {.callout-note}
+## Why `eval: false`?
+
+The full analysis pipeline generates all manuscript figures, computes statistics,
+and writes LaTeX artifacts. Running it inside a notebook is slow and produces
+file-system side effects. Use `make analyze` from your terminal instead.
+:::
+
+## Output Artifacts
+
+After a successful run, these paths are populated:
+
+| Output | Path | Description |
+|--------|------|-------------|
+| Figures | `outputs/figures/` | PNG/PDF manuscript figures |
+| LaTeX numbers | `artifacts/latex/numbers.tex` | `\providecommand` for inline stats |
+| Report | `analysis_report.json` | Machine-readable run summary |
+
+
+# Displaying Loguru/Prefect Output in Notebooks
+
+The project uses [Loguru](https://github.com/Delgan/loguru) for structured logging.
+By default, Loguru writes to `stderr`, which Jupyter/Quarto may not display cleanly.
+Here is how to redirect log output into notebook cells.
+
+```{python}
+#| label: setup-loguru-sink
+import sys
+from loguru import logger
+
+# Remove default stderr sink, add a notebook-friendly one
+logger.remove()
+logger.add(
+    sys.stdout,
+    format=("<green>{time:HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | {message}"),
+    level="INFO",
+    colorize=False,
+)
+```
+
+```{python}
+#| label: demo-loguru
+logger.info("Notebook loguru sink is active")
+logger.warning("Warnings render inline too")
+```
+
+::: {.callout-tip collapse="true"}
+## Rich HTML log output (optional)
+
+For HTML-rendered logs with collapsible sections, you can use `IPython.display`:
+
+```python
+from IPython.display import HTML, display
+
+def log_html(msg: str, level: str = "info"):
+    colors = {"info": "steelblue", "warning": "orange", "error": "crimson"}
+    color = colors.get(level, "gray")
+    display(HTML(
+        f'<span style="color:{color};font-family:monospace">'
+        f'[{level.upper()}] {msg}</span>'
+    ))
+```
+:::
+
+
+# Custom Analyses from DuckDB {#sec-custom}
+
+This is where the tutorial becomes hands-on. We connect to the public DuckDB
+and run analyses that go beyond the published figures.
+
+## Connect to the Database
+
+```{python}
+#| label: connect-db
+import duckdb
+import pandas as pd
+import numpy as np
+
+DB_PATH = "../data/public/foundation_plr_results.db"
+conn = duckdb.connect(DB_PATH, read_only=True)
+
+# Verify connection
+tables = [t[0] for t in conn.execute("SHOW TABLES").fetchall()]
+print(f"Tables: {tables}")
+
+n_configs = conn.execute(
+    "SELECT COUNT(DISTINCT config_id) FROM essential_metrics"
+).fetchone()[0]
+print(f"Total configs: {n_configs}")
+```
+
+## Example 1: Integrated Calibration Index (ICI)
+
+The Integrated Calibration Index (ICI) is a calibration metric not included
+in our standard STRATOS set. It measures the weighted average absolute
+difference between observed and predicted probabilities across the
+calibration curve. Lower is better.
+
+We compute it from the `calibration_curves` table -- no `sklearn` needed.
+
+```{python}
+#| label: ici-single-config
+# Compute ICI for one config from pre-computed calibration curves
+cal = conn.execute("""
+    SELECT c.bin_midpoint, c.observed_proportion, c.predicted_mean
+    FROM calibration_curves c
+    JOIN essential_metrics e ON c.config_id = e.config_id
+    WHERE e.classifier = 'CatBoost'
+      AND e.featurization = 'simple1.0'
+      AND e.outlier_method = 'pupil-gt'
+      AND e.imputation_method = 'pupil-gt'
+    ORDER BY c.bin_index
+""").fetchdf()
+
+print(f"Calibration bins: {len(cal)}")
+cal.head()
+```
+
+```{python}
+#| label: ici-compute
+def compute_ici(cal_df: pd.DataFrame) -> float:
+    """Integrated Calibration Index from calibration curve data.
+
+    ICI = weighted mean |observed - predicted| across bins.
+    """
+    diff = np.abs(
+        cal_df["observed_proportion"].values
+        - cal_df["predicted_mean"].values
+    )
+    return float(np.mean(diff))
+
+ici_gt = compute_ici(cal)
+print(f"ICI (ground truth config): {ici_gt:.4f}")
+```
+
+```{python}
+#| label: ici-top5
+# Compare ICI across top 5 configs by AUROC
+top5 = conn.execute("""
+    SELECT config_id, auroc
+    FROM essential_metrics
+    WHERE classifier = 'CatBoost'
+    ORDER BY auroc DESC
+    LIMIT 5
+""").fetchdf()
+
+ici_results = []
+for cid in top5["config_id"]:
+    cal_i = conn.execute("""
+        SELECT bin_midpoint, observed_proportion, predicted_mean
+        FROM calibration_curves
+        WHERE config_id = ?
+        ORDER BY bin_index
+    """, [cid]).fetchdf()
+    if len(cal_i) > 0:
+        ici_results.append({"config_id": cid, "ici": compute_ici(cal_i)})
+
+ici_df = pd.DataFrame(ici_results)
+print(ici_df.to_string(index=False))
+```
+
+::: {.callout-important}
+## No `sklearn.metrics` imports
+
+This project enforces a strict computation-decoupling rule: visualization and
+notebook code reads from DuckDB only. All metric computation happens during
+extraction. We computed ICI above using only `numpy` on pre-computed calibration
+bin data.
+:::
+
+## Example 2: Multi-Metric Ranking (STRATOS in Action)
+
+The entire point of STRATOS-compliant reporting is that **AUROC ranking does not
+equal calibration ranking**. Let us verify this empirically.
+
+```{python}
+#| label: multi-metric-query
+rankings = conn.execute("""
+    SELECT
+        outlier_method,
+        AVG(auroc) AS mean_auroc,
+        AVG(ABS(calibration_slope - 1.0)) AS cal_slope_deviation,
+        AVG(brier) AS mean_brier
+    FROM essential_metrics
+    WHERE classifier = 'CatBoost'
+    GROUP BY outlier_method
+    ORDER BY mean_auroc DESC
+""").fetchdf()
+
+rankings.head(11)
+```
+
+```{python}
+#| label: multi-metric-ranks
+# Assign ranks for each metric
+rankings["rank_auroc"] = rankings["mean_auroc"].rank(ascending=False)
+rankings["rank_cal_slope"] = rankings["cal_slope_deviation"].rank(ascending=True)
+rankings["rank_brier"] = rankings["mean_brier"].rank(ascending=True)
+
+cols = ["outlier_method", "rank_auroc", "rank_cal_slope", "rank_brier"]
+print(rankings[cols].to_string(index=False))
+```
+
+```{python}
+#| label: multi-metric-correlation
+from scipy.stats import spearmanr
+
+rho_auroc_cal, p_auroc_cal = spearmanr(
+    rankings["rank_auroc"], rankings["rank_cal_slope"]
+)
+print(f"Spearman rho (AUROC rank vs calibration rank): {rho_auroc_cal:.3f}")
+print(f"p-value: {p_auroc_cal:.3f}")
+print()
+if abs(rho_auroc_cal) < 0.7:
+    print("Rankings DIFFER -- AUROC alone is insufficient.")
+    print("This is why STRATOS requires multiple metric domains.")
+else:
+    print("Rankings are similar for this dataset.")
+```
+
+## Example 3: Decision Curve Analysis Exploration
+
+DCA curves show the **net clinical benefit** of using a model at different
+decision thresholds, compared to treat-all and treat-none strategies.
+
+```{python}
+#| label: dca-query
+# Load DCA curves for three representative configs
+# Query DCA curves for three representative preprocessing pipelines
+combos = [
+    {"outlier": "pupil-gt", "imputation": "pupil-gt", "label": "Ground Truth"},
+    {"outlier": "ensemble-LOF-MOMENT-OneClassSVM-PROPHET-SubPCA-TimesNet-UniTS-gt-finetune",
+     "imputation": "CSDI", "label": "Best Ensemble"},
+    {"outlier": "LOF", "imputation": "SAITS", "label": "Traditional (LOF+SAITS)"},
+]
+
+dca_data = {}
+for combo in combos:
+    df = conn.execute("""
+        SELECT d.threshold, d.net_benefit_model,
+               d.net_benefit_all, d.net_benefit_none
+        FROM dca_curves d
+        JOIN essential_metrics e ON d.config_id = e.config_id
+        WHERE e.classifier = 'CatBoost'
+          AND e.featurization = 'simple1.0'
+          AND e.outlier_method = ?
+          AND e.imputation_method = ?
+        ORDER BY d.threshold
+    """, [combo["outlier"], combo["imputation"]]).fetchdf()
+    if len(df) > 0:
+        dca_data[combo["label"]] = df
+
+print(f"Loaded DCA curves for {len(dca_data)} configs")
+```
+
+```{python}
+#| label: dca-plot
+import sys
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+# Use project style system -- package installed via `uv sync`
+# COLORS dict provides semantic, non-hardcoded color references
+sys.path.insert(0, str(Path("..").resolve()))
+from src.viz.plot_config import COLORS, setup_style
+
+setup_style()
+
+fig, ax = plt.subplots(figsize=(8, 5))
+
+color_map = {
+    "Ground Truth": COLORS["ground_truth"],
+    "Best Ensemble": COLORS["ensemble"],
+    "Traditional (LOF+SAITS)": COLORS["traditional"],
+}
+
+for label, df in dca_data.items():
+    ax.plot(
+        df["threshold"], df["net_benefit_model"],
+        label=label, color=color_map[label], linewidth=2,
+    )
+
+# Plot treat-all and treat-none reference lines from the first config
+ref = list(dca_data.values())[0]
+ax.plot(
+    ref["threshold"], ref["net_benefit_all"],
+    label="Treat All", color=COLORS["neutral"],
+    linestyle="--", linewidth=1,
+)
+ax.axhline(y=0, color=COLORS["grid"], linestyle=":", label="Treat None")
+
+ax.set_xlabel("Threshold Probability")
+ax.set_ylabel("Net Benefit")
+ax.set_title("Decision Curve Analysis")
+ax.legend(loc="upper right", fontsize=8)
+ax.set_xlim(0.0, 0.4)
+plt.tight_layout()
+plt.show()
+```
+
+::: {.callout-note}
+## Inline display only
+
+Notice we use `plt.show()` for inline rendering, **never** `plt.savefig()`.
+Publication figures are generated by the pipeline (`make figures`), not by notebooks.
+:::
+
+
+# For Data Scientists -- Contributing New Analyses {#sec-contributing}
+
+```{mermaid}
+%%| label: fig-contribution-workflow
+%%| fig-cap: "Contribution workflow for new analyses."
+flowchart LR
+    A["Write function\nin src/"] --> B["Write tests\nin tests/"]
+    B --> C["Create .qmd\nnotebook"]
+    C --> D["CI validates\nquarto render"]
+    D --> E["PR review"]
+
+    style A fill:#f9f0ff,stroke:#7B68EE
+    style B fill:#fff0f0,stroke:#D64045
+    style C fill:#f0fff4,stroke:#45B29D
+    style D fill:#fffff0,stroke:#F5A623
+    style E fill:#f0f8ff,stroke:#2E5090
+```
+
+## The Contract: Quarto-Only Policy
+
+All notebook contributions **must** be `.qmd` (Quarto Markdown) files. This
+is enforced by a pre-commit hook (`scripts/validation/check_notebook_format.py`)
+and by CI.
+
+| Format | Status | Reason |
+|--------|--------|--------|
+| `.qmd` (Quarto) | **Required** | Plain-text diffs, CI testability, no output bloat |
+| `.ipynb` (Jupyter) | **Banned** | Binary JSON, merge conflicts, output leaks |
+| `.py` (marimo) | **Banned** | Non-standard, no Quarto integration |
+
+**Separation of concerns:**
+
+- **Logic** goes in `src/` modules (testable, importable, reusable).
+- **Notebooks** are orchestration + narrative. They import from `src/` and
+  read from DuckDB. They should be short, readable, and pedagogical.
+
+::: {.callout-warning}
+## Pre-commit will reject `.ipynb` files
+
+If you try to commit a `.ipynb` file under `notebooks/`, the pre-commit hook
+will fail with `POLICY VIOLATION`. Convert your notebook first:
+
+```bash
+quarto convert my_notebook.ipynb  # produces my_notebook.qmd
+```
+:::
+
+## Step-by-Step: Adding a New Statistical Test
+
+Suppose you want to add the **Hosmer-Lemeshow test** as a supplementary
+calibration metric.
+
+### Step 1: Write the function in `src/`
+
+Create `src/stats/hosmer_lemeshow.py`:
+
+```{python}
+#| label: example-new-stat
+#| eval: false
+
+# src/stats/hosmer_lemeshow.py
+"""Hosmer-Lemeshow goodness-of-fit test."""
+
+import numpy as np
+from scipy.stats import chi2
+
+
+def hosmer_lemeshow(
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    n_groups: int = 10,
+) -> dict:
+    """Compute Hosmer-Lemeshow statistic.
+
+    Returns dict with 'statistic', 'p_value', 'n_groups'.
+    """
+    order = np.argsort(y_prob)
+    groups = np.array_split(order, n_groups)
+
+    hl_stat = 0.0
+    for g in groups:
+        obs = y_true[g].sum()
+        exp = y_prob[g].sum()
+        n = len(g)
+        if exp > 0 and (n - exp) > 0:
+            hl_stat += (obs - exp) ** 2 / exp
+            hl_stat += ((n - obs) - (n - exp)) ** 2 / (n - exp)
+
+    p_value = 1.0 - chi2.cdf(hl_stat, df=n_groups - 2)
+    return {
+        "statistic": hl_stat,
+        "p_value": p_value,
+        "n_groups": n_groups,
+    }
+```
+
+### Step 2: Write a pytest test
+
+Create `tests/unit/test_hosmer_lemeshow.py`:
+
+```{python}
+#| label: example-new-test
+#| eval: false
+
+# tests/unit/test_hosmer_lemeshow.py
+import numpy as np
+import pytest
+
+from src.stats.hosmer_lemeshow import hosmer_lemeshow
+
+
+def test_perfect_calibration():
+    """Perfect predictions should have high p-value."""
+    rng = np.random.default_rng(42)
+    y_prob = rng.uniform(0, 1, size=500)
+    y_true = (rng.uniform(0, 1, size=500) < y_prob).astype(int)
+    result = hosmer_lemeshow(y_true, y_prob)
+    assert result["p_value"] > 0.05
+
+
+def test_returns_expected_keys():
+    y_true = np.array([0, 1, 0, 1, 1, 0, 0, 1, 0, 1])
+    y_prob = np.array([.1, .9, .2, .8, .7, .3, .4, .6, .15, .85])
+    result = hosmer_lemeshow(y_true, y_prob, n_groups=2)
+    assert "statistic" in result
+    assert "p_value" in result
+    assert "n_groups" in result
+```
+
+### Step 3: Create the notebook
+
+Create `notebooks/extensions/hosmer_lemeshow_analysis.qmd` that imports
+from `src/stats/` and reads predictions from DuckDB:
+
+```{python}
+#| label: example-notebook-usage
+#| eval: false
+
+# In the notebook:
+from src.stats.hosmer_lemeshow import hosmer_lemeshow
+
+preds = conn.execute("""
+    SELECT y_true, y_prob FROM predictions
+    WHERE config_id = ?
+""", [config_id]).fetchdf()
+
+result = hosmer_lemeshow(
+    preds["y_true"].values,
+    preds["y_prob"].values,
+)
+print(f"HL statistic: {result['statistic']:.2f}")
+print(f"p-value: {result['p_value']:.4f}")
+```
+
+### Step 4: CI validates
+
+CI runs `quarto render notebooks/extensions/hosmer_lemeshow_analysis.qmd` to
+verify the notebook executes without errors.
+
+## Step-by-Step: Adding a New Visualization
+
+The pattern mirrors the statistical test workflow:
+
+1. Write the plot function in `src/viz/my_plot.py`. Use `setup_style()`,
+   `COLORS` dict, and `save_figure()` from `plot_config.py`.
+2. Register the figure in `configs/VISUALIZATION/figure_registry.yaml` with
+   its ID, description, and privacy level.
+3. Create a companion `.qmd` notebook with the narrative explanation.
+
+```{python}
+#| label: example-new-viz
+#| eval: false
+
+# src/viz/my_raincloud.py
+from src.viz.plot_config import COLORS, setup_style
+
+
+def raincloud_auroc(df, ax):
+    """Raincloud plot of AUROC by outlier method."""
+    setup_style()
+    # ... plot implementation using COLORS["primary"], etc.
+    # NEVER hardcode hex colors
+    # NEVER call plt.savefig() -- use save_figure()
+    return ax
+```
+
+## Integration with Existing Pipeline
+
+### Prefect integration
+
+If your analysis should run as part of `make analyze`, you can register it as
+a Prefect task inside `src/orchestration/flows/analysis_flow.py`:
+
+```{python}
+#| label: example-prefect-task
+#| eval: false
+
+# In analysis_flow.py:
+from src.orchestration._prefect_compat import task
+
+@task(name="render_extension_notebook")
+def render_extension_notebook(notebook_name: str):
+    import subprocess
+    subprocess.run(
+        ["quarto", "render", f"notebooks/extensions/{notebook_name}"],
+        check=True,
+    )
+```
+
+### Makefile target pattern
+
+For convenience, add a Make target:
+
+```makefile
+# In Makefile:
+render-notebook:
+    quarto render notebooks/$(NOTEBOOK).qmd
+```
+
+Usage: `make render-notebook NOTEBOOK=extensions/hosmer_lemeshow_analysis`
+
+### Parameterization
+
+Quarto supports command-line parameters. Define them in the YAML header:
+
+```yaml
+params:
+  db_path: "../data/public/foundation_plr_results.db"
+```
+
+Then render with a custom path:
+
+```bash
+quarto render my_analysis.qmd -P db_path:path/to/custom.db
+```
+
+
+# Verifying Reproducibility {#sec-verify}
+
+After running `make analyze`, verify that results match the published numbers.
+
+## Expected Output Checklist
+
+```{python}
+#| label: verify-outputs
+#| eval: false
+from pathlib import Path
+
+expected = [
+    "outputs/figures/",
+    "artifacts/latex/numbers.tex",
+    "analysis_report.json",
+]
+
+for p in expected:
+    path = Path("..") / p
+    exists = path.exists()
+    status = "OK" if exists else "MISSING"
+    print(f"  [{status}] {p}")
+```
+
+## SHA256 Checksum Verification
+
+The project ships a checksum file for data integrity. From the project root:
+
+```bash
+make verify-data
+# Equivalent to: sha256sum -c data/_checksums.sha256
+```
+
+This verifies both the public results database and the synthetic demo data.
+
+## Assertion Checks Against Published Numbers
+
+```{python}
+#| label: verify-auroc-values
+# These are the key published numbers from the paper.
+# If they do not match, the database may have been corrupted.
+
+gt_auroc = conn.execute("""
+    SELECT auroc FROM essential_metrics
+    WHERE classifier = 'CatBoost'
+      AND featurization = 'simple1.0'
+      AND outlier_method = 'pupil-gt'
+      AND imputation_method = 'pupil-gt'
+""").fetchone()
+
+if gt_auroc is not None:
+    gt_val = gt_auroc[0]
+    print(f"Ground truth AUROC: {gt_val:.4f}")
+    assert abs(gt_val - 0.911) < 0.002, (
+        f"Ground truth AUROC mismatch: {gt_val}"
+    )
+    print("  PASS: matches published value (0.911)")
+else:
+    print("  SKIP: ground truth config not found in DB")
+```
+
+```{python}
+#| label: verify-ensemble-auroc
+ens_auroc = conn.execute("""
+    SELECT auroc FROM essential_metrics
+    WHERE outlier_method LIKE 'ensemble-%'
+      AND imputation_method = 'CSDI'
+      AND classifier = 'CatBoost'
+    ORDER BY auroc DESC
+    LIMIT 1
+""").fetchone()
+
+if ens_auroc is not None:
+    ens_val = ens_auroc[0]
+    print(f"Best ensemble AUROC: {ens_val:.4f}")
+    assert abs(ens_val - 0.913) < 0.002, (
+        f"Ensemble AUROC mismatch: {ens_val}"
+    )
+    print("  PASS: matches published value (0.913)")
+else:
+    print("  SKIP: ensemble config not found in DB")
+```
+
+```{python}
+#| label: cleanup-connection
+conn.close()
+print("Database connection closed.")
+```
+
+
+# Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Database not found` | DuckDB file missing | Run `make extract` first (Block 1), or download the public DB |
+| `No module named src` | Wrong working directory or venv inactive | Run from project root; activate with `source .venv/bin/activate` |
+| `Private data missing` | No `data/private/` directory | Expected for external researchers. Private figures are skipped automatically |
+| `R package not found` | renv library out of sync | Run `Rscript -e 'renv::restore()'` from project root |
+| `quarto: command not found` | Quarto CLI not installed | Install from [quarto.org](https://quarto.org/docs/get-started/) |
+| `POLICY VIOLATION: .ipynb` | Committed a Jupyter notebook | Convert with `quarto convert notebook.ipynb`, then commit the `.qmd` |
+| `Banned pattern: sklearn.metrics` | Imported sklearn in notebook code | Read metrics from DuckDB instead (see @sec-custom) |
+| `Prefect import error` | Prefect not installed or disabled | Set `PREFECT_DISABLED=1` for local testing without orchestration |
+
+::: {.callout-tip}
+## Getting help
+
+If you encounter an issue not listed here, check the project's
+[GitHub Issues](https://github.com/petteriTeikari/foundation-PLR/issues)
+or open a new one with the `reproduction` label.
+:::
