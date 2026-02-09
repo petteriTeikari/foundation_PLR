@@ -36,7 +36,7 @@ dependencies = [
     "pytest>=8.3.3",
     "python-dotenv>=1.0.1",
     "reformer-pytorch>=1.4.4",
-    "rtdl-num-embeddings==0.0.11",
+    "rtdl-num-embeddings==0.0.12",
     "ruff>=0.7.1",
     "scikit-learn>=1.5.2",
     "scikit-multilearn>=0.2.0",
