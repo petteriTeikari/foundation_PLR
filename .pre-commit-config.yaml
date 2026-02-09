@@ -103,4 +103,5 @@ repos:
       language: system
       pass_filenames: false
       stages: [pre-commit]
-      files: (notebooks/)
+      # Trigger on any .ipynb/.qmd anywhere, or changes within notebooks/
+      files: (\.ipynb$|\.qmd$|notebooks/)

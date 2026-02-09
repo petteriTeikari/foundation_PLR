@@ -9,7 +9,7 @@ execute:
   freeze: auto       # Re-execute only when source .qmd changes
   echo: true         # Show code by default (pedagogical)
   warning: false     # Suppress warnings in rendered output
-  error: true        # HALT on errors -- never silently continue
+  error: false       # Default: halt rendering on errors (error:true would CONTINUE)
 
 format:
   html:

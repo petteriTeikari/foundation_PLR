@@ -3,18 +3,6 @@ title: "Your Analysis Title"
 subtitle: "Brief description of what this analysis adds"
 author: "Your Name"
 date: today
-format:
-  html:
-    code-fold: true
-    code-summary: "Show code"
-    toc: true
-jupyter: python3
-execute:
-  echo: true
-  warning: false
-  error: true
-params:
-  db_path: "../data/public/foundation_plr_results.db"
 ---
 
 <!--
@@ -46,15 +34,22 @@ Workflow:
 
 ```{python}
 #| label: setup
+#| tags: [parameters]
+# Parameters cell -- override via: quarto render --execute-params 'db_path: /alt/path.db'
+db_path = "../data/public/foundation_plr_results.db"
+```
+
+```{python}
+#| label: connect-db
 import duckdb
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
 # Connect to results database (read-only)
-DB_PATH = Path(params["db_path"])
+DB_PATH = Path(db_path)
 assert DB_PATH.exists(), f"Database not found at {DB_PATH}"
-con = duckdb.connect(str(DB_PATH), read_only=True)
+conn = duckdb.connect(str(DB_PATH), read_only=True)
 
 print(f"Connected to {DB_PATH.name}")
 print(f"Tables: {[t[0] for t in con.execute('SHOW TABLES').fetchall()]}")
@@ -71,7 +66,7 @@ print(f"Tables: {[t[0] for t in con.execute('SHOW TABLES').fetchall()]}")
 # from src.stats.your_module import your_function
 
 # Example: Query data from DuckDB
-df = con.execute("""
+df = conn.execute("""
     SELECT outlier_method, imputation_method, auroc, calibration_slope
     FROM essential_metrics
     WHERE classifier = 'CatBoost'
@@ -90,5 +85,5 @@ df
 
 ```{python}
 #| label: cleanup
-con.close()
+conn.close()
 ```

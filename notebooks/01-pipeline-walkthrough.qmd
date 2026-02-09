@@ -3,18 +3,6 @@ title: "Foundation PLR: Pipeline Walkthrough"
 subtitle: "Understanding the end-to-end analysis pipeline"
 author: "Foundation PLR Team"
 date: today
-format:
-  html:
-    code-fold: true
-    code-summary: "Show code"
-    toc: true
-    toc-depth: 3
-    number-sections: true
-jupyter: python3
-execute:
-  echo: true
-  warning: false
-  error: true
 ---
 
 # Research Question {#sec-research-question}
@@ -38,6 +26,8 @@ calibration, and clinical utility -- not just AUROC.
 The pipeline has four stages, where stages 3 and 4 are held constant:
 
 ```{mermaid}
+%%| label: fig-pipeline
+%%| fig-cap: "Four-stage preprocessing-to-classification pipeline."
 flowchart LR
     A["1. Outlier Detection\n(11 methods)"] --> B["2. Imputation\n(8 methods)"]
     B --> C["3. Featurization\n(FIXED: handcrafted)"]
@@ -87,6 +77,8 @@ The recording protocol lasts approximately 60 seconds with alternating stimulus
 epochs:
 
 ```{mermaid}
+%%| label: fig-stimulus-protocol
+%%| fig-cap: "Chromatic pupillometry stimulus protocol."
 sequenceDiagram
     participant R as Recorder
     participant E as Eye
@@ -159,8 +151,9 @@ conn = duckdb.connect("../data/public/foundation_plr_results.db", read_only=True
 # List all available tables
 tables = conn.execute("SHOW TABLES").fetchdf()
 print("Available tables:")
+# Table names from SHOW TABLES are trusted internal values (not user input)
 for name in tables["name"]:
-    row_count = conn.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
+    row_count = conn.execute(f"SELECT COUNT(*) FROM \"{name}\"").fetchone()[0]
     print(f"  {name}: {row_count:,} rows")
 ```
 
@@ -205,6 +198,7 @@ summary
 
 ```{python}
 #| label: method-counts
+# Column names below are hardcoded constants (not user input)
 for col_name, label in [
     ("outlier_method", "Outlier methods"),
     ("imputation_method", "Imputation methods"),
@@ -212,7 +206,7 @@ for col_name, label in [
     ("featurization", "Featurization types"),
 ]:
     n = conn.execute(
-        f"SELECT COUNT(DISTINCT {col_name}) FROM essential_metrics"
+        f"SELECT COUNT(DISTINCT \"{col_name}\") FROM essential_metrics"
     ).fetchone()[0]
     print(f"  {label}: {n}")
 ```
@@ -222,20 +216,27 @@ for col_name, label in [
 ```{python}
 #| label: fig-auroc-histogram
 #| fig-cap: "Distribution of AUROC across all 406 preprocessing configurations."
+import sys
+from pathlib import Path
 import matplotlib.pyplot as plt
+
+sys.path.insert(0, str(Path("..").resolve()))
+from src.viz.plot_config import setup_style, COLORS
+
+setup_style()
 
 auroc_values = conn.execute(
     "SELECT auroc FROM essential_metrics"
 ).fetchdf()
 
 fig, ax = plt.subplots(figsize=(8, 4))
-ax.hist(auroc_values["auroc"], bins=30, edgecolor="white", linewidth=0.5)
+ax.hist(auroc_values["auroc"], bins=30, edgecolor=COLORS["grid"], linewidth=0.5)
 ax.set_xlabel("AUROC")
 ax.set_ylabel("Number of Configurations")
 ax.set_title("AUROC Distribution Across All Pipeline Configurations")
 ax.axvline(
     auroc_values["auroc"].median(),
-    color="gray", linestyle="--", linewidth=1,
+    color=COLORS["neutral"], linestyle="--", linewidth=1,
     label=f'Median = {auroc_values["auroc"].median():.3f}',
 )
 ax.legend()
@@ -315,6 +316,8 @@ The STRATOS initiative (Van Calster et al. 2024) recommends evaluating
 prediction models across **five domains**, not just discrimination:
 
 ```{mermaid}
+%%| label: fig-stratos-domains
+%%| fig-cap: "Five STRATOS evaluation domains."
 flowchart TB
     S["STRATOS-Compliant\nModel Evaluation"] --> D["Discrimination\nAUROC + CI"]
     S --> C["Calibration\nSlope, Intercept, O:E"]
@@ -421,6 +424,8 @@ The analysis pipeline follows a strict **two-block architecture** that separates
 computation from visualization:
 
 ```{mermaid}
+%%| label: fig-two-block
+%%| fig-cap: "Two-block pipeline separating extraction from analysis."
 flowchart LR
     subgraph Block1["Block 1: Extraction"]
         direction TB

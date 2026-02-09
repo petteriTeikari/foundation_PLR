@@ -3,18 +3,6 @@ title: "Foundation PLR: Reproduce and Extend"
 subtitle: "Reproduction guide and data scientist contribution workflow"
 author: "Foundation PLR Team"
 date: today
-format:
-  html:
-    code-fold: true
-    code-summary: "Show code"
-    toc: true
-    toc-depth: 3
-    number-sections: true
-jupyter: python3
-execute:
-  echo: true
-  warning: false
-  error: true
 ---
 
 # Reproduction Overview
@@ -384,12 +372,14 @@ print(f"Loaded DCA curves for {len(dca_data)} configs")
 
 ```{python}
 #| label: dca-plot
+import sys
+from pathlib import Path
 import matplotlib.pyplot as plt
 
-# Use project style system (imported at module level for notebooks)
+# Use project style system -- package installed via `uv sync`
 # COLORS dict provides semantic, non-hardcoded color references
-sys.path.insert(0, "../src/viz")
-from plot_config import COLORS, setup_style
+sys.path.insert(0, str(Path("..").resolve()))
+from src.viz.plot_config import COLORS, setup_style
 
 setup_style()
 
