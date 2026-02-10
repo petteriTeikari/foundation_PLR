@@ -345,7 +345,7 @@ def load_from_duckdb_as_dataframe(
         If there is an error reading from DuckDB.
     """
     try:
-        with duckdb.connect(database=db_path, read_only=False) as con:
+        with duckdb.connect(database=db_path, read_only=True) as con:
             df_load = con.query(f"SELECT * FROM {split}").pl()
     except Exception as e:
         logger.error("Error in reading DuckDB: {}".format(e))
@@ -403,10 +403,10 @@ def export_dataframes_to_duckdb(
     if debug_DuckDBWrite:
         logger.info("Reading back from DuckDB")
         logger.info("TRAIN split")
-        with duckdb.connect(database=str(db_path), read_only=False) as con:
+        with duckdb.connect(database=str(db_path), read_only=True) as con:
             con.query("SELECT * FROM train").show()
         logger.info("TEST split")
-        with duckdb.connect(database=str(db_path), read_only=False) as con:
+        with duckdb.connect(database=str(db_path), read_only=True) as con:
             con.query("SELECT * FROM test").show()
         logger.info("Read successful!")
 
@@ -433,7 +433,7 @@ def import_duckdb_as_dataframes(db_path: str) -> tuple[pl.DataFrame, pl.DataFram
     """
     logger.info("Reading data from DuckDB Database: {}".format(db_path))
     try:
-        with duckdb.connect(database=db_path, read_only=False) as con:
+        with duckdb.connect(database=db_path, read_only=True) as con:
             train = con.query("SELECT * FROM train")
             df_train = train.pl()
             test = con.query("SELECT * FROM test")

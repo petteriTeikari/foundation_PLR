@@ -90,7 +90,7 @@ The main database `public/foundation_plr_results.db` contains these tables. The 
 | Tier | Identifier | Example | Location | Git-tracked |
 |------|-----------|---------|----------|-------------|
 | Public | Anonymized codes | H001, G003 | `data/public/` | Yes (DB) |
-| Private | Original codes | PLR0042 | `data/private/subject_lookup.yaml` | No (gitignored) |
+| Private | Original codes | `PLR****` | `data/private/subject_lookup.yaml` | No (gitignored) |
 | Synthetic | Synthetic codes | SYNTH_H001 | `data/synthetic/` | Yes |
 
 > **See also:** [fig-repo-23](../docs/repo-figures/figure-plans/fig-repo-23-data-privacy.md) -- Data privacy classification (public vs private). [fig-repo-78](../docs/repo-figures/figure-plans/fig-repo-78-data-path-resolution.md) -- How tests find their data files.
