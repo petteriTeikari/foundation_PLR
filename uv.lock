@@ -5379,7 +5379,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "reformer-pytorch", specifier = ">=1.4.4" },
     { name = "requests", specifier = ">=2.32.4" },
-    { name = "rtdl-num-embeddings", specifier = "==0.0.11" },
+    { name = "rtdl-num-embeddings", specifier = "==0.0.12" },
     { name = "ruff", specifier = ">=0.7.1" },
     { name = "scikit-learn", specifier = ">=1.5.2" },
     { name = "scikit-multilearn", specifier = ">=0.2.0" },
@@ -5550,14 +5550,14 @@ wheels = [
 
 [[package]]
 name = "rtdl-num-embeddings"
-version = "0.0.11"
+version = "0.0.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "torch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/71/78/91f7d76e03c7e8ce5fe53f99fb64021230308c77a594afb4861931e3a4d9/rtdl_num_embeddings-0.0.11.tar.gz", hash = "sha256:b9c799cbb286955876fb469ef983cb6dedc431229189493347523b5a4bff6e8f", size = 1038749, upload-time = "2024-11-11T21:34:50.262Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/8c/a72229cb7e07d93c9e067b36ed069a8b46c0c22b3abc1c0ac54497a696d3/rtdl_num_embeddings-0.0.12.tar.gz", hash = "sha256:44711d4991b80545fae15665d8fcf817258868370f9cf3370a5e569a062978a5", size = 1189159, upload-time = "2025-04-13T11:53:39.357Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/e7/d2bbfae0c106687d6191366638be0c5bfd44c1b01fd79eafe3d906e06dbe/rtdl_num_embeddings-0.0.11-py3-none-any.whl", hash = "sha256:2035e1f41e2dde91c4cc37ec921f24bef1a74391124f79c4bdb1a6ac59df0c62", size = 13127, upload-time = "2024-11-11T21:34:47.803Z" },
+    { url = "https://files.pythonhosted.org/packages/18/b9/cef7a26a7999740d5067406b6e856fe0f18f1dd8bd2052e05f4bf4846c5e/rtdl_num_embeddings-0.0.12-py3-none-any.whl", hash = "sha256:87fd61270118915cf40888f2164f3a1f0353edf702f15fd91e71a147d23c930d", size = 13293, upload-time = "2025-04-13T11:53:36.346Z" },
 ]
 
 [[package]]

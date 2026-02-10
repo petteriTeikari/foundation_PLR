@@ -16,6 +16,8 @@
 
 Map the open-source pupillometry ecosystem as a three-layer library hierarchy: experiment design (top), signal analysis (middle), and preprocessing (bottom). Reveals that (1) all existing analysis tools use traditional signal processing, (2) no TSFM-based preprocessing exists, and (3) our repository fills the preprocessing layer gap so that cognitive neuroscientists, chronobiologists, and psychologists can design experiments without worrying about TSFM intricacies.
 
+**Note (2026-02-09):** Two additional libraries discovered post-figure generation: PupillometryR (R, CRAN, Forbes 2020 JOSS) and PUPILS (MATLAB, Relaño-Iborra & Bækgaard 2020). Both belong in Layer 2 (signal analysis, device-agnostic). **Not shown in figure** — Nano Banana Pro could not regenerate the figure with correct library names (renders generic concepts instead). The original 10-library figure is used; README caption notes the omission. See `sci-llm-writer/.claude/docs/meta-learnings/nano-banana-scaffolding-workflow-2026-02-09.md`.
+
 ## Key Message
 
 "The pupillometry ecosystem has mature experiment design tools (PsychoPy, PySilSub) and multiple signal analysis libraries — but ALL use traditional preprocessing (threshold + interpolation). foundation_PLR introduces TSFM-based preprocessing as a drop-in upgrade."
@@ -57,13 +59,18 @@ Three-tier horizontal hierarchy with tool cards positioned by layer and hardware
 │  ║  └──────────────┘ └───────────┘  │ data.frame│ │10-stage│ │ baseline │   ║  │
 │  ║                                   └──────────┘ │pipeline│ │ correct. │   ║  │
 │  ║  ┌──────────────────┐  ┌─────────────────┐    └────────┘ └───────────┘   ║  │
-│  ║  │🐍 PupilMetrics   │  │ MATLAB PuPl     │                               ║  │
-│  ║  │ GPLv3  ★1        │  │ CC-NC   ★11     │    ┌──────────────┐           ║  │
-│  ║  │ NeuroLight /     │  │ GUI pipeliner   │    │🐍 PupilSense │           ║  │
-│  ║  │ Diagnosys        │  │ SMI / BIDS      │    │ MIT    ★66   │           ║  │
-│  ║  │ Nature pub.      │  │ Octave compat.  │    │ Smartphone   │           ║  │
-│  ║  └──────────────────┘  └─────────────────┘    │ DL segm.     │           ║  │
-│  ║                                                └──────────────┘           ║  │
+│  ║  │🐍 PupilMetrics   │  │ MATLAB PuPl     │    ┌────────────────┐         ║  │
+│  ║  │ GPLv3  ★1        │  │ CC-NC   ★11     │    │R PupillometryR │         ║  │
+│  ║  │ NeuroLight /     │  │ GUI pipeliner   │    │CRAN  JOSS 2020 │         ║  │
+│  ║  │ Diagnosys        │  │ SMI / BIDS      │    │GAMs + FDA      │         ║  │
+│  ║  │ Nature pub.      │  │ Octave compat.  │    └────────────────┘         ║  │
+│  ║  └──────────────────┘  └─────────────────┘    ┌──────────────┐           ║  │
+│  ║  ┌──────────────────┐                         │MATLAB PUPILS │           ║  │
+│  ║  │🐍 PupilSense     │                         │60-500 Hz     │           ║  │
+│  ║  │ MIT    ★66       │                         │Blink+saccade │           ║  │
+│  ║  │ Smartphone       │                         │Duchowski alg.│           ║  │
+│  ║  │ DL segm.         │                         └──────────────┘           ║  │
+│  ║  └──────────────────┘                                                    ║  │
 │  ║  ⚠ ALL tools use TRADITIONAL preprocessing:                              ║  │
 │  ║    threshold blink detection, linear interpolation, Butterworth filter    ║  │
 │  ╚══════════════════════════════════════════════════════════════════════════════╝  │
@@ -103,7 +110,7 @@ spatial_anchors:
   analysis_layer:
     x: 0.5
     y: 0.50
-    content: "9 existing tools positioned by hardware coupling"
+    content: "11 existing tools positioned by hardware coupling"
   hardware_coupled_zone:
     x: 0.25
     y: 0.45
@@ -140,6 +147,8 @@ spatial_anchors:
 | eyeris | `secondary_pathway` | R, MIT, 5 stars. CRAN v3.0.1. 10-stage pipeline (deblink→detransient→interpolate→filter→downsample→bin→detrend→z-score). DuckDB/BIDS |
 | PuPl | `secondary_pathway` | MATLAB/Octave, CC-BY-NC, 11 stars. GUI pipeliner. SMI/BIDS. Reproducible pipeline export |
 | PupEyes | `secondary_pathway` | Python, GPL-3, 8 stars. EyeLink+Tobii. Plotly Dash interactive viz. Blink detection comparison tools |
+| PupillometryR | `secondary_pathway` | R, CRAN, JOSS 2020. Start-to-finish pipeline: filtering, baselining, GAMs (mgcv), FDA (fda). Raincloud plots. Multi-brand |
+| PUPILS | `secondary_pathway` | MATLAB, arXiv 2020. Modular toolbox: blink detection, Duchowski saccade detection, interpolation, smoothing. 60-500 Hz. DTU |
 | PupilSense | `secondary_pathway` | Python, MIT, 66 stars. Smartphone camera pupillometry. Detectron2 DL segmentation. Depression screening |
 | foundation_PLR | `highlight_accent` | Python, TSFM-based, device-agnostic. 11 outlier + 8 imputation methods. STRATOS evaluation. THE GAP |
 | Layer arrows | `primary_pathway` | Vertical flow: experiment design → signal analysis → preprocessing |
@@ -176,66 +185,83 @@ spatial_anchors:
 - Label 7: eyeris (R, CRAN, 10-stage)
 - Label 8: PuPl (MATLAB, GUI)
 - Label 9: PupEyes (Python, Dash)
-- Label 10: PupilSense (Smartphone)
-- Label 11: foundation_PLR (TSFM)
-- Label 12: Traditional Preprocessing
-- Label 13: TSFM Preprocessing (NEW)
+- Label 10: PupillometryR (R, CRAN, GAMs)
+- Label 11: PUPILS (MATLAB, DTU)
+- Label 12: PupilSense (Smartphone)
+- Label 13: foundation_PLR (TSFM)
+- Label 14: Traditional Preprocessing
+- Label 15: TSFM Preprocessing (NEW)
 
 ### Caption (for embedding)
-The pupillometry software ecosystem as a three-layer hierarchy: experiment design (PsychoPy, PySilSub), signal analysis (9 tools spanning Python/R/MATLAB/C++), and preprocessing. All existing tools use traditional signal processing. foundation_PLR introduces TSFM-based preprocessing as a device-agnostic drop-in layer.
+The pupillometry software ecosystem as a three-layer hierarchy: experiment design (PsychoPy, PySilSub), signal analysis (11 tools spanning Python/R/MATLAB/C++), and preprocessing. All existing tools use traditional signal processing. foundation_PLR introduces TSFM-based preprocessing as a device-agnostic drop-in layer.
 
 ## Prompts for Nano Banana Pro
 
 ### Style Prompt
-Medical illustration quality, ray-traced ambient occlusion, soft volumetric lighting, Economist off-white background (#FBF9F3), elegant scientific illustration, clean editorial layout, professional data visualization, hairline vector callout lines, Scientific American infographic style. Subtle eye anatomy background elements (iris, pupil) as watermark-level decoration.
+**Render Engine:** High-fidelity Vector Art / 2.5D Architectural Diagram
+**Style:** Scientific American Infographic, Clean UI Layout, "Economist" Aesthetic
+**Background:** #FBF9F3 (Off-white matte)
 
 ### Content Prompt
-Create a three-layer vertical hierarchy infographic showing the pupillometry software ecosystem:
+**Subject:** A three-tier vertical software hierarchy diagram consisting of distinct horizontal panels containing rectangular "cards."
 
-TOP LAYER ("Experiment Design") — Warm cream background panel with gold accent border. Two tool cards:
-- PsychoPy: Large card with Python snake icon, green MIT license shield, "1900 stars" badge. Features: "Stimulus timing, LMS colors, Hardware sync". Prominent because it's the ecosystem anchor (40K+ users).
-- PySilSub: Smaller card with Python icon, green MIT shield, "13 stars". Features: "Silent substitution, Cone-isolating stimuli". Connected to PsychoPy with a bidirectional arrow labeled "Stimulus computation ↔ Delivery".
-A subtle dashed line connects PySilSub to PyPlr below (same research group).
-Caption strip: "Cognitive neuroscientists, chronobiologists, psychologists design experiments here."
+**VISUAL STRUCTURE (Top to Bottom):**
 
-MIDDLE LAYER ("Signal Analysis") — Larger panel, light gray background. Nine tool cards arranged in two groups:
+**1. TOP ZONE (Experiment Design):**
+   - **Location:** Upper 15% of image.
+   - **Container:** A wide, soft cream-colored panel (#F5F3EF) with a subtle gold border (#D4A03C).
+   - **Content:** Two rounded rectangular cards side-by-side.
+     - **Card A (Left, larger):** "PsychoPy" placeholder. Gold accent color (#D4A03C). Python snake icon.
+     - **Card B (Right, smaller):** "PySilSub" placeholder. Gray accent (#666666). Python snake icon.
+   - **Detail:** A bidirectional arrow connecting these two cards.
 
-Left group (hardware-coupled, slightly faded):
-- PupilEXT: C++ brackets icon, red non-commercial shield, "135 stars". "6 detection algorithms, Basler cameras"
-- PyPlr: Python icon, green MIT shield, "14 stars". "Pupil Core, STLAB, Inactive 2022"
-- PupilMetrics: Python icon, yellow GPL-3 shield, "1 star". "NeuroLight/Diagnosys, Nature pub."
+**2. MIDDLE ZONE (Signal Analysis):**
+   - **Location:** Center 55% of image.
+   - **Container:** A wide, light gray panel (#E0E0E0).
+   - **Layout:** Grid of 11 smaller cards in two sub-groups with visible gap between them.
+   - **Left Sub-Group (3 cards, "Hardware-Coupled"):** Muted blue-gray accent borders. Cards for PupilEXT (C++ icon), PyPlr (Python icon), PupilMetrics (Python icon).
+   - **Right Sub-Group (8 cards, "Device-Agnostic"):** Slightly brighter blue accent borders. Cards for GazeR (R icon), eyeris (R icon), PupillometryR (R icon), PuPl (MATLAB diamond), PUPILS (MATLAB diamond), PupEyes (Python icon), PupilSense (Python icon). Arrange in 2 rows of 4.
+   - **Critical Element:** A bright RED (#C44536) horizontal warning strip running across the entire bottom of this middle zone. Text placeholder: "ALL TRADITIONAL PREPROCESSING".
 
-Right group (multi-device / device-agnostic, slightly brighter):
-- GazeR: R logo, yellow GPL-3 shield, "52 stars". "EyeLink+Tobii+Neon, Hershman blink detection"
-- eyeris: R logo, green MIT shield, "5 stars". "CRAN, 10-stage pipeline, DuckDB/BIDS"
-- PuPl: MATLAB diamond, red non-commercial shield, "11 stars". "GUI pipeliner, SMI/BIDS"
-- PupEyes: Python icon, yellow GPL-3 shield, "8 stars". "EyeLink+Tobii, Plotly Dash interactive viz"
-- PupilSense: Python icon, green MIT shield, "66 stars". "Smartphone camera, DL segmentation"
+**3. BOTTOM ZONE (TSFM Preprocessing — The Gap):**
+   - **Location:** Bottom 25% of image.
+   - **Container:** A wide, prominent GOLD panel (#D4A03C) with a "hero" aesthetic.
+   - **Content:** A single, large central card with "foundation_PLR" text and a star icon.
+   - **Detail:** Subtitle placeholder: "11 outlier + 8 imputation methods · STRATOS evaluation".
 
-A prominent warning banner stretches across the bottom of this layer in muted red: "ALL tools use TRADITIONAL preprocessing: threshold detection + linear interpolation + Butterworth filter"
+**ARROWS & FLOW:**
+   - Clean, straight vertical arrows pointing down: Top Zone → Middle Zone, Middle Zone → Bottom Zone.
+   - NO curved pipes or organic tubes. Clean diagrammatic arrows only.
 
-BOTTOM LAYER ("TSFM Preprocessing — THE GAP") — Gold-accented panel, highlighted as the key contribution. Single large card for foundation_PLR with gold border and star icon:
-- "11 outlier detection methods (MOMENT, UniTS, LOF, Ensembles)"
-- "8 imputation methods (SAITS, CSDI, MOMENT zero-shot)"
-- "STRATOS evaluation (5 metric domains)"
-- "Device-agnostic: any 30 Hz pupil signal"
-A callout reads: "Researchers design experiments above without worrying about TSFM intricacies."
+**TEXT PLACEHOLDERS:**
+   - Render clean rectangular label areas inside every card for text overlay.
+   - Each card MUST have a visible header area (for library name) and a body area (for description).
+   - "foundation_PLR" in the bottom zone should be rendered as legible text.
 
-Vertical downward arrows connect the three layers with labels: "Delivers stimulus → Records response" (top→middle) and "Raw signal → Needs robust preprocessing" (middle→bottom).
+**LICENSE LEGEND (bottom strip):**
+   - Three small colored dots: Green (#4CAF50) = MIT, Yellow (#FFC107) = GPL-3, Red (#C44536) = Non-commercial.
 
-BOTTOM STRIP — License legend with three colored shields: Green = MIT (commercial OK), Yellow = GPL-3 (copyleft), Red = Non-commercial.
+### Negative Prompt
+tubes, pipes, cylinders, 3D biological vessels, organic shapes, blobs, interconnected nodes, complex machinery, dark background, neon glow, sci-fi, cyberpunk, garbled text, generic labels, conveyor belt, factory, molecular structure
 
-### Refinement Notes
-- The three-layer hierarchy should be the dominant visual structure
-- PsychoPy should be visually prominent (largest experiment-layer card) given its 40K+ user base
-- Hardware-coupled tools should feel slightly "constrained" vs device-agnostic tools
-- The "ALL TRADITIONAL" warning should be visually striking but not garish
-- foundation_PLR in the bottom layer should have gold highlighting as the ecosystem contribution
-- Language icons (Python snake, R logo, MATLAB diamond, C++ brackets) should be recognizable at small scale
-- License shields should be small but color-coded and readable
-- Star counts as small GitHub-style badges
-- The vertical flow should feel natural: design → analyze → preprocess
-- Include subtle eye anatomy elements (iris, pupil) as background watermark
+### Post-Processing Text Overlay
+After scaffolding generation, overlay these exact labels on each card:
+
+| Zone | Card Position | Header Text | Subtitle | Icon |
+|------|--------------|-------------|----------|------|
+| Top | Left (large) | PsychoPy | Stimulus timing, ★1900 | Python |
+| Top | Right (small) | PySilSub | Silent substitution, ★13 | Python |
+| Middle-Left | Row 1, Col 1 | PupilEXT | C++, Basler cameras, ★135 | C++ |
+| Middle-Left | Row 1, Col 2 | PyPlr | Pupil Core, ★14 | Python |
+| Middle-Left | Row 1, Col 3 | PupilMetrics | NeuroLight clinical, ★1 | Python |
+| Middle-Right | Row 1, Col 1 | GazeR | R, EyeLink+Tobii, ★52 | R |
+| Middle-Right | Row 1, Col 2 | eyeris | R, CRAN, 10-stage, ★5 | R |
+| Middle-Right | Row 1, Col 3 | PupillometryR | R, CRAN, GAMs+FDA | R |
+| Middle-Right | Row 1, Col 4 | PuPl | MATLAB, GUI, ★11 | MATLAB |
+| Middle-Right | Row 2, Col 1 | PUPILS | MATLAB, 60-500 Hz | MATLAB |
+| Middle-Right | Row 2, Col 2 | PupEyes | Python, Dash viz, ★8 | Python |
+| Middle-Right | Row 2, Col 3 | PupilSense | Smartphone DL, ★66 | Python |
+| Bottom | Center (hero) | foundation_PLR | 11 outlier + 8 imputation | Python |
 
 ## JSON Export Block (for Gemini)
 
@@ -267,6 +293,8 @@ BOTTOM STRIP — License legend with three colored shields: Green = MIT (commerc
       {"name": "eyeris", "role": "secondary_pathway", "is_highlighted": false, "labels": ["R", "MIT", "5 stars", "CRAN, 10-stage pipeline"]},
       {"name": "PuPl", "role": "secondary_pathway", "is_highlighted": false, "labels": ["MATLAB", "CC-BY-NC", "11 stars", "GUI pipeliner"]},
       {"name": "PupEyes", "role": "secondary_pathway", "is_highlighted": false, "labels": ["Python", "GPL-3", "8 stars", "Plotly Dash viz"]},
+      {"name": "PupillometryR", "role": "secondary_pathway", "is_highlighted": false, "labels": ["R", "GPL-3", "CRAN", "GAMs + FDA"]},
+      {"name": "PUPILS", "role": "secondary_pathway", "is_highlighted": false, "labels": ["MATLAB", "DTU", "Blink+saccade", "60-500 Hz"]},
       {"name": "PupilSense", "role": "secondary_pathway", "is_highlighted": false, "labels": ["Python", "MIT", "66 stars", "Smartphone DL"]},
       {"name": "foundation_PLR", "role": "highlight_accent", "is_highlighted": true, "labels": ["Python", "TSFM", "Device-agnostic", "11 outlier + 8 imputation"]}
     ],
@@ -386,6 +414,30 @@ BOTTOM STRIP — License legend with three colored shields: Green = MIT (commerc
         "publication": "Zhang & Jonides (2025) OSF Preprint"
       },
       {
+        "name": "PupillometryR",
+        "language": "R",
+        "license": "GPL-3",
+        "license_commercial": "copyleft",
+        "stars": null,
+        "layer": "signal_analysis",
+        "hardware_coupling": "device-agnostic (most eye-tracker brands)",
+        "capabilities": ["start-to-finish preprocessing pipeline", "raincloud plots (ggplot2)", "GAMs (mgcv)", "Functional Data Analysis (fda)", "time-window analysis"],
+        "last_active": "2023",
+        "publication": "Forbes (2020) Journal of Open Source Software, DOI: 10.21105/joss.02285"
+      },
+      {
+        "name": "PUPILS",
+        "language": "MATLAB",
+        "license": "unknown",
+        "license_commercial": "unknown",
+        "stars": null,
+        "layer": "signal_analysis",
+        "hardware_coupling": "device-agnostic (any tracker, 60-500 Hz)",
+        "capabilities": ["blink detection (3-sigma)", "Duchowski saccade detection", "linear interpolation", "low-pass filtering", "modular pipeline design"],
+        "last_active": "2020",
+        "publication": "Relaño-Iborra & Bækgaard (2020) arXiv:2011.05684"
+      },
+      {
         "name": "PupilSense",
         "language": "Python",
         "license": "MIT",
@@ -404,7 +456,7 @@ BOTTOM STRIP — License legend with three colored shields: Green = MIT (commerc
 
 ## Alt Text
 
-Three-layer hierarchy of the pupillometry software ecosystem. Top layer: experiment design tools (PsychoPy with 1900 stars, PySilSub for silent substitution). Middle layer: 9 signal analysis tools spanning Python, R, MATLAB, and C++, split between hardware-coupled (PupilEXT/Basler, PyPlr/Pupil Core, PupilMetrics/NeuroLight) and device-agnostic (GazeR, eyeris, PupEyes, PuPl, PupilSense). All use traditional preprocessing. Bottom layer: foundation_PLR fills the gap as the first TSFM-based preprocessing tool. License badges show MIT (green), GPL-3 (yellow), and non-commercial (red).
+Three-layer hierarchy of the pupillometry software ecosystem. Top layer: experiment design tools (PsychoPy with 1900 stars, PySilSub for silent substitution). Middle layer: 11 signal analysis tools spanning Python, R, MATLAB, and C++, split between hardware-coupled (PupilEXT/Basler, PyPlr/Pupil Core, PupilMetrics/NeuroLight) and device-agnostic (GazeR, eyeris, PupEyes, PuPl, PupillometryR, PUPILS, PupilSense). All use traditional preprocessing. Bottom layer: foundation_PLR fills the gap as the first TSFM-based preprocessing tool. License badges show MIT (green), GPL-3 (yellow), and non-commercial (red).
 
 ## Research Source
 
@@ -413,7 +465,7 @@ Full literature review with verified facts: `docs/planning/plr-repo-research.md`
 ## Status
 
 - [x] Draft created
-- [x] Literature review completed (10 repos)
+- [x] Literature review completed (12 repos: original 10 + PupillometryR + PUPILS)
 - [x] Factual review passed (reviewer agent)
-- [ ] Generated
-- [ ] Placed in README/docs
+- [x] Generated (original 10-library version; regeneration with 12 libraries abandoned — AI renders generic concepts)
+- [x] Placed in README/docs (with caption noting PupillometryR + PUPILS not shown in figure)

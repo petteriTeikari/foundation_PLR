@@ -464,7 +464,7 @@ Raw pupil diameter signals require substantial preprocessing (blink removal, int
   <img src="docs/repo-figures/assets/fig-repo-99-pupillometry-software-ecosystem.jpg" alt="Three-layer pupillometry ecosystem: experiment design (PsychoPy, PySilSub), signal analysis (9 tools in Python/R/MATLAB/C++), and TSFM preprocessing (foundation_PLR fills the gap)">
 </p>
 
-*The pupillometry ecosystem as a three-layer hierarchy. All existing analysis tools use traditional preprocessing (threshold + interpolation). foundation_PLR introduces TSFM-based preprocessing as a device-agnostic drop-in layer.*
+*The pupillometry ecosystem as a three-layer hierarchy. All existing analysis tools use traditional preprocessing (threshold + interpolation). foundation_PLR introduces TSFM-based preprocessing as a device-agnostic drop-in layer. PupillometryR and PUPILS (added after figure generation) are not shown.*
 
 ### Open-Source Pupillometry Libraries
 
@@ -478,6 +478,8 @@ Raw pupil diameter signals require substantial preprocessing (blink removal, int
 | [**GazeR**](https://github.com/dmirman/gazer) | R | [Geller et al. 2020](https://doi.org/10.3758/s13428-020-01374-8) | Comprehensive R pipeline bridging raw eye-tracking data (EDF, Tobii, Pupil Labs) to growth curve modeling, with blink detection, interpolation, and temporal binning. |
 | [**PupEyes**](https://github.com/HanZhang-psych/pupeyes) | Python | [Zhang & Jonides 2026](https://doi.org/10.3758/s13428-025-02830-z) | Interactive preprocessing and visualization library with Plotly Dash viewers for pupil data, fixation data, and AOI drawing, emphasizing step-by-step quality inspection. |
 | [**PuPl**](https://github.com/kinleyid/PuPl) | MATLAB | [Kinley & Levy 2022](https://doi.org/10.3758/s13428-021-01717-z) | GUI-based pupillometry pipeliner with GNU Octave compatibility, combining point-and-click accessibility with reproducible scripting via exportable command histories. |
+| [**PupillometryR**](https://github.com/samhforbes/PupillometryR) | R | [Forbes 2020](https://doi.org/10.21105/joss.02285) | CRAN-published start-to-finish pipeline for preparing and analysing pupillometry data, with built-in raincloud plots (ggplot2), Generalised Additive Models (mgcv), and Functional Data Analysis (fda). Compatible with most eye-tracker brands. |
+| [**PUPILS**](https://gitlab.gbar.dtu.dk/heliaib/PUPILS-preprocessing-pipeline) | MATLAB | [Relaño-Iborra & Bækgaard 2020](https://doi.org/10.48550/arXiv.2011.05684) | Flexible modular toolbox for eyetracking and pupillometry data processing: blink detection, saccade detection (Duchowski algorithm), linear interpolation, and low-pass filtering. Requires only sampling frequency and coordinate units. Validated for 60-500 Hz trackers. |
 | [**PupilSense**](https://github.com/stevenshci/PupilSense) | Python | [Islam & Bae 2024](https://doi.org/10.48550/arXiv.2404.14590) | Deep learning system for detecting depressive episodes from smartphone-captured pupil images using Detectron2 segmentation and pupil-to-iris ratio biomarkers. |
 | [**MTSC**](https://github.com/LaverdeS/Multivariate-Time-Series-Classification) | Python | -- | General-purpose multivariate time-series classification toolkit with pupillometry use cases (partner selection detection, user identification from gaze/pupil patterns). |
 

@@ -36,6 +36,8 @@ output/*
 !/data/r_data/**
 # Exception: Data integrity checksums (SHA256)
 !/data/_checksums.sha256
+# Exception: Data README (documentation, no PII)
+!/data/README.md
 /src/catboost_info/*
 catboost_info/
 

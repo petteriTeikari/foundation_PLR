@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths: ['docs/**', 'mkdocs.yml', 'src/**/*.py']
+  pull_request:
+    paths: ['docs/**', 'mkdocs.yml', 'src/**/*.py']
   workflow_dispatch:
 
 permissions:
@@ -41,6 +43,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
