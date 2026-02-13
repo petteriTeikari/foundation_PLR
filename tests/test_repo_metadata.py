@@ -46,6 +46,10 @@ class TestDataManifestAccuracy:
 
     def test_git_tracked_fields_match_reality(self):
         """DATA_MANIFEST.yaml git_tracked fields must match actual git state."""
+        git_dir = REPO_ROOT / ".git"
+        if not git_dir.exists():
+            pytest.skip("No .git directory (e.g., Docker build)")
+
         manifest_path = REPO_ROOT / "data" / "public" / "DATA_MANIFEST.yaml"
         if not manifest_path.exists():
             pytest.skip("DATA_MANIFEST.yaml not found")

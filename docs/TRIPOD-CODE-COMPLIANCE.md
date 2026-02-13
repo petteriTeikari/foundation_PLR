@@ -18,7 +18,7 @@
 | Item | Evidence |
 |------|----------|
 | Public repository | [github.com/petteriTeikari/foundation_PLR](https://github.com/petteriTeikari/foundation_PLR) |
-| License | MIT ([`LICENSE`](../LICENSE)) |
+| License | MIT ([`LICENSE`](https://github.com/petteriTeikari/foundation_PLR/blob/main/LICENSE)) |
 | Zenodo DOI | **TO BE CREATED** at manuscript submission |
 | Tagged release | Repository will receive a versioned release at submission time |
 | Persistent identifier | Zenodo concept DOI will provide a version-independent persistent identifier |
@@ -34,9 +34,9 @@ All three language ecosystems used in the project have deterministic dependency 
 
 | Ecosystem | Lock file | Manager | Key constraints |
 |-----------|-----------|---------|-----------------|
-| Python 3.11+ | [`pyproject.toml`](../pyproject.toml) + [`uv.lock`](../uv.lock) | [uv](https://docs.astral.sh/uv/) | `pip`/`conda` banned by project rules ([`.claude/rules/20-package-management.md`](../.claude/rules/20-package-management.md)) |
-| R >= 4.4 | [`renv.lock`](../renv.lock) (~288K, full version pinning) | [renv](https://rstudio.github.io/renv/) | System R from CRAN; `conda install r-*` banned |
-| Node.js 20 LTS | [`apps/visualization/package.json`](../apps/visualization/package.json) + [`.nvmrc`](../.nvmrc) | npm | Version pinned to Node 20 via `.nvmrc` |
+| Python 3.11+ | [`pyproject.toml`](https://github.com/petteriTeikari/foundation_PLR/blob/main/pyproject.toml) + [`uv.lock`](https://github.com/petteriTeikari/foundation_PLR/blob/main/uv.lock) | [uv](https://docs.astral.sh/uv/) | `pip`/`conda` banned by project rules ([`.claude/rules/20-package-management.md`](https://github.com/petteriTeikari/foundation_PLR/blob/main/.claude/rules/20-package-management.md)) |
+| R >= 4.4 | [`renv.lock`](https://github.com/petteriTeikari/foundation_PLR/blob/main/renv.lock) (~288K, full version pinning) | [renv](https://rstudio.github.io/renv/) | System R from CRAN; `conda install r-*` banned |
+| Node.js 20 LTS | [`apps/visualization/package.json`](https://github.com/petteriTeikari/foundation_PLR/blob/main/apps/visualization/package.json) + [`.nvmrc`](https://github.com/petteriTeikari/foundation_PLR/blob/main/.nvmrc) | npm | Version pinned to Node 20 via `.nvmrc` |
 
 ### Docker images (sha256 digest-pinned)
 
@@ -45,10 +45,10 @@ base layers regardless of tag mutation.
 
 | Dockerfile | Base image | Purpose |
 |------------|-----------|---------|
-| [`Dockerfile`](../Dockerfile) | `python:3.11-slim-bookworm` + `rocker/tidyverse:4.5.2` | Full pipeline (Python + R) |
-| [`Dockerfile.test`](../Dockerfile.test) | `python:3.11-slim-bookworm` | CI test runner |
-| [`Dockerfile.r`](../Dockerfile.r) | `rocker/tidyverse:4.5.2` | R-only analyses |
-| [`Dockerfile.shiny`](../Dockerfile.shiny) | `rocker/shiny:4.5.2` | Interactive Shiny dashboard |
+| [`Dockerfile`](https://github.com/petteriTeikari/foundation_PLR/blob/main/Dockerfile) | `python:3.11-slim-bookworm` + `rocker/tidyverse:4.5.2` | Full pipeline (Python + R) |
+| [`Dockerfile.test`](https://github.com/petteriTeikari/foundation_PLR/blob/main/Dockerfile.test) | `python:3.11-slim-bookworm` | CI test runner |
+| [`Dockerfile.r`](https://github.com/petteriTeikari/foundation_PLR/blob/main/Dockerfile.r) | `rocker/tidyverse:4.5.2` | R-only analyses |
+| [`Dockerfile.shiny`](https://github.com/petteriTeikari/foundation_PLR/blob/main/Dockerfile.shiny) | `rocker/shiny:4.5.2` | Interactive Shiny dashboard |
 
 Digest-pinning date: 2026-02-13. All images include uv installed from a digest-pinned
 `ghcr.io/astral-sh/uv` image.
@@ -68,9 +68,9 @@ Digest-pinning date: 2026-02-13. All images include uv installed from a digest-p
 
 | Item | File | Notes |
 |------|------|-------|
-| Software license | [`LICENSE`](../LICENSE) | MIT License (Copyright 2024--2026 Petteri Teikari) |
-| Machine-readable citation | [`CITATION.cff`](../CITATION.cff) | CFF format for automated citation extraction |
-| Zenodo metadata | [`.zenodo.json`](../.zenodo.json) | Metadata for Zenodo archival deposit |
+| Software license | [`LICENSE`](https://github.com/petteriTeikari/foundation_PLR/blob/main/LICENSE) | MIT License (Copyright 2024--2026 Petteri Teikari) |
+| Machine-readable citation | [`CITATION.cff`](https://github.com/petteriTeikari/foundation_PLR/blob/main/CITATION.cff) | CFF format for automated citation extraction |
+| Zenodo metadata | [`.zenodo.json`](https://github.com/petteriTeikari/foundation_PLR/blob/main/.zenodo.json) | Metadata for Zenodo archival deposit |
 
 The MIT license permits unrestricted reuse, modification, and redistribution, including
 commercial use, with attribution.
@@ -81,7 +81,7 @@ commercial use, with attribution.
 
 ### Architecture documentation
 
-The repository includes a detailed architecture document ([`ARCHITECTURE.md`](../ARCHITECTURE.md),
+The repository includes a detailed architecture document ([`ARCHITECTURE.md`](https://github.com/petteriTeikari/foundation_PLR/blob/main/ARCHITECTURE.md),
 ~500 lines) with Mermaid diagrams describing the two-block pipeline design.
 
 ### Two-block architecture
@@ -97,7 +97,7 @@ imports (e.g., `sklearn.metrics`) from visualization code in `src/viz/`.
 
 ### Configuration
 
-- [Hydra](https://hydra.cc/) configuration system with configs in [`configs/`](../configs/)
+- [Hydra](https://hydra.cc/) configuration system with configs in [`configs/`](https://github.com/petteriTeikari/foundation_PLR/tree/main/configs/)
 - Anti-hardcoding rules enforced by CI: no hex colors, literal paths, method names,
   or dimension constants in source code
 - Directory structure enforced by project conventions and CI checks
@@ -134,7 +134,7 @@ test cases.
 | Notebook tests | Quarto notebook execution | CI via `notebook-tests.yml` |
 | Security analysis | Dependency vulnerability scanning | CI via `ciso-assistant-security.yml` |
 
-See [`tests/README.md`](../tests/README.md) for the full test taxonomy.
+See [`tests/README.md`](https://github.com/petteriTeikari/foundation_PLR/blob/main/tests/README.md) for the full test taxonomy.
 
 ### Continuous integration
 
@@ -168,8 +168,8 @@ Critical invariants are enforced as automated tests:
 
 | Dataset | Records | Access | Path |
 |---------|---------|--------|------|
-| Demo subjects (de-identified) | 8 | Public | [`configs/demo_subjects.yaml`](../configs/demo_subjects.yaml) |
-| Synthetic data | 32 subjects | Public | [`data/synthetic/SYNTH_PLR_DEMO.db`](../data/synthetic/SYNTH_PLR_DEMO.db) |
+| Demo subjects (de-identified) | 8 | Public | [`configs/demo_subjects.yaml`](https://github.com/petteriTeikari/foundation_PLR/blob/main/configs/demo_subjects.yaml) |
+| Synthetic data | 32 subjects | Public | [`data/synthetic/SYNTH_PLR_DEMO.db`](https://github.com/petteriTeikari/foundation_PLR/blob/main/data/synthetic/SYNTH_PLR_DEMO.db) |
 | Full research dataset | 507 subjects | Private (patient data) | Local DuckDB, not in repository |
 
 ### 4-gate data isolation
@@ -201,7 +201,7 @@ docker run foundation-plr make reproduce-from-checkpoint
 
 ### Data lineage
 
-The complete data lineage is documented in [`ARCHITECTURE.md`](../ARCHITECTURE.md):
+The complete data lineage is documented in [`ARCHITECTURE.md`](https://github.com/petteriTeikari/foundation_PLR/blob/main/ARCHITECTURE.md):
 
 ```
 MLflow runs --> DuckDB (extraction) --> CSV/JSON (intermediate) --> Figures (output)
@@ -216,7 +216,7 @@ by the `save_figure()` utility.
 
 | Stage | Code location | Entry point | Notes |
 |-------|--------------|-------------|-------|
-| Outlier Detection | `src/outlier_detection/` | 11 methods via [`configs/mlflow_registry/`](../configs/mlflow_registry/) | Foundation models + traditional methods |
+| Outlier Detection | `src/outlier_detection/` | 11 methods via [`configs/mlflow_registry/`](https://github.com/petteriTeikari/foundation_PLR/tree/main/configs/mlflow_registry/) | Foundation models + traditional methods |
 | Imputation | `src/imputation/` | 8 methods via registry | CSDI, SAITS, linear interpolation, etc. |
 | Feature Extraction | `src/featurization/` | Handcrafted PLR features | Fixed; not varied in experiments |
 | Classification | `src/classification/` | CatBoost (fixed) | Classifier is held constant per research design |
@@ -227,15 +227,15 @@ by the `save_figure()` utility.
 
 ### Method registry
 
-The [`configs/mlflow_registry/`](../configs/mlflow_registry/) directory serves as the
+The [`configs/mlflow_registry/`](https://github.com/petteriTeikari/foundation_PLR/tree/main/configs/mlflow_registry/) directory serves as the
 single source of truth for valid experimental parameters. The Python interface
-([`src/data_io/registry.py`](../src/data_io/registry.py)) provides validation functions
+([`src/data_io/registry.py`](https://github.com/petteriTeikari/foundation_PLR/blob/main/src/data_io/registry.py)) provides validation functions
 that prevent use of orphan or invalid method names from MLflow.
 
 ### Evaluation metrics
 
 Metrics follow the STRATOS Initiative reporting guidelines (Van Calster et al. 2024).
-The metric registry ([`src/viz/metric_registry.py`](../src/viz/metric_registry.py))
+The metric registry ([`src/viz/metric_registry.py`](https://github.com/petteriTeikari/foundation_PLR/blob/main/src/viz/metric_registry.py))
 defines six metric sets:
 
 1. **STRATOS Core**: AUROC, calibration slope, O:E ratio, Brier score, Net Benefit
@@ -279,7 +279,7 @@ The following practices go beyond the anticipated TRIPOD-Code requirements.
 
 ### Frozen registry for publication
 
-The method registry ([`configs/mlflow_registry/`](../configs/mlflow_registry/)) is frozen
+The method registry ([`configs/mlflow_registry/`](https://github.com/petteriTeikari/foundation_PLR/tree/main/configs/mlflow_registry/)) is frozen
 at publication time. Registry integrity is verified by CI tests that assert exact method
 counts (11 outlier, 8 imputation, 5 classifier). Any change to the registry breaks CI.
 

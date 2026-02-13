@@ -83,7 +83,7 @@ which originated from AI-generated code (see [Section 5](#5-meta-learning-system
 | `figure-isolation-check` | Ensures synthetic data never appears in `figures/generated/` | CRITICAL-FAILURE-001 recurrence |
 | `notebook-format-check` | Enforces Quarto-only policy, validates `.qmd` headers | Format inconsistency |
 
-Hook definitions: [`.pre-commit-config.yaml`](../.pre-commit-config.yaml)
+Hook definitions: [`.pre-commit-config.yaml`](https://github.com/petteriTeikari/foundation_PLR/blob/main/.pre-commit-config.yaml)
 
 ### 4.2 Automated Test Suite
 
@@ -126,7 +126,7 @@ A distinctive feature of this project's AI-assisted development is the
 document incidents where AI-generated code introduced errors. Each report
 follows a consistent format (summary, root cause, impact, fix, prevention)
 and is committed to the repository at
-[`.claude/docs/meta-learnings/`](../.claude/docs/meta-learnings/).
+[`.claude/docs/meta-learnings/`](https://github.com/petteriTeikari/foundation_PLR/tree/main/.claude/docs/meta-learnings/).
 
 ### 5.1 Critical Failures Documented
 
@@ -170,12 +170,12 @@ governed AI-assisted development.
 
 | File | Purpose |
 |------|---------|
-| [`CLAUDE.md`](../CLAUDE.md) | Top-level project context, pipeline description, data provenance |
-| [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) | Behavioral contract: what the AI must and must not do |
-| [`.claude/rules/`](../.claude/rules/) | Numbered rules files (research question, registry, figures, STRATOS, packages, no-reimplementation) |
-| [`.claude/docs/meta-learnings/`](../.claude/docs/meta-learnings/) | 18 failure and violation reports |
-| [`.claude/skills/`](../.claude/skills/) | Reusable multi-step protocols (code QA, documentation optimization) |
-| [`.claude/domains/`](../.claude/domains/) | Domain-specific context (MLflow experiments, visualization, testing) |
+| [`CLAUDE.md`](https://github.com/petteriTeikari/foundation_PLR/blob/main/CLAUDE.md) | Top-level project context, pipeline description, data provenance |
+| [`.claude/CLAUDE.md`](https://github.com/petteriTeikari/foundation_PLR/blob/main/.claude/CLAUDE.md) | Behavioral contract: what the AI must and must not do |
+| [`.claude/rules/`](https://github.com/petteriTeikari/foundation_PLR/tree/main/.claude/rules/) | Numbered rules files (research question, registry, figures, STRATOS, packages, no-reimplementation) |
+| [`.claude/docs/meta-learnings/`](https://github.com/petteriTeikari/foundation_PLR/tree/main/.claude/docs/meta-learnings/) | 18 failure and violation reports |
+| [`.claude/skills/`](https://github.com/petteriTeikari/foundation_PLR/tree/main/.claude/skills/) | Reusable multi-step protocols (code QA, documentation optimization) |
+| [`.claude/domains/`](https://github.com/petteriTeikari/foundation_PLR/tree/main/.claude/domains/) | Domain-specific context (MLflow experiments, visualization, testing) |
 
 ### 6.2 What the Instruction Files Encode
 
@@ -237,12 +237,12 @@ must be acknowledged:
 
 ## 8. Recommendations for Reviewers
 
-- Inspect the [`.claude/docs/meta-learnings/`](../.claude/docs/meta-learnings/)
+- Inspect the [`.claude/docs/meta-learnings/`](https://github.com/petteriTeikari/foundation_PLR/tree/main/.claude/docs/meta-learnings/)
   directory to understand what went wrong during development and how it was
   fixed.
 - Verify that pre-commit hooks are active by running `pre-commit run --all-files`.
 - Run `pytest tests/test_figure_qa/ -v` to confirm figure QA passes.
-- Review [`CLAUDE.md`](../CLAUDE.md) and [`.claude/CLAUDE.md`](../.claude/CLAUDE.md)
+- Review [`CLAUDE.md`](https://github.com/petteriTeikari/foundation_PLR/blob/main/CLAUDE.md) and [`.claude/CLAUDE.md`](https://github.com/petteriTeikari/foundation_PLR/blob/main/.claude/CLAUDE.md)
   to understand the constraints under which AI-generated code was produced.
 - Note that all statistical methods (calibration via pmcalibration, model
   stability via pminternal, decision curve analysis via dcurves) use canonical
