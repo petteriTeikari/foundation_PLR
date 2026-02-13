@@ -19,7 +19,8 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Python environment builder
 # -----------------------------------------------------------------------------
-FROM python:3.11-slim-bookworm AS python-builder
+# Pinned 2026-02-13 for reproducibility (TRIPOD-Code area B)
+FROM python:3.11-slim-bookworm@sha256:067222884359a2476ff344f92278df8fbe4792b7cf1a43d82d4a98befe8f89fb AS python-builder
 
 # Install build dependencies for Python packages requiring compilation
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -28,7 +29,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install uv
 # Pin uv version for reproducibility
-COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /usr/local/bin/uv
+# Pinned 2026-02-13 for reproducibility
+COPY --from=ghcr.io/astral-sh/uv:0.9@sha256:e96d483a9ed7924d2acf01bdd1d537d0d5e6d8f21b74fff3373005f6c9446696 /uv /usr/local/bin/uv
 
 WORKDIR /project
 
@@ -47,7 +49,8 @@ RUN cp -r /usr/local/lib/python3.11 /opt/python-lib && \
 # -----------------------------------------------------------------------------
 # Stage 2: Final combined image (based on rocker for R 4.4)
 # -----------------------------------------------------------------------------
-FROM rocker/tidyverse:4.5.2 AS final
+# Pinned 2026-02-13 for reproducibility (TRIPOD-Code area B)
+FROM rocker/tidyverse:4.5.2@sha256:17dca9381149911b201184ab46e6c8628b68ddc1386b9562bc26ca8b6b4c6f81 AS final
 
 LABEL maintainer="Foundation PLR Team"
 LABEL description="Full development environment for Foundation PLR (Python + R + Node.js)"
@@ -82,7 +85,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # =============================================================================
 # Copy uv for package management
 # Pin uv version for reproducibility
-COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /usr/local/bin/uv
+# Pinned 2026-02-13 for reproducibility
+COPY --from=ghcr.io/astral-sh/uv:0.9@sha256:e96d483a9ed7924d2acf01bdd1d537d0d5e6d8f21b74fff3373005f6c9446696 /uv /usr/local/bin/uv
 
 # Copy the pre-built Python virtual environment
 COPY --from=python-builder /opt/venv /opt/venv
