@@ -12,7 +12,8 @@
 #
 # =============================================================================
 
-FROM rocker/shiny:4.5.2
+# Pinned 2026-02-13 for reproducibility (TRIPOD-Code area B)
+FROM rocker/shiny:4.5.2@sha256:31830435c2e6afd37a274c746b55ea3ed80968cb3ac39c9c3bf93882cd53d462
 
 LABEL maintainer="Foundation PLR Team"
 LABEL description="R Shiny Server for legacy ground truth creation tools"

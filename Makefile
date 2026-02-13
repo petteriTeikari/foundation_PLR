@@ -64,7 +64,7 @@ help:
 
 # Figure generation
 figures:
-	python src/viz/generate_all_figures.py
+	uv run python src/viz/generate_all_figures.py
 
 figure:
 	@if [ -z "$(ID)" ]; then \
@@ -72,14 +72,14 @@ figure:
 		echo "Available IDs: R7, R8, M3, C3, CD, RET"; \
 		exit 1; \
 	fi
-	python src/viz/generate_all_figures.py --figure $(ID)
+	uv run python src/viz/generate_all_figures.py --figure $(ID)
 
 figures-list:
-	python src/viz/generate_all_figures.py --list
+	uv run python src/viz/generate_all_figures.py --list
 
 # Validation
 compliance:
-	python scripts/validation/check-compliance.py
+	uv run python scripts/validation/check-compliance.py
 
 validate: compliance
 
@@ -175,14 +175,13 @@ clean:
 
 # Development setup
 setup:
-	pip install -e .
-	pip install -r requirements-dev.txt 2>/dev/null || echo "No requirements-dev.txt found"
+	uv sync --dev
 
 # Git hooks
 install-hooks:
 	@echo "Installing pre-commit hook..."
 	@cp scripts/infra/pre-commit .git/hooks/pre-commit 2>/dev/null || \
-		echo "#!/bin/bash\npython scripts/validation/check-compliance.py --staged" > .git/hooks/pre-commit
+		echo "#!/bin/bash\nuv run python scripts/validation/check-compliance.py --staged" > .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
 	@echo "Pre-commit hook installed."
 
@@ -197,29 +196,29 @@ reproduce:
 	@echo "Running full reproducibility pipeline..."
 	@echo "  Block 1: MLflow extraction"
 	@echo "  Block 2: Analysis and visualization"
-	python scripts/reproduce_all_results.py
+	uv run python scripts/reproduce_all_results.py
 
 # Checkpoint mode: Block 2 only (from existing public DuckDB)
 reproduce-from-checkpoint:
 	@echo "Running from checkpoint (analysis only)..."
-	python scripts/reproduce_all_results.py --from-checkpoint
+	uv run python scripts/reproduce_all_results.py --from-checkpoint
 
 # Block 1 only: Extract MLflow to DuckDB
 extract:
 	@echo "Running Block 1: MLflow extraction..."
-	python scripts/reproduce_all_results.py --extract-only
+	uv run python scripts/reproduce_all_results.py --extract-only
 
 # Block 2 only: Analysis and visualization
 analyze:
 	@echo "Running Block 2: Analysis and visualization..."
-	python scripts/reproduce_all_results.py --analyze-only
+	uv run python scripts/reproduce_all_results.py --analyze-only
 
 # Verify extraction was successful
 verify-extraction:
 	@echo "Verifying extraction..."
 	@if [ -f "data/public/foundation_plr_results.db" ]; then \
 		echo "✓ Public database exists"; \
-		python -c "import duckdb; c=duckdb.connect('data/public/foundation_plr_results.db'); print(f'  Predictions: {c.execute(\"SELECT COUNT(*) FROM predictions\").fetchone()[0]}')"; \
+		uv run python -c "import duckdb; c=duckdb.connect('data/public/foundation_plr_results.db'); print(f'  Predictions: {c.execute(\"SELECT COUNT(*) FROM predictions\").fetchone()[0]}')"; \
 	else \
 		echo "✗ Public database not found. Run 'make extract' first."; \
 		exit 1; \
@@ -375,7 +374,7 @@ $(R_OUTPUT)/fig_raincloud_auroc.pdf: $(R_FIGURES)/fig_raincloud_auroc.R
 
 # Validation
 r-validate:
-	python scripts/validation/validate_figures.py --verbose
+	uv run python scripts/validation/validate_figures.py --verbose
 
 # Clean R figures
 r-clean:

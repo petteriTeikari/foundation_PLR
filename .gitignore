@@ -97,6 +97,7 @@ logs/
 /*.pdf
 /*.json
 !/pyproject.json
+!/.zenodo.json
 /*.tex
 /*.csv
 

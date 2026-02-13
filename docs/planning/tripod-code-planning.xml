@@ -1,0 +1,976 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TRIPOD-Code Compliance & Repo Housekeeping Action Plan
+  ======================================================
+  Source Papers:
+    - Collins et al. 2024 BMJ (TRIPOD+AI): Items 18f (code sharing) + 22 (model specification)
+    - Pollard, Sounack et al. 2026 Diagn Progn Res (TRIPOD-Code protocol): s41512-025-00217-4
+
+  Branch: fix/tripod-code-and-repo-housekeeping
+  Created: 2026-02-13
+  Last Updated: 2026-02-13 (Iteration 5 - CONVERGED, all reviewer corrections applied)
+
+  CONTEXT:
+    The TRIPOD-Code paper (Feb 2026) is a PROTOCOL for developing a reporting guideline
+    for code repositories associated with prediction model studies. The actual checklist
+    is not yet published (Delphi + consensus still pending), but the paper identifies
+    KEY AREAS that the checklist will cover.
+
+    PHILOSOPHY (from user):
+    - Proactive compliance: Anticipate the checklist and address it NOW. Being ahead
+      of the guidelines makes the submission stronger, never weaker.
+    - Go beyond TRIPOD-Code: If AI-assisted engineering (Claude Code) practices
+      improve the repo's documentation and reproducibility, include them even if
+      TRIPOD-Code doesn't mandate it. This is a DIFFERENTIATOR.
+    - AI-agentic readiness: This repo will continue being developed with Claude Code
+      (or similar). CLAUDE.md, rules files, and agentic infrastructure are FEATURES
+      to document, not internal tooling to hide.
+    - Manuscript placeholders ([TO BE COMPLETED]) are CO-AUTHOR responsibilities,
+      not addressed in this plan. Claude focuses on code repository improvements
+      and TRIPOD-Code-relevant items.
+
+  TRIPOD-CODE ANTICIPATED REQUIREMENTS (from protocol paper):
+    A. Code availability and accessibility (long-term archival)
+    B. Software dependencies documentation
+    C. License specification
+    D. Code structure and modularity documentation
+    E. Testing details
+    F. Reproducibility (demo/synthetic data when real data unavailable)
+    G. Documentation of code for: data preprocessing, model development, evaluation
+    H. Archival for long-term access (DOI, Zenodo)
+
+  BEYOND TRIPOD-CODE (our differentiators):
+    I. AI-assisted development documentation (CLAUDE.md, rules, skills)
+    J. Agentic coding readiness (auto-context, hooks, guardrails)
+    K. Speculative full compliance (address ALL areas even before Delphi consensus)
+
+  CRASH-RESISTANT: Each task contains FULL context needed for execution.
+  TDD APPROACH: Every task has <verification> with concrete pass/fail checks.
+
+  PROGRESS KEY:
+    DONE       = Completed and verified
+    IN_PROGRESS = Currently being worked on
+    PENDING    = Not yet started
+    BLOCKED    = Waiting on dependency
+    SKIPPED    = Intentionally skipped with rationale
+
+  EXECUTION ORDER:
+    Phase 1 - CRITICAL (repo reproducibility fixes):     T1, T2, T3, T4
+    Phase 2 - HIGH (TRIPOD-Code speculative compliance):  T5, T6, T7, T8
+    Phase 3 - HIGH (manuscript: Code Availability only):  T9, T10
+    Phase 4 - MEDIUM (AI-agentic documentation):          T11, T12, T13
+    Phase 5 - BLOCKED (at submission):                    T14, T15
+-->
+<action-plan>
+  <metadata>
+    <title>TRIPOD-Code Compliance and Repository Housekeeping</title>
+    <created>2026-02-13</created>
+    <branch>fix/tripod-code-and-repo-housekeeping</branch>
+    <source-papers>
+      <paper id="tripod-ai">Collins et al. 2024 BMJ. DOI: 10.1136/bmj-2023-078378</paper>
+      <paper id="tripod-code">Pollard, Sounack et al. 2026 Diagn Progn Res. DOI: 10.1186/s41512-025-00217-4</paper>
+    </source-papers>
+    <total-tasks>15</total-tasks>
+    <completed>0</completed>
+    <status>CONVERGED</status>
+    <review-status>Iteration 5 - all reviewer corrections incorporated, plan converged</review-status>
+  </metadata>
+
+  <!-- ================================================================== -->
+  <!--  PHASE 1: CRITICAL - REPO REPRODUCIBILITY FIXES                    -->
+  <!--  These fix actual broken things found by DevOps reviewer.           -->
+  <!--  Execute first - they're quick wins with high impact.              -->
+  <!-- ================================================================== -->
+
+  <task id="T1" status="PENDING" priority="critical" est-minutes="15"
+        category="repo-fix" exec-order="1">
+    <title>Fix Makefile: uv run prefix and banned pip usage</title>
+    <rationale>
+      DevOps reviewer found: (1) `make setup` uses `pip install` which violates
+      the repo's own rule 5 (uv only, pip BANNED); (2) all python targets
+      (reproduce, figures, compliance, etc.) call bare `python` instead of
+      `uv run python`, so they don't use the lockfile-pinned environment.
+      A reviewer who runs `make setup` gets broken/inconsistent state.
+    </rationale>
+    <description>
+      Fix the Makefile at multiple locations:
+
+      1. setup target (lines ~177-179): Replace
+           pip install -e .
+           pip install -r requirements-dev.txt
+         with:
+           uv sync --dev
+
+      2. ALL bare `python` calls must become `uv run python`:
+         - reproduce (~line 200): python scripts/reproduce_all_results.py
+         - reproduce-from-checkpoint: python scripts/...
+         - extract: python src/extraction/...
+         - analyze: python src/orchestration/...
+         - figures (~line 66): python src/viz/generate_all_figures.py
+         - compliance (~line 82): python scripts/validation/check-compliance.py
+         - validate: similar
+
+      Grep for "^\tpython " in Makefile to find all instances.
+    </description>
+    <file>Makefile</file>
+    <verification>
+      - [ ] grep "pip install" Makefile returns 0 matches
+      - [ ] grep "^\tpython " Makefile returns 0 matches (all use uv run python)
+      - [ ] `make setup` works with uv installed
+    </verification>
+  </task>
+
+  <task id="T2" status="PENDING" priority="critical" est-minutes="5"
+        category="repo-fix" exec-order="2">
+    <title>Fix pyproject.toml placeholder description</title>
+    <rationale>
+      DevOps reviewer found: line 4 has `description = "Add your description here"`.
+      This placeholder appears in Zenodo metadata, pip show, and anywhere
+      pyproject.toml is consumed programmatically. 30-second fix.
+    </rationale>
+    <description>
+      Replace line 4 of pyproject.toml:
+        description = "Add your description here"
+      with:
+        description = "Foundation models for pupillary light reflex preprocessing in glaucoma screening"
+    </description>
+    <file>pyproject.toml</file>
+    <verification>
+      - [ ] `grep "Add your description" pyproject.toml` returns 0 matches
+      - [ ] `uv sync` still works
+    </verification>
+  </task>
+
+  <task id="T3" status="PENDING" priority="critical" est-minutes="10"
+        category="repo-fix" exec-order="3">
+    <title>Pin Docker base images and uv version</title>
+    <rationale>
+      Dockerfiles use tag-based references (python:3.11-slim-bookworm,
+      rocker/tidyverse:4.5.2) which float over time. GH#43 tracks this.
+      Also pin uv to specific patch (0.9.x instead of 0.9) in COPY --from.
+      Create .nvmrc for Node.js version pinning.
+    </rationale>
+    <description>
+      In Dockerfile and any other Dockerfiles:
+      1. Pin python base to digest: python:3.11-slim-bookworm@sha256:...
+      2. Pin rocker/tidyverse to digest: rocker/tidyverse:4.5.2@sha256:...
+      3. Pin uv to specific patch: ghcr.io/astral-sh/uv:0.9.6 (or latest 0.9.x)
+
+      Get digests with: docker manifest inspect python:3.11-slim-bookworm
+      Document the pinned versions in a comment above each FROM.
+
+      Also create .nvmrc with "20" at repo root for Node.js version pinning.
+
+      NOTE (DevOps reviewer Iter4): Verify exact Docker image names before
+      pinning - check the actual FROM lines in all Dockerfiles first.
+    </description>
+    <files>
+      <file>Dockerfile</file>
+      <file>.nvmrc (new)</file>
+    </files>
+    <verification>
+      - [ ] All FROM lines have @sha256: digests
+      - [ ] uv COPY --from uses specific patch version
+      - [ ] .nvmrc exists with "20"
+      - [ ] Docker build still succeeds (or at least syntax-check passes)
+    </verification>
+  </task>
+
+  <task id="T4" status="PENDING" priority="medium" est-minutes="5"
+        category="repo-fix" exec-order="4">
+    <title>Fix stale DATA_MANIFEST.yaml git_tracked field</title>
+    <rationale>
+      ITERATION 5 CORRECTION: The DuckDB file (data/public/foundation_plr_results.db)
+      IS already git-tracked (confirmed by `git ls-files`). However, DATA_MANIFEST.yaml
+      still says `git_tracked: false` with a reference to GH#44. The manifest is stale.
+      This is now a 30-second fix, not a CRITICAL gap.
+    </rationale>
+    <description>
+      In data/public/DATA_MANIFEST.yaml:
+      1. Change `git_tracked: false  # See GH#44` to `git_tracked: true`
+         for foundation_plr_results.db
+      2. Also update cd_diagram_data.duckdb entry if it's git-tracked too
+         (check with: git ls-files data/public/cd_diagram_data.duckdb)
+      3. Close GH#44 if it refers to this issue and it's fully resolved
+    </description>
+    <file>data/public/DATA_MANIFEST.yaml</file>
+    <verification>
+      - [ ] DATA_MANIFEST.yaml shows git_tracked: true for committed files
+      - [ ] No stale GH#44 reference remains if issue is closed
+    </verification>
+  </task>
+
+  <!-- ================================================================== -->
+  <!--  PHASE 2: HIGH - TRIPOD-CODE SPECULATIVE COMPLIANCE                -->
+  <!--  Proactively address ALL anticipated TRIPOD-Code areas.            -->
+  <!--  Being ahead of the guidelines is strictly positive.               -->
+  <!-- ================================================================== -->
+
+  <task id="T5" status="PENDING" priority="high" est-minutes="45"
+        tripod-code-area="A-H" category="tripod-compliance" exec-order="5">
+    <title>Create TRIPOD-Code speculative compliance document</title>
+    <rationale>
+      The actual TRIPOD-Code checklist doesn't exist yet, but the protocol paper
+      identifies clear areas (A-H). We proactively map our repo to ALL of these.
+      This is strictly positive: no one can say we didn't address code reporting.
+      When the final checklist is published, we update this document.
+    </rationale>
+    <description>
+      Create docs/TRIPOD-CODE-COMPLIANCE.md with:
+
+      1. Header explaining this is SPECULATIVE compliance against the PROTOCOL
+         (Pollard et al. 2026), not the final checklist. Include DOI link.
+
+      2. For each anticipated area, provide status + evidence:
+
+         A. CODE AVAILABILITY
+            - GitHub: https://github.com/petteriTeikari/foundation_PLR
+            - License: MIT (LICENSE file at root)
+            - Zenodo DOI: [TO BE CREATED at submission]
+
+         B. SOFTWARE DEPENDENCIES
+            - Python: pyproject.toml + uv.lock (uv managed, pip BANNED)
+            - R: renv.lock (294K, full version pinning)
+            - Node.js: apps/visualization/package.json + .nvmrc
+            - Docker: Dockerfile with digest-pinned base images
+            - Dependency locking strategy: uv.lock for exact Python reproducibility,
+              renv.lock for R, package-lock.json for Node.js
+
+         C. LICENSE
+            - MIT License, standard GitHub recognition
+            - CITATION.cff for machine-readable citation
+
+         D. CODE STRUCTURE AND MODULARITY
+            - ARCHITECTURE.md (498 lines, Mermaid diagrams, module map)
+            - Two-block architecture: Extraction (computation) → Analysis (visualization)
+            - Hydra configuration system (no hardcoding)
+            - Directory structure enforced by CI
+
+         E. TESTING
+            - 2000+ automated tests across 6 categories
+            - CI: 6 GitHub Actions workflows, 4-tier structure
+            - Guardrail tests enforce: computation decoupling, registry integrity,
+              figure data provenance (CRITICAL-FAILURE-001)
+            - See tests/README.md for full details
+
+         F. REPRODUCIBILITY
+            - Demo subjects: 8 de-identified (configs/demo_subjects.yaml)
+            - Synthetic data: 32 subjects (data/synthetic/SYNTH_PLR_DEMO.db)
+            - 4-gate data isolation architecture (configs/data_isolation.yaml)
+            - Makefile: `make reproduce`, `make reproduce-from-checkpoint`
+            - Docker: full environment reproduction
+            - Data lineage: MLflow → DuckDB → CSV → Figures (documented in ARCHITECTURE.md)
+
+         G. CODE DOCUMENTATION BY PIPELINE STAGE
+            | Stage | Code | Entry Point |
+            |-------|------|-------------|
+            | Outlier Detection | src/outlier_detection/ | 11 methods via registry |
+            | Imputation | src/imputation/ | 8 methods via registry |
+            | Feature Extraction | src/featurization/ | Handcrafted PLR features |
+            | Classification | src/classification/ | CatBoost (fixed) |
+            | Evaluation | src/stats/, src/viz/ | STRATOS-compliant, 5 domains |
+            | Orchestration | src/orchestration/ | Prefect flows |
+            | Data I/O | src/data_io/ | Registry, DuckDB export |
+
+         H. LONG-TERM ARCHIVAL
+            - Zenodo: concept DOI (resolves to latest version)
+            - CITATION.cff: machine-readable citation
+            - .zenodo.json: Zenodo metadata control
+            - GitHub releases: tagged versions
+
+      3. BEYOND TRIPOD-CODE section documenting practices that exceed
+         likely requirements:
+         - 3-layer provenance tracking (MLflow tags, DuckDB logs, JSON metadata)
+         - Frozen registry for publication (configs/mlflow_registry/FROZEN_2026-02.yaml)
+         - Configuration integrity (auto-versioned YAML with content hashes)
+         - Pre-commit hooks (6 hooks enforcing code quality)
+         - AI-assisted development (see docs/AI-ASSISTED-DEVELOPMENT.md)
+         - Limitations of AI-assisted development (what AI was NOT used for:
+           statistical analysis, clinical interpretation, data collection)
+
+      4. Footer: "This document will be updated when the final TRIPOD-Code
+         checklist is published. Current mapping is against the protocol paper."
+    </description>
+    <output-file>docs/TRIPOD-CODE-COMPLIANCE.md</output-file>
+    <verification>
+      - [ ] File exists at docs/TRIPOD-CODE-COMPLIANCE.md
+      - [ ] All 8 areas (A-H) documented with evidence
+      - [ ] "Beyond TRIPOD-Code" section present with limitations subsection
+      - [ ] Links to relevant files for each area
+      - [ ] Explicit statement that this is speculative (protocol, not checklist)
+      - [ ] Dependency locking strategy documented (DevOps Iter4 condition)
+      - [ ] Data lineage documented (DevOps Iter4 condition)
+    </verification>
+  </task>
+
+  <task id="T6" status="PENDING" priority="high" est-minutes="30"
+        tripod-code-area="E" category="tripod-compliance" exec-order="6">
+    <title>Enhance tests/README.md for external reviewers</title>
+    <rationale>
+      ITERATION 5 CORRECTION: tests/README.md already exists (173 lines,
+      developer-oriented). It covers Quick Start, Test Organization, Fixtures,
+      Docker Tests, Coverage, and Writing Tests sections. However, it's missing
+      key information for external reviewers: guardrail tests, CI tier structure,
+      test counts by category, skipped test explanation, and fresh-clone instructions.
+      Enhance it rather than replacing it.
+    </rationale>
+    <description>
+      Enhance existing tests/README.md by adding reviewer-focused sections.
+      PRESERVE the existing developer-oriented content and ADD:
+
+      1. "For Reviewers" section near the top (after Quick Start) with:
+         - Total test count (run `pytest --co -q | tail -1` for actual count)
+         - Test categories WITH counts: unit, integration, guardrail, smoke, figure_qa, r_required
+         - Which tests work from fresh clone: "make test-fast runs unit + guardrail
+           tests with zero external dependencies"
+
+      2. "Guardrail Tests" section:
+         - Computation decoupling (no sklearn in viz)
+         - Registry integrity (11 outlier / 8 imputation / 5 classifier)
+         - Figure data provenance (CRITICAL-FAILURE-001)
+         - Configuration validation
+
+      3. "CI Tier Structure" section:
+         - Tier 0: Lint (ruff, 30s)
+         - Tier 1: Unit + guardrail (~90s)
+         - Quality gates: Registry, computation decoupling
+         - Tier 3: Integration + E2E
+
+      4. "Skipped Tests" section:
+         - ~181 tests require production outputs from `make analyze`
+         - These are NOT failures - they verify outputs that require local MLflow data
+         - "Out of the box, `make test-fast` executes unit + guardrail tests
+           with zero external dependencies"
+
+      5. "Figure QA Tests" section:
+         - CRITICAL-FAILURE-001 prevention (no synthetic data in figures)
+         - `pytest tests/test_figure_qa/ -v`
+    </description>
+    <file>tests/README.md</file>
+    <verification>
+      - [ ] Existing developer content preserved
+      - [ ] "For Reviewers" section with test counts
+      - [ ] Guardrail tests documented
+      - [ ] CI tier structure documented
+      - [ ] Skipped tests explained
+      - [ ] Fresh-clone instructions present
+    </verification>
+  </task>
+
+  <task id="T7" status="PENDING" priority="high" est-minutes="15"
+        category="tripod-compliance" exec-order="7">
+    <title>Update CITATION.cff + Create .zenodo.json</title>
+    <rationale>
+      ITERATION 5 CORRECTION: CITATION.cff already exists (49 lines, well-structured
+      with authors, keywords, references). However, it's missing `version` and
+      `date-released` fields required for GitHub's "Cite this repository" to work
+      fully. .zenodo.json does NOT exist yet and needs to be created for Zenodo
+      metadata control (anticipated by TRIPOD-Code area H).
+    </rationale>
+    <description>
+      1. Update CITATION.cff (existing file):
+         - ADD: version: "1.0.0"
+         - ADD: date-released: "2026-MM-DD" (placeholder, update at submission)
+         - VERIFY: all existing fields are correct
+         - KEEP: existing keywords, references, authors
+
+      2. Create .zenodo.json (new file):
+         {
+           "title": "Foundation Models for Pupillary Light Reflex Preprocessing in Glaucoma Screening",
+           "creators": [{"name": "Teikari, Petteri", "affiliation": "Independent Researcher"}],
+           "description": "Benchmark comparing time series foundation models against traditional methods for outlier detection and imputation in pupillary light reflex signals for glaucoma screening.",
+           "license": {"id": "MIT"},
+           "upload_type": "software",
+           "access_right": "open",
+           "keywords": ["pupillometry", "glaucoma", "foundation-models", "STRATOS",
+                        "CatBoost", "time-series", "preprocessing", "ophthalmology"],
+           "related_identifiers": [
+             {"relation": "isSupplementTo", "identifier": "TO_BE_ADDED_AT_SUBMISSION"}
+           ]
+         }
+    </description>
+    <output-files>
+      <file>CITATION.cff (update)</file>
+      <file>.zenodo.json (new)</file>
+    </output-files>
+    <verification>
+      - [ ] CITATION.cff has version and date-released fields
+      - [ ] CITATION.cff validates (cff-converter-python or GitHub preview)
+      - [ ] .zenodo.json is valid JSON
+      - [ ] .zenodo.json at repo root
+    </verification>
+  </task>
+
+  <task id="T8" status="PENDING" priority="high" est-minutes="20"
+        tripod-code-area="G" category="tripod-compliance" exec-order="8">
+    <title>Add "For Reviewers" section to README</title>
+    <rationale>
+      TRIPOD-Code protocol emphasizes documenting code for data preprocessing,
+      model development, and evaluation. A focused reviewer-facing section maps
+      the pipeline to directories and provides quick-start commands.
+    </rationale>
+    <description>
+      Add to README.md (after Quick Start section):
+
+      ## For Reviewers
+
+      Brief section (~30 lines) with:
+      1. Pipeline stage → directory mapping:
+         | Stage | Code | Tests |
+         |-------|------|-------|
+         | Outlier Detection | src/outlier_detection/ | tests/test_outlier/ |
+         | Imputation | src/imputation/ | tests/test_imputation/ |
+         | Feature Extraction | src/featurization/ | tests/test_features/ |
+         | Classification | src/classification/ | tests/test_classification/ |
+         | Evaluation | src/stats/, src/viz/ | tests/test_figure_qa/ |
+         | Orchestration | src/orchestration/ | tests/test_orchestration/ |
+      2. Quick commands: `make test-fast`, `make reproduce-from-checkpoint`
+      3. Architecture overview: link to ARCHITECTURE.md
+      4. TRIPOD+AI compliance: link to docs/TRIPOD-AI-CHECKLIST.md
+      5. TRIPOD-Code compliance: link to docs/TRIPOD-CODE-COMPLIANCE.md
+      6. AI-assisted development: link to docs/AI-ASSISTED-DEVELOPMENT.md
+      7. Zenodo badge (when DOI is created)
+    </description>
+    <file>README.md</file>
+    <verification>
+      - [ ] "For Reviewers" section exists in README
+      - [ ] Pipeline-to-directory table present
+      - [ ] Quick commands listed
+      - [ ] Links to compliance docs
+    </verification>
+  </task>
+
+  <!-- ================================================================== -->
+  <!--  PHASE 3: HIGH - MANUSCRIPT (Code Availability only)               -->
+  <!--  Manuscript content that Claude can address (NOT co-author tasks).  -->
+  <!--  [TO BE COMPLETED] placeholders are co-author responsibility.      -->
+  <!-- ================================================================== -->
+
+  <task id="T9" status="PENDING" priority="high" est-minutes="20"
+        tripod-item="18f" category="manuscript" exec-order="9">
+    <title>Add bibliography entries for TRIPOD+AI and TRIPOD-Code</title>
+    <rationale>
+      The enhanced Data/Code Availability section (T10) uses \cite{} for both papers.
+      These must exist in references.bib first.
+    </rationale>
+    <description>
+      STEP 1: Check if TRIPOD+AI (Collins 2024) is already cited in references.bib
+      under a different key (e.g., "tripod2024", "collins2024"). If so, use existing key.
+
+      STEP 2: Add entries that don't already exist:
+
+      1. TRIPOD+AI (Collins et al. 2024) - if not already present:
+         @article{collins2024tripod,
+           author  = {Collins, Gary S and Moons, Karel GM and Dhiman, Paula and
+                      Riley, Richard D and Beam, Andrew L and Van Calster, Ben and
+                      others},
+           title   = {{TRIPOD+AI} statement: updated guidance for reporting clinical
+                      prediction models that use regression or machine learning methods},
+           journal = {BMJ},
+           volume  = {385},
+           pages   = {e078378},
+           year    = {2024},
+           doi     = {10.1136/bmj-2023-078378}
+         }
+
+      2. TRIPOD-Code protocol (Pollard et al. 2026):
+         @article{pollard2026tripod,
+           author  = {Pollard, Tom and Sounack, Thomas and Gao, Catherine A and
+                      Celi, Leo Anthony and Lindvall, Charlotta and Lee, Hyeonhoon and
+                      Lee, Hyung-Chul and Moons, Karel GM and Collins, Gary S},
+           title   = {Protocol for development of a reporting guideline ({TRIPOD-Code})
+                      for code repositories associated with diagnostic and prognostic
+                      prediction model studies},
+           journal = {Diagnostic and Prognostic Research},
+           volume  = {10},
+           number  = {4},
+           year    = {2026},
+           doi     = {10.1186/s41512-025-00217-4}
+         }
+
+      STEP 3: Verify no duplicate citation keys.
+    </description>
+    <file>/home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR/references.bib</file>
+    <verification>
+      - [ ] Both entries exist in references.bib (or existing key identified)
+      - [ ] No duplicate citation keys
+      - [ ] Manuscript compiles with bibtex without errors
+    </verification>
+  </task>
+
+  <task id="T10" status="PENDING" priority="high" est-minutes="30"
+        tripod-item="18f" category="manuscript" exec-order="10"
+        depends-on="T9">
+    <title>Enhance "Data and Code Availability" statement</title>
+    <rationale>
+      Current statement is 2 sentences. TRIPOD+AI Item 18f requires details of
+      analytical code: data cleaning, feature engineering, model building, evaluation.
+      This is the ONLY manuscript section Claude directly improves (other sections
+      like Funding, PPI, Conflicts are co-author responsibilities).
+    </rationale>
+    <description>
+      Replace the current Data and Code Availability section with expanded text.
+
+      PROPOSED TEXT (incorporating academic reviewer corrections):
+      ---
+      All analytical code for the complete preprocessing, classification, and
+      evaluation pipeline is publicly available under the MIT license at
+      \url{https://github.com/petteriTeikari/foundation_PLR} with a permanent
+      archive at [Zenodo DOI: TO BE CREATED AT SUBMISSION]. The repository includes
+      data preprocessing code for all 11 outlier detection and 8 imputation methods
+      evaluated, CatBoost classification with 1000-iteration bootstrap validation,
+      STRATOS-compliant evaluation code computing discrimination, calibration,
+      clinical utility, and probability distributions, all figure generation
+      scripts with JSON data sidecars, and a comprehensive automated test suite
+      covering data provenance, pipeline integrity, and figure reproducibility.
+      Software dependencies are locked via \texttt{uv} (Python 3.11+) and
+      \texttt{renv} (R $\geq$ 4.4). Eight de-identified demo subjects are
+      provided for code review; a separate synthetic dataset enables automated
+      testing without access to clinical data. Full pipeline reproduction
+      requires the original pupillometry data; demo subjects and synthetic data
+      enable code review and pipeline verification but not reproduction of
+      reported results. The raw pupillometry data from Najjar et al.~\cite{najjar2023}
+      are available upon reasonable request with appropriate data use agreements
+      from the Singapore Eye Research Institute. We followed TRIPOD+AI
+      \cite{collins2024tripod} reporting recommendations for code sharing
+      (Item 18f). Our repository structure was informed by the anticipated scope
+      of the forthcoming TRIPOD-Code guidelines \cite{pollard2026tripod}.
+      ---
+
+      WORD COUNT NOTE: This adds ~170 words. Consider if Discussion needs trimming.
+
+      VERIFICATION NOTE (Academic Iter4): Scope this task NARROWLY to only the
+      Data and Code Availability section. Do not touch other manuscript sections.
+    </description>
+    <file>/home/petteri/Dropbox/github-personal/sci-llm-writer/manuscripts/foundationPLR/foundation-plr-manuscript.tex</file>
+    <verification>
+      - [ ] New text replaces old 2-sentence version
+      - [ ] \cite{collins2024tripod} and \cite{pollard2026tripod} resolve
+      - [ ] No claim of TRIPOD-Code "compliance" (says "informed by", not "compliant with")
+      - [ ] Reproducibility scope clearly stated (what can/cannot be reproduced)
+      - [ ] ONLY Data and Code Availability section modified (nothing else)
+      - [ ] Manuscript compiles without errors
+    </verification>
+  </task>
+
+  <!-- ================================================================== -->
+  <!--  PHASE 4: MEDIUM - AI-AGENTIC DOCUMENTATION                       -->
+  <!--  Beyond TRIPOD-Code: document AI-assisted development practices.   -->
+  <!--  This is a DIFFERENTIATOR - no other prediction model repo does it.-->
+  <!-- ================================================================== -->
+
+  <task id="T11" status="PENDING" priority="medium" est-minutes="45"
+        category="ai-documentation" exec-order="11">
+    <title>Create AI-Assisted Development documentation</title>
+    <rationale>
+      This repo is developed with Claude Code and will continue to be. The AI
+      agentic coding infrastructure (CLAUDE.md, rules files, skills, auto-context,
+      guardrails) is a FEATURE that goes beyond what TRIPOD-Code anticipates.
+      Documenting it makes the repo a reference implementation for AI-assisted
+      academic coding. No other prediction model study documents this.
+    </rationale>
+    <description>
+      Create docs/AI-ASSISTED-DEVELOPMENT.md covering:
+
+      1. OVERVIEW: This repository uses Claude Code (Anthropic) for AI-assisted
+         development. The AI coding infrastructure is explicitly designed to
+         maintain academic rigor while accelerating development.
+
+      2. CLAUDE.md ARCHITECTURE:
+         - Root CLAUDE.md: Project context, research question, pipeline overview
+         - .claude/CLAUDE.md: Behavioral contract, anti-hardcoding rules, figure QA
+         - .claude/rules/*.md: Domain-specific rules (registry, figures, STRATOS,
+           package management, no-reimplementation)
+         - .claude/auto-context.yaml: Automatic context loading for relevant tasks
+         - Total always-loaded instructions: ~30K chars (optimized from 75K)
+
+      3. GUARDRAIL SYSTEM:
+         - CRITICAL-FAILURE-001: No synthetic data in figures (figure QA tests)
+         - CRITICAL-FAILURE-002: Fix at source, never downstream
+         - CRITICAL-FAILURE-003: Computation decoupling (viz reads DuckDB only)
+         - CRITICAL-FAILURE-004: Anti-hardcoding (colors, paths, methods, dimensions)
+         - CRITICAL-FAILURE-006: No shortcuts (academic rigor over speed)
+         - Each guardrail has: root cause analysis, prevention mechanism, test coverage
+
+      4. AI-SAFE PRACTICES:
+         - All AI-generated content critically reviewed by human authors
+         - AI not used for data analysis, statistical computations, or interpretation
+         - Pre-commit hooks prevent common AI coding mistakes
+         - Verified libraries used (no reimplementation of statistical methods)
+
+      5. LIMITATIONS OF AI-ASSISTED DEVELOPMENT:
+         - AI was NOT used for: statistical method selection, clinical interpretation,
+           study design decisions, data collection, or IRB/ethics decisions
+         - AI coding suggestions are reviewed for correctness before merging
+         - Known limitations: context window constraints, potential for subtle bugs
+           in complex statistical code (mitigated by using verified R packages)
+
+      6. AGENTIC CODING READINESS:
+         - Skills system (.claude/skills/) for repeatable workflows
+         - Domain context files (.claude/domains/) for task-specific loading
+         - Commands (.claude/commands/) for validation, figures, manuscript navigation
+         - Auto-memory for cross-session learning
+
+      7. WHY THIS MATTERS FOR REPRODUCIBILITY:
+         - CLAUDE.md serves as machine-readable project documentation
+         - Rules files encode institutional knowledge that persists across sessions
+         - Guardrails prevent regression of code quality
+         - Any developer (human or AI) can onboard by reading the instruction hierarchy
+    </description>
+    <output-file>docs/AI-ASSISTED-DEVELOPMENT.md</output-file>
+    <verification>
+      - [ ] File exists at docs/AI-ASSISTED-DEVELOPMENT.md
+      - [ ] All 7 sections present (including Limitations)
+      - [ ] Links to actual CLAUDE.md, rules files, skills
+      - [ ] Guardrail system documented with failure IDs
+      - [ ] Clear statement about AI not used for data analysis
+      - [ ] Limitations section present (Academic Iter4 suggestion)
+    </verification>
+  </task>
+
+  <task id="T12" status="PENDING" priority="medium" est-minutes="20"
+        category="ai-documentation" exec-order="12">
+    <title>Update CLAUDE.md with TRIPOD-Code awareness and cross-references</title>
+    <rationale>
+      Future Claude sessions need to know about TRIPOD-Code compliance requirements.
+      The CLAUDE.md ecosystem IS the agentic coding infrastructure - keeping it
+      current IS a documentation task, not just internal tooling.
+    </rationale>
+    <description>
+      Updates to root CLAUDE.md:
+      1. Verify Pollard 2026 in Papers to Reference table (already added in Iter1)
+      2. Add brief TRIPOD-Code context near the existing STRATOS/TRIPOD+AI section
+      3. Cross-reference docs/TRIPOD-CODE-COMPLIANCE.md
+      4. Cross-reference docs/AI-ASSISTED-DEVELOPMENT.md
+
+      Updates to .claude/CLAUDE.md:
+      1. Add note that TRIPOD-Code compliance is tracked
+      2. Ensure all cross-references to docs/ are correct
+    </description>
+    <files>
+      <file>CLAUDE.md</file>
+      <file>.claude/CLAUDE.md</file>
+    </files>
+    <verification>
+      - [ ] Pollard 2026 in papers table
+      - [ ] TRIPOD-Code cross-reference present
+      - [ ] AI-Assisted Development doc cross-referenced
+      - [ ] No broken links
+    </verification>
+  </task>
+
+  <task id="T13" status="PENDING" priority="medium" est-minutes="10"
+        category="repo-fix" exec-order="13">
+    <title>Verify and fix dependency lockfiles</title>
+    <rationale>
+      DevOps reviewer noted: numpy pinned to ==1.25.2 (old, potential conflict).
+      Should verify all lockfiles are current for publication freeze.
+    </rationale>
+    <description>
+      1. Run: uv lock --check (verify uv.lock matches pyproject.toml)
+      2. Check numpy pin: is ==1.25.2 still needed? If not, relax to >=1.25.2,&lt;2.0
+         Document decision either way.
+      3. Document R version in ARCHITECTURE.md if not already present
+      4. Verify renv.lock exists and is not stale
+    </description>
+    <verification>
+      - [ ] uv lock --check passes
+      - [ ] numpy pin decision documented
+      - [ ] R version documented
+    </verification>
+  </task>
+
+  <!-- ================================================================== -->
+  <!--  PHASE 5: BLOCKED - AT SUBMISSION TIME                             -->
+  <!-- ================================================================== -->
+
+  <task id="T14" status="PENDING" priority="high" est-minutes="30"
+        tripod-item="all" category="manuscript" exec-order="14">
+    <title>Create TRIPOD+AI checklist completion document</title>
+    <rationale>
+      TRIPOD+AI recommends submitting "a completed checklist indicating the page
+      or line where each requested item can be found." Many journals require this.
+      Best done close to submission after all manuscript sections are finalized
+      (including co-author sections like Funding, PPI, Conflicts).
+    </rationale>
+    <description>
+      Create docs/TRIPOD-AI-CHECKLIST.md mapping all 27 items (52 subitems)
+      to manuscript sections. Use traffic-light system:
+      - GREEN: Fully addressed with section reference
+      - YELLOW: Partially addressed, notes on what's missing
+      - RED: Not addressed, with justification (e.g., "N/A for retrospective study")
+
+      Key items to verify:
+      - 3c: Fairness
+      - 5a: Source data demographics
+      - 12f: Fairness in analysis
+      - 18a-f: Open science section
+      - 19: PPI
+      - 22: Model specification
+      - 23a: Subgroup performance
+      - 25: Limitations including fairness
+
+      NOTE: This should be done AFTER co-authors have completed their sections
+      (Funding, PPI, Conflicts, model specification details).
+    </description>
+    <output-file>docs/TRIPOD-AI-CHECKLIST.md</output-file>
+    <verification>
+      - [ ] All 27 items have status (green/yellow/red)
+      - [ ] Section references for green items
+      - [ ] Justification for red/yellow items
+      - [ ] No item left blank
+    </verification>
+  </task>
+
+  <task id="T15" status="BLOCKED" priority="medium" est-minutes="20"
+        tripod-code-area="H" category="archival" exec-order="15">
+    <title>Create Zenodo archive with concept DOI</title>
+    <rationale>
+      TRIPOD-Code protocol emphasizes "archival for long-term access."
+      Must be done at submission time since Zenodo DOI goes in manuscript.
+    </rationale>
+    <description>
+      At submission time:
+      1. Ensure .zenodo.json exists (T7)
+      2. Ensure CITATION.cff has version and date-released (T7)
+      3. Connect GitHub to Zenodo (zenodo.org/account/settings/github/)
+      4. Create GitHub release v1.0.0-submission with release notes
+      5. Zenodo auto-creates DOI
+      6. Use CONCEPT DOI (not version-specific) in manuscript - this resolves
+         to latest version if we ever update
+      7. Add Zenodo badge to README.md
+      8. Update manuscript \url{} with Zenodo DOI
+      9. Verify Zenodo deposit includes the DB file
+    </description>
+    <blocked-by>T7, T10, T14 (repo and manuscript ready for submission)</blocked-by>
+    <verification>
+      - [ ] Zenodo deposit exists with concept DOI
+      - [ ] Badge in README.md
+      - [ ] DOI in manuscript
+      - [ ] Zenodo metadata matches .zenodo.json
+      - [ ] DB file accessible from Zenodo
+    </verification>
+  </task>
+
+  <!-- ================================================================== -->
+  <!--  OUT OF SCOPE (co-author responsibilities, flagged for reference)  -->
+  <!-- ================================================================== -->
+
+  <out-of-scope>
+    <item reason="co-author responsibility">
+      Manuscript [TO BE COMPLETED] placeholders:
+      - Funding section (NMRC/CIRG/1401/2014, NHIC-I2D-1708181 to Dan Milea)
+      - Patient and Public Involvement statement
+      - Verify Dan Milea's co-author status vs Acknowledgments
+    </item>
+    <item reason="co-author responsibility">
+      Conflicts of Interest resolution:
+      - Patent PCT/SG2018/050204 for "RP" vs "no conflicts" statement
+      - Needs co-author discussion to resolve contradiction
+    </item>
+    <item reason="co-author responsibility">
+      Pre-submission cleanup:
+      - Remove co-author note box (lines ~191-205)
+      - Remove "Internal Appendices" section with Dropbox links (lines ~245-252)
+      - Update \date{} to submission date
+    </item>
+    <item reason="co-author responsibility">
+      TRIPOD+AI fairness items (3c, 12f, 23a, 25):
+      - Requires co-author input on demographic data availability
+      - Subgroup analysis feasibility assessment
+      - Single-center limitation framing
+    </item>
+    <item reason="co-author responsibility">
+      Model specification details (TRIPOD+AI Item 22):
+      - CatBoost hyperparameters (requires checking Optuna results)
+      - Feature list with definitions and units
+      - Feature preprocessing documentation
+    </item>
+    <item reason="co-author responsibility">
+      TRIPOD+AI Item 18d (protocol registration):
+      - Study protocol registration (e.g., PROSPERO, OSF)
+      - Requires PI decision on whether to register retrospectively
+    </item>
+  </out-of-scope>
+
+  <!-- ================================================================== -->
+  <!--  REVIEW LOG                                                        -->
+  <!-- ================================================================== -->
+
+  <review-log>
+    <iteration number="1" date="2026-02-13" reviewer="claude-initial">
+      <status>DRAFT</status>
+      <notes>
+        Initial plan with 12 tasks after reading TRIPOD-Code protocol,
+        TRIPOD+AI, manuscript, and repo assessment.
+      </notes>
+    </iteration>
+
+    <iteration number="2" date="2026-02-13" reviewer="academic-reviewer-agent">
+      <status>MAJOR REVISION</status>
+      <findings>
+        CRITICAL:
+        - Missing TRIPOD+AI items: 3c (fairness), 5a (recruitment), 12f, 23a (subgroups)
+        - T3 (placeholders) should be CRITICAL not HIGH (desk rejection risk)
+        - Patent disclosure contradicts "no conflicts" - needs careful handling
+        - Pre-submission cleanup needed (co-author notes, Dropbox links)
+        - T4 (bibliography) must precede T1 since proposed text uses \cite{}
+        - "over 2000 tests" is marketing language for academic paper
+        - Cannot claim compliance with non-existent TRIPOD-Code checklist
+
+        HIGH:
+        - T2 underspecified for CatBoost: needs hyperparameters, feature preprocessing,
+          serialization format, prediction function
+        - Item 18d (protocol registration) not addressed
+        - Word count already at 11,140 vs TVST 8-10K limit
+
+        MEDIUM:
+        - T12 (CLAUDE.md) is internal tooling, remove from this plan
+        - T5 may be premature since checklist doesn't exist
+      </findings>
+    </iteration>
+
+    <iteration number="2" date="2026-02-13" reviewer="devops-reviewer-agent">
+      <status>MAJOR REVISION</status>
+      <findings>
+        CRITICAL:
+        - foundation_plr_results.db NOT git-tracked. make reproduce-from-checkpoint
+          fails for anyone who clones. SINGLE BIGGEST reproducibility gap.
+
+        HIGH:
+        - pyproject.toml description = "Add your description here" (placeholder)
+        - Makefile `setup` target uses pip install (BANNED by repo rules)
+        - ALL Makefile python targets lack `uv run` prefix
+        - Dockerfile base images not digest-pinned (GH#43)
+        - No .nvmrc for Node.js version
+        - uv version in Dockerfile uses floating tag (0.9 not 0.9.x)
+
+        MEDIUM:
+        - No .zenodo.json for Zenodo metadata control
+        - T10 needs test counts by category, skipped test explanation
+      </findings>
+    </iteration>
+
+    <iteration number="3" date="2026-02-13" reviewer="synthesis">
+      <status>CONVERGED (then user-corrected)</status>
+      <changes>
+        Applied both reviewer findings. Resulted in 14 tasks.
+      </changes>
+    </iteration>
+
+    <iteration number="4" date="2026-02-13" reviewer="user-corrections">
+      <status>MAJOR RESTRUCTURE</status>
+      <user-feedback>
+        1. [TO BE COMPLETED] placeholders are CO-AUTHOR tasks, not Claude's.
+           Remove from executable plan, move to out-of-scope reference.
+        2. TRIPOD-Code speculative compliance IS desired. Proactive anticipation
+           makes submission stronger. Restore standalone compliance doc.
+        3. CLAUDE.md and AI-agentic documentation IS a feature, not internal
+           tooling. Keep in plan and EXPAND. This repo will continue being
+           developed with Claude Code.
+        4. Go BEYOND TRIPOD-Code: AI-assisted development practices are a
+           differentiator. Document them explicitly.
+        5. Model specification, fairness items, funding, PPI, conflicts are
+           co-author responsibilities. Flag but don't attempt to fix.
+      </user-feedback>
+      <changes>
+        1. REMOVED manuscript placeholder fixes (T1 old) → out-of-scope
+        2. REMOVED manuscript fairness/model spec tasks → out-of-scope
+        3. RESTORED standalone TRIPOD-Code compliance doc (T5)
+        4. RESTORED CLAUDE.md update task (T12)
+        5. ADDED AI-Assisted Development documentation (T11) - new
+        6. REORDERED: Repo fixes first (T1-T4), then TRIPOD-Code compliance
+           (T5-T8), then manuscript Code Availability (T9-T10), then AI docs
+           (T11-T13), then submission-time tasks (T14-T15)
+        7. Total: 15 tasks. 4 phases executable now, 1 blocked for submission.
+        8. Clear out-of-scope section for co-author items
+      </changes>
+    </iteration>
+
+    <iteration number="4" date="2026-02-13" reviewer="academic-reviewer-opus">
+      <status>APPROVED WITH 5 CORRECTIONS</status>
+      <findings>
+        1. Item 18d (protocol registration) missing from out-of-scope → ADDED
+        2. T4 describes DuckDB as not git-tracked, but git ls-files confirms
+           it IS tracked. DATA_MANIFEST.yaml is stale. → DOWNGRADED to manifest fix
+        3. T6 says "Create tests/README.md" but file exists (173 lines) → REFRAMED
+           as "Enhance existing tests/README.md for external reviewers"
+        4. T7 says "Create CITATION.cff" but file exists (49 lines, missing
+           version/date-released) → REFRAMED as "Update CITATION.cff + Create .zenodo.json"
+        5. T9 verification should scope narrowly → ADDED explicit scope note to T10
+      </findings>
+    </iteration>
+
+    <iteration number="4" date="2026-02-13" reviewer="devops-reviewer-sonnet">
+      <status>APPROVED WITH CONDITIONS</status>
+      <findings>
+        1. Docker image name verification needed → ADDED note to T3
+        2. T5 needs dependency locking and data lineage sections → ADDED to T5 description
+        3. Pin ubuntu version in CI workflows → DEFERRED (ubuntu-latest is standard
+           GHA practice, pinning adds maintenance burden without clear benefit for
+           a research repo; can be revisited if CI breaks)
+        4. Add smoke test for reproduction → DEFERRED (T6 documents existing test
+           infrastructure; adding new tests is a separate task)
+      </findings>
+    </iteration>
+
+    <iteration number="5" date="2026-02-13" reviewer="synthesis-final">
+      <status>CONVERGED</status>
+      <changes>
+        Applied ALL corrections from both Iteration 4 reviewers:
+        1. T4 downgraded from CRITICAL to MEDIUM (DuckDB already git-tracked,
+           only DATA_MANIFEST.yaml needs update)
+        2. T6 reframed: "Enhance existing tests/README.md" (not create)
+        3. T7 reframed: "Update CITATION.cff + Create .zenodo.json" (not create both)
+        4. Item 18d added to out-of-scope
+        5. T5 enhanced with dependency locking + data lineage sections
+        6. T3 enhanced with Docker image verification note
+        7. T10 enhanced with narrow scope note
+        8. T11 enhanced with Limitations section (section 5)
+        9. T15 blocked-by updated (removed T4 since DuckDB already committed)
+        10. ubuntu-latest pinning and new smoke tests DEFERRED (rationale documented)
+
+        Plan status: CONVERGED. Ready for execution.
+        Total tasks: 15 (13 executable now, 2 blocked for submission).
+      </changes>
+    </iteration>
+  </review-log>
+
+  <!-- ================================================================== -->
+  <!--  APPENDIX: TRIPOD-Code Author Promotion Context                    -->
+  <!--  Gary S. Collins (first author) LinkedIn post, 2026-02-13          -->
+  <!-- ================================================================== -->
+
+  <appendix id="author-context">
+    <title>TRIPOD-Code Promotion by Gary S. Collins</title>
+    <source>LinkedIn post by Gary Collins (125th Anniversary Chair, Professor of Medical
+    Statistics, NIHR Senior Investigator, University of Birmingham), 2026-02-13</source>
+    <summary>
+      Collins positions TRIPOD-Code as sitting "in the family of TRIPOD reporting guidelines"
+      and building on TRIPOD+AI Item 18f (code sharing). Key quotes:
+
+      - "TRIPOD-Code will cover key elements such as documentation of software dependencies,
+        specification of license terms, and whether the code is modular, tested, or reproducible."
+
+      - "Although TRIPOD-Code will be designed with clinical prediction models in mind, we
+        anticipate that many or most of the recommendations will be applicable to any field
+        where scientific code underpins research findings."
+
+      - "The principles of transparency, reproducibility, and accessibility are broadly
+        applicable and may benefit a wide range of scientific disciplines."
+
+      - "A key focus of TRIPOD-Code will be to improve transparency in the reproducibility
+        of studies, particularly through the availability of analytical code. This includes
+        code used for data cleaning, feature engineering, model building, and evaluation."
+
+      This confirms our proactive compliance strategy is well-aligned: Collins explicitly
+      lists dependencies, license, modularity, testing, and reproducibility — all areas
+      we address in our T5 compliance document and throughout Phases 1-4.
+    </summary>
+    <links>
+      <link type="tripod-ai">https://www.bmj.com/content/385/bmj-2023-078378</link>
+      <link type="tripod-code-protocol">https://doi.org/10.1186/s41512-025-00217-4</link>
+    </links>
+    <co-authors-mentioned>Tom Pollard, Thomas Sounack, Leo Anthony Celi</co-authors-mentioned>
+  </appendix>
+</action-plan>

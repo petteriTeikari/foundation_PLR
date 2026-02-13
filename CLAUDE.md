@@ -161,7 +161,8 @@ Plan before executing. Propose alternatives. Check existing code/config FIRST be
 |-------|-----------|
 | PLR Benchmark | Najjar et al. 2023 Br J Ophthalmol |
 | STRATOS Metrics | Van Calster et al. 2024 |
-| TRIPOD+AI | Collins et al. 2024 |
+| TRIPOD+AI | Collins et al. 2024 BMJ |
+| TRIPOD-Code (protocol) | Pollard, Sounack et al. 2026 Diagn Progn Res |
 | Model Stability | Riley 2023 BMC Medicine (pminternal) |
 | Sample Size | Legha 2026 JCE |
 
@@ -185,6 +186,10 @@ This repository is being frozen for academic publication. **Correctness and rigo
 - **Strict mode everywhere**: `mkdocs build --strict`, `pytest --strict-markers`, ruff checks — all enforced
 - **Fix warnings, don't suppress them**: Every griffe warning, deprecation, or lint issue gets a proper fix
 - **This is NOT a startup**: No "ship fast, fix later" mentality. Every commit is publication-ready
+
+**TRIPOD-Code compliance**: See `docs/TRIPOD-CODE-COMPLIANCE.md` for speculative mapping against anticipated areas A-H.
+
+**AI development transparency**: See `docs/AI-ASSISTED-DEVELOPMENT.md` for AI contribution scope and guardrails.
 
 ## Future Vision
 

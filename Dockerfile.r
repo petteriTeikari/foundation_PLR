@@ -16,7 +16,8 @@
 
 # Use rocker/tidyverse which has many packages pre-installed
 # This includes ggplot2, dplyr, tidyr, etc. and all system dependencies
-FROM rocker/tidyverse:4.5.2
+# Pinned 2026-02-13 for reproducibility (TRIPOD-Code area B)
+FROM rocker/tidyverse:4.5.2@sha256:17dca9381149911b201184ab46e6c8628b68ddc1386b9562bc26ca8b6b4c6f81
 
 LABEL maintainer="Foundation PLR Team"
 LABEL description="R environment for ggplot2 figure generation with STRATOS compliance"
