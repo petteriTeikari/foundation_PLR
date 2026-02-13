@@ -1,7 +1,7 @@
 [project]
 name = "repo-plr"
 version = "0.1.0"
-description = "Add your description here"
+description = "Foundation models for pupillary light reflex preprocessing in glaucoma screening"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

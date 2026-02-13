@@ -16,6 +16,8 @@ authors:
 repository-code: "https://github.com/petteriTeikari/foundation_PLR"
 url: "https://github.com/petteriTeikari/foundation_PLR"
 license: MIT
+version: "1.0.0"
+date-released: "2026-01-01"
 keywords:
   - time-series
   - foundation-models

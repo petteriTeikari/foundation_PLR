@@ -162,6 +162,7 @@ Plan before executing. Propose alternatives. Check existing code/config FIRST be
 | PLR Benchmark | Najjar et al. 2023 Br J Ophthalmol |
 | STRATOS Metrics | Van Calster et al. 2024 |
 | TRIPOD+AI | Collins et al. 2024 |
+| TRIPOD-Code (protocol) | Pollard, Sounack et al. 2026 Diagn Progn Res |
 | Model Stability | Riley 2023 BMC Medicine (pminternal) |
 | Sample Size | Legha 2026 JCE |
 

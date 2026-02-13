@@ -25,12 +25,12 @@ files:
       - distribution_stats   # Probability distribution statistics
     source: "make extract (MLflow → DuckDB)"
     pii: false
-    git_tracked: false  # See GH#44 — to be committed for reproducibility
+    git_tracked: true
     docker_included: true  # .dockerignore exception: !data/public/*.db
 
   cd_diagram_data.duckdb:
     description: "Critical difference diagram rankings"
     source: "scripts/extraction/extract_cd_diagram_data.py"
     pii: false
-    git_tracked: false  # See GH#44
+    git_tracked: false  # Not yet generated
     docker_included: true  # .dockerignore exception: !data/public/*.duckdb
