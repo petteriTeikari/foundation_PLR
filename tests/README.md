@@ -70,6 +70,65 @@ pytest tests/unit/test_stats.py
 pytest tests/unit/test_stats.py::test_compute_auroc -v
 ```
 
+---
+
+## For Reviewers
+
+This section summarizes the test strategy for manuscript reviewers. For developer documentation, see sections below.
+
+### Test Summary
+
+- **Total**: 2000+ tests (run `pytest --co -q | tail -1` for exact count)
+- **Out-of-the-box from fresh clone**: `make test-fast` runs unit + guardrail tests with zero external dependencies
+
+### Test Categories
+
+| Category | Marker | Count | Description |
+|----------|--------|-------|-------------|
+| Unit | `unit` | ~50 | Fast, isolated function tests |
+| Guardrail | `guardrail` | ~30 | Code quality enforcement (no data needed) |
+| Integration | `integration` | ~20 | Multi-component tests with synthetic data |
+| Data | `data` | ~100 | Tests requiring `data/public/` or `outputs/r_data/` |
+| Figure QA | (in `test_figure_qa/`) | ~50 | Scientific figure integrity |
+| R Required | `r_required` | ~10 | Tests requiring R/Rscript |
+
+Note: exact counts vary as tests are added. The markers above are the pytest markers defined in `pyproject.toml`.
+
+### Guardrail Tests
+
+These tests enforce project-level code quality rules:
+
+- **Computation Decoupling**: `src/viz/` must NOT import sklearn/stats computation modules -- visualization reads DuckDB only
+- **Registry Integrity**: Exactly 11 outlier, 8 imputation, 5 classifier methods (from `configs/mlflow_registry/`)
+- **Makefile Compliance**: No `pip install`, all Python calls use `uv run python`
+- **Metadata Accuracy**: `DATA_MANIFEST.yaml` git_tracked fields match reality, `CITATION.cff` has required fields
+- **Configuration Validation**: Hydra configs parse correctly, no orphan references
+
+### CI Tier Structure
+
+| Tier | Content | Duration | Trigger |
+|------|---------|----------|---------|
+| 0 | Lint (ruff) | ~30s | Every push |
+| 1 | Unit + guardrail | ~90s | Every push |
+| 2 | Data tests (with mounts) | ~5min | PR only |
+| 3 | Integration + E2E | ~10min | Release/manual |
+
+### Skipped Tests
+
+Approximately 181 tests are skipped when run without production outputs. These tests verify figures and analysis outputs that require `make analyze` to generate first (which needs local MLflow data). **These are NOT failures** -- they verify outputs that only exist after full pipeline execution.
+
+### Figure QA Tests (CRITICAL-FAILURE-001)
+
+After an incident where AI-generated code produced calibration plots with synthetic data instead of real predictions, mandatory figure QA tests were added:
+
+```bash
+pytest tests/test_figure_qa/ -v  # MUST pass before any figure commit
+```
+
+These tests verify: data provenance (no synthetic data in figures), statistical validity, rendering quality, and publication standards.
+
+---
+
 ## Test Organization
 
 ```

@@ -180,6 +180,44 @@ mlflow ui --port 5000          # http://localhost:5000
 
 ---
 
+## For Reviewers
+
+This repository accompanies a manuscript evaluating foundation models for pupillary light reflex preprocessing in glaucoma screening. Below is a guide to navigating the codebase.
+
+### Pipeline → Code Mapping
+
+| Pipeline Stage | Source Code | Tests |
+|---------------|-------------|-------|
+| Outlier Detection (11 methods) | `src/outlier_detection/` | `tests/test_outlier/` |
+| Imputation (8 methods) | `src/imputation/` | `tests/test_imputation/` |
+| Feature Extraction | `src/featurization/` | `tests/test_features/` |
+| Classification (CatBoost) | `src/classification/` | `tests/test_classification/` |
+| Evaluation (STRATOS) | `src/stats/`, `src/viz/` | `tests/test_figure_qa/` |
+| Orchestration | `src/orchestration/` | `tests/test_orchestration/` |
+
+### Quick Verification
+
+```bash
+# From a fresh clone:
+make test-fast              # Unit + guardrail tests (~90s, no data needed)
+make reproduce-from-checkpoint  # Analysis from committed DuckDB
+```
+
+### Documentation
+
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design, module map, Mermaid diagrams |
+| [docs/TRIPOD-CODE-COMPLIANCE.md](docs/TRIPOD-CODE-COMPLIANCE.md) | TRIPOD-Code speculative compliance mapping |
+| [docs/AI-ASSISTED-DEVELOPMENT.md](docs/AI-ASSISTED-DEVELOPMENT.md) | AI-assisted development practices and guardrails |
+| [tests/README.md](tests/README.md) | Test strategy, categories, CI tiers |
+
+### Reporting Standards
+
+This study follows [TRIPOD+AI](https://doi.org/10.1136/bmj-2023-078378) (Collins et al. 2024) reporting recommendations. Repository structure is informed by the anticipated [TRIPOD-Code](https://doi.org/10.1186/s41512-025-00217-4) guidelines (Pollard et al. 2026). All evaluation metrics follow STRATOS Initiative recommendations (Van Calster et al. 2024).
+
+---
+
 ## Configuration
 
 <p align="center">
