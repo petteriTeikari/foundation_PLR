@@ -216,6 +216,18 @@ make reproduce-from-checkpoint  # Analysis from committed DuckDB
 
 This study follows [TRIPOD+AI](https://doi.org/10.1136/bmj-2023-078378) (Collins et al. 2024) reporting recommendations. Repository structure is informed by the anticipated [TRIPOD-Code](https://doi.org/10.1186/s41512-025-00217-4) guidelines (Pollard et al. 2026). All evaluation metrics follow STRATOS Initiative recommendations (Van Calster et al. 2024).
 
+<p align="center">
+  <img src="docs/repo-figures/assets/fig-repo-103-tripod-guideline-family.jpg" alt="Timeline showing TRIPOD guideline family: TRIPOD (2015) to TRIPOD+AI (2024) to TRIPOD-Code (2026), with Item 18f callout showing how one code-sharing recommendation expanded into a full guideline">
+</p>
+
+*The TRIPOD reporting guideline family evolved from manuscript-level recommendations (2015) through AI-specific extensions (2024) to code repository standards (2026). TRIPOD-Code extends TRIPOD+AI Item 18f ("share analytical code") into a complete reporting guideline.*
+
+<p align="center">
+  <img src="docs/repo-figures/assets/fig-repo-104-tripod-code-development.jpg" alt="Two-panel diagram: TRIPOD-Code 5-stage Delphi development pipeline (left) and 8 anticipated checklist areas covering dependencies, testing, and reproducibility (right)">
+</p>
+
+*TRIPOD-Code uses a 5-stage Delphi consensus process (200+ experts, 70% agreement threshold) to develop reporting requirements for code repositories. This repository proactively addresses all 8 anticipated areas (see [compliance mapping](docs/TRIPOD-CODE-COMPLIANCE.md)).*
+
 ---
 
 ## Configuration
